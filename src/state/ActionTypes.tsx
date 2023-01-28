@@ -1,0 +1,11 @@
+export const GURBANI_SEARCH = "GURBANI_SEARCH";
+export const SEARCH_SHABAD_PANKTI = "SEARCH_SHABAD_PANKTI";
+
+export const SHABAD_AUTO_NEXT = "SHABAD_AUTO_NEXT";
+export const SHABAD_HOME = "SHABAD_HOME";
+export const SHABAD_PREV = "SHABAD_PREV";
+export const SHABAD_SET_HOME = "SHABAD_SET_HOME";
+export const SHABAD_NEXT = "SHABAD_NEXT";
+export const SHABAD_UPDATE = "SHABAD_UPDATE";
+
+export const SET_APP_PAGE = "SET_APP_PAGE";
