@@ -11,5 +11,7 @@ export type Pankti = {
     vishraam_first_letters: string;
     visited?: boolean;
     home?: boolean;
+    punjabi_translation: string;
+    english_translation: string;
 };
 

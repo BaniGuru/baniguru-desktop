@@ -1,6 +1,6 @@
-import React, { ChangeEvent, Fragment, FunctionComponent, createRef, useCallback, useContext, useMemo, useRef, useState } from "react";
+import React, { ChangeEvent, Fragment, FunctionComponent, KeyboardEventHandler, createRef, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { SearchContext } from "../../state/providers/SearchProvider";
-import { GURBANI_SEARCH, SET_APP_PAGE } from "../../state/ActionTypes";
+import { GURBANI_SEARCH, SEARCH_SHABAD_PANKTI, SET_APP_PAGE } from "../../state/ActionTypes";
 import styled from "styled-components";
 import { DB } from "../../utils/DB";
 import { Pankti } from "../../models/Pankti";
@@ -8,6 +8,7 @@ import Tab from "../../ui/Tab";
 import { MdOutlineClear } from "react-icons/md";
 import { BsKeyboard } from "react-icons/bs";
 import SearchList from "./SearchList";
+import { AppContext } from "../../state/providers/AppProvider";
 
 const SearchInput = styled.input`
     font-size: 18px;
@@ -47,14 +48,35 @@ const Row = styled.div`
 `;
 
 const SearchPanel: FunctionComponent = () => {
-    const {state, dispatch} = useContext(SearchContext);
-    const [panktis, setPanktis] = useState<Pankti[]>([]);
-    const [searchTerm, setSearchTerm] = useState("");
-    const searchInputRef = createRef<HTMLInputElement>();
+    const {state, dispatch, searchInputRef, searchTerm, setSearchTerm, panktis, setPanktis} = useContext(SearchContext);
+    const [focusIndex, setFocusIndex] = useState(0);
+    const [showShabad, setShowShabad] = useState(false);
+    const appDispatch = useContext(AppContext).dispatch;
 
     const appRef = useRef<number>(0);
     appRef.current++;
-    console.log("search ref: ", appRef.current);
+    // console.log("search ref: ", appRef.current);
+
+    const handleSearchShortcuts = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'c' && event.ctrlKey && searchInputRef?.current?.value) {
+            searchInputRef.current.value = "";
+            event.preventDefault();
+        }
+
+        if (event.key === 'ArrowDown' && panktis.length > 0) {
+            setFocusIndex(Math.min(focusIndex + 1, panktis.length - 1));
+        }
+
+        if (event.key === 'ArrowUp' && panktis.length > 0) {
+            setFocusIndex(Math.max(focusIndex - 1, 0));
+        }
+
+        if (event.key === 'Enter') {
+            displayShabad(panktis[focusIndex]);
+            event.preventDefault();
+        }
+        console.log(event.key);
+    };
 
     const handleSearch = async (e: ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -105,6 +127,23 @@ const SearchPanel: FunctionComponent = () => {
         }
     }, [searchInputRef]);
 
+    const displayShabad = useCallback((pankti: Pankti) => {
+        dispatch({
+            type: SEARCH_SHABAD_PANKTI,
+            payload: { pankti }
+        });
+
+        appDispatch({
+            type: SET_APP_PAGE,
+            payload: { page: "shabad" }
+        });
+    }, [dispatch, appDispatch]);
+
+    useEffect(() => {
+        searchInputRef?.current?.focus();
+        searchInputRef?.current?.select;
+    }, []);
+
     return (
         <Tab>
             <Row>
@@ -115,6 +154,7 @@ const SearchPanel: FunctionComponent = () => {
                     className="gurmukhi-font-1"
                     spellCheck="false"
                     autoComplete="off"
+                    onKeyDown={handleSearchShortcuts}
                 />
                 { searchTerm.length > 0 &&
                     <SearchButton title="search" onClick={clearSearch}>
@@ -126,7 +166,7 @@ const SearchPanel: FunctionComponent = () => {
                     <BsKeyboard />
                 </KeyboardButton>
             </Row>
-            <SearchList panktis={panktis} />
+            <SearchList panktis={panktis} current={focusIndex} displayShabad={displayShabad} />
         </Tab>
     );
 };

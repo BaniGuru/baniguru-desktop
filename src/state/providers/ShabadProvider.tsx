@@ -1,6 +1,6 @@
 import React, { createContext, useReducer } from "react";
 import { Pankti } from "../../models/Pankti";
-import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_NEXT, SHABAD_PREV, SHABAD_SET_HOME, SHABAD_UPDATE } from "../ActionTypes";
+import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_NEXT, SHABAD_PANKTI, SHABAD_PREV, SHABAD_SET_HOME, SHABAD_UPDATE } from "../ActionTypes";
 
 export type ShabadState = {
     panktis: Pankti[],
@@ -28,20 +28,27 @@ const shabadReducer = (state: ShabadState, action: any) => {
             };
 
         case SHABAD_NEXT:
-            shabadState.panktis[state.current + 1].visited = true;
+            if (state.current + 1 < state.panktis.length) {
+                shabadState.panktis[state.current + 1].visited = true;
 
-            return {
-                ...shabadState,
-                current: state.current + 1,
-            };
+                return {
+                    ...shabadState,
+                    current: state.current + 1,
+                };
+            }
+
+            return state;
 
         case SHABAD_PREV:
-            shabadState.panktis[state.current - 1].visited = true;
+            if (state.current - 1 >= 0) {
+                shabadState.panktis[state.current - 1].visited = true;
 
-            return {
-                ...state,
-                current: state.current - 1,
-            };
+                return {
+                    ...state,
+                    current: state.current - 1,
+                };
+            }
+            return state;
 
         case SHABAD_UPDATE:
             payload.panktis[payload.current].home = true;
@@ -49,7 +56,9 @@ const shabadReducer = (state: ShabadState, action: any) => {
 
             return {
                 ...shabadState,
-                ...payload
+                panktis: {},
+                ...payload,
+                home: payload.current,
             };
 
         case SHABAD_HOME:
@@ -67,6 +76,17 @@ const shabadReducer = (state: ShabadState, action: any) => {
                 home: action.payload.home,
                 current: action.payload.home
             }
+
+        case SHABAD_PANKTI:
+            if (payload?.current >= 0 && payload.current < state.panktis.length) {
+                shabadState.panktis[payload.current].visited = true;
+
+                return {
+                    ...state,
+                    current: payload.current,
+                };
+            }
+            return state;
     }
 
     return {

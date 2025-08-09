@@ -5,7 +5,9 @@ import Format from "../../utils/Format";
 import styled from "styled-components";
 import { TiTick, TiTickOutline } from "react-icons/ti";
 import { TbHome } from "react-icons/tb";
-import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_NEXT, SHABAD_PREV, SHABAD_SET_HOME, SHABAD_UPDATE } from "../../state/ActionTypes";
+import { SET_APP_PAGE, SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_NEXT, SHABAD_PANKTI, SHABAD_PREV, SHABAD_SET_HOME, SHABAD_UPDATE } from "../../state/ActionTypes";
+import { AppContext } from "../../state/providers/AppProvider";
+import { SearchContext } from "../../state/providers/SearchProvider";
 
 type ListItemProps = {
     active: boolean;
@@ -49,8 +51,34 @@ const VisitedChangeHomeIcon = styled(TbHome)`
     display: none;
 `;
 
+function smoothScrollTo(element: HTMLElement, target: number, duration: number = 800) {
+    const start = element.scrollTop;
+    const change = target - start;
+    const startTime = performance.now();
+
+    const animateScroll = (currentTime: number) => {
+        const time = Math.min((currentTime - startTime) / duration, 1);
+        const easedTime = easeInOutQuad(time);
+        element.scrollTop = start + change * easedTime;
+
+        if (time < 1) {
+            requestAnimationFrame(animateScroll);
+        }
+    };
+
+    requestAnimationFrame(animateScroll);
+}
+
+function easeInOutQuad(t: number): number {
+    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+}
+
 const ShabadList: React.FC = () => {
     const { state, dispatch } = useContext(ShabadContext);
+    const appDispatch = useContext(AppContext).dispatch;
+    const {searchInputRef} = useContext(SearchContext);
+    const listRef = useRef<HTMLUListElement | null>(null);
+    const itemRefs = useRef<Array<HTMLLIElement | null>>([]);
 
     const setHome = (index: number) => {
         dispatch({
@@ -107,6 +135,17 @@ const ShabadList: React.FC = () => {
                     dispatch({ type: SHABAD_HOME });
                     ev.preventDefault();
                     break;
+                
+                case "/":
+                    if (ev.ctrlKey) {
+                        appDispatch({
+                            type: SET_APP_PAGE,
+                            payload: {
+                                page: 'search'
+                            }
+                        });
+                    }
+                    break;
             }
     
             ev.preventDefault();
@@ -119,26 +158,51 @@ const ShabadList: React.FC = () => {
         };
     }, [state]);
 
+    const showPankti = (index: any) => {
+        dispatch({ type: SHABAD_PANKTI, payload: {
+            current: index
+        }});
+    };
+
+    useEffect(() => {
+        const container = listRef.current;
+        const item = itemRefs.current[state.current];
+
+        if (container && item) {
+            const containerRect = container.getBoundingClientRect();
+            const itemRect = item.getBoundingClientRect();
+
+            const containerScrollTop = container.scrollTop;
+            const offset = itemRect.top - containerRect.top;
+
+            const targetScroll = containerScrollTop + offset - container.clientHeight / 2 + item.clientHeight / 2;
+
+            smoothScrollTo(container, targetScroll, 800); // Duration in ms
+        }
+    }, [state.current]);
+
     return (
-        <List>
-            {
-                state.panktis.map((pankti: Pankti, index: number) => {
-                    return (
-                        <ListItem className="gurmukhi-font-1" active={index === state.current}>
-                            <VisitedStatus>
-                                <VisitedChangeHomeIcon onClick={() => setHome(index)} />
-                                {
-                                    pankti.home ? <TbHome /> :
-                                    pankti.visited ? <TiTick /> : <TiTickOutline />
-                                }
-                            </VisitedStatus>
-                            {
-                                Format.removeVishraams(pankti.gurmukhi)
-                            }
-                        </ListItem>
-                    )
-                })
-            }
+        <List ref={listRef}>
+            {state.panktis.map((pankti: Pankti, index: number) => (
+                <ListItem
+                    key={index}
+                    ref={(el) => {
+                        itemRefs.current[index] = el;
+                    }}
+                    className="gurmukhi-font-1"
+                    active={index === state.current}
+                    onClick={() => showPankti(index)}
+                >
+                    <VisitedStatus>
+                        <VisitedChangeHomeIcon onClick={() => setHome(index)} />
+                        {
+                            pankti.home ? <TbHome /> :
+                            pankti.visited ? <TiTick /> : <TiTickOutline />
+                        }
+                    </VisitedStatus>
+                    {Format.removeVishraams(pankti.gurmukhi)}
+                </ListItem>
+            ))}
         </List>
     );
 };

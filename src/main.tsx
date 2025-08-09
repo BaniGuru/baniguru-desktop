@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./style.css";
+import "./theme.css";
 import { SearchProvider } from "./state/providers/SearchProvider";
 import { AppProvider } from "./state/providers/AppProvider";
 

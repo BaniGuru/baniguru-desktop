@@ -7,5 +7,6 @@ export const SHABAD_PREV = "SHABAD_PREV";
 export const SHABAD_SET_HOME = "SHABAD_SET_HOME";
 export const SHABAD_NEXT = "SHABAD_NEXT";
 export const SHABAD_UPDATE = "SHABAD_UPDATE";
+export const SHABAD_PANKTI = "SHABAD_PANKTI";
 
 export const SET_APP_PAGE = "SET_APP_PAGE";

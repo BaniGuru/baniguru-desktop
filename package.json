@@ -10,15 +10,15 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "^1.2.0",
+    "@tauri-apps/api": "^2.7.0",
+    "@tauri-apps/plugin-sql": "~2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-icons": "^4.7.1",
-    "styled-components": "^5.3.6",
-    "tauri-plugin-sql-api": "https://github.com/tauri-apps/tauri-plugin-sql"
+    "styled-components": "^5.3.6"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1.2.2",
+    "@tauri-apps/cli": "^2.7.1",
     "@types/node": "^18.7.10",
     "@types/react": "^18.0.15",
     "@types/react-dom": "^18.0.6",

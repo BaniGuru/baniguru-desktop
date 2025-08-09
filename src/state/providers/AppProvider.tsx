@@ -1,12 +1,14 @@
-import React, { createContext, useReducer } from "react";
+import React, { createContext, useReducer, useState } from "react";
 import { SET_APP_PAGE } from "../ActionTypes";
 
 type AppState = {
     page: string;
+    // dbPath: string;
 };
 
 const initAppState: AppState = {
     page: "search",
+    // dbPath: "",
 };
 
 const appReducer = (state: AppState, action: any) => {
@@ -24,17 +26,22 @@ const appReducer = (state: AppState, action: any) => {
 
 const AppContext = createContext<{
     state: AppState;
-    dispatch: React.Dispatch<any>
+    dispatch: React.Dispatch<any>,
+    dbPath: String,
+    setDbPath: React.Dispatch<any>,
 }>({
     state: initAppState,
-    dispatch: () => null
+    dispatch: () => null,
+    dbPath: "",
+    setDbPath: () => null,
 });
 
 const AppProvider: React.FC<{ children: React.ReactNode}> = ({ children }) => {
     const [state, dispatch] = useReducer(appReducer, initAppState);
+    const [dbPath, setDbPath] = useState("");
 
     return (
-        <AppContext.Provider value={{state, dispatch}}>
+        <AppContext.Provider value={{state, dispatch, dbPath, setDbPath}}>
             { children }
         </AppContext.Provider>
     );
