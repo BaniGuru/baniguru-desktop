@@ -13,7 +13,10 @@ import LoadingScreen from "./ui/LoadingScreen";
 
 const Tabs = styled.div``;
 
-// Define the type for DownloadEvent from backend
+const Container = styled.div`
+  display: flex;
+`;
+
 type DownloadEvent =
   | { event: "started"; data: { url: string; download_id: number; content_length: number } }
   | { event: "progress"; data: { download_id: number; chunk_length: any } }
@@ -21,9 +24,7 @@ type DownloadEvent =
   | { event: "skipped"; data: {db_path: string; } } ;
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
-  const {state, dispatch, dbPath, setDbPath} = useContext(AppContext);
+  const {state, setDbPath} = useContext(AppContext);
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const appRef = useRef<number>(0);
@@ -38,15 +39,12 @@ function App() {
 
   useEffect(() => {
     const downloadDB = async () => {
-      // Set up channel to receive DownloadEvent
       const channel = new Channel<DownloadEvent>((event) => {
         switch (event.event) {
           case "started":
-            console.log(event.event);
             downloadingRef.current = true;
             contentLengthRef.current = event.data.content_length;
             downloadedRef.current = 0;
-            console.log("Download started:", event.data);
             break;
           case "progress":
             downloadedRef.current += event.data.chunk_length;
@@ -58,14 +56,11 @@ function App() {
             break;
           case "finished":
             downloadingRef.current = false;
-            console.log(event.event);
-            console.log("Download finished:", event.data);
             setProgress(100);
             setReady(true);
             break;
           
           case "skipped":
-            console.log(event.event);
             setReady(true);
             break;
         }
@@ -98,26 +93,23 @@ function App() {
   }
 
   return (
-    <div className="container">
+    <Container>
       <ShabadProvider>
         <SearchProvider>
           <ShabadDisplay />
-          {
-            state.page === "shabad" &&
-            <Tabs>
+          <Tabs>
+            {
+              state.page === "shabad" &&
               <ShabadPanel />
-            </Tabs>
-          }
-
-          {
-            state.page === "search" &&
-            <Tabs>
+            }
+            {
+              state.page === "search" &&
               <SearchPanel />
-            </Tabs>
-          }
+            }
+          </Tabs>
         </SearchProvider>
       </ShabadProvider>
-    </div>
+    </Container>
   );
 }
 

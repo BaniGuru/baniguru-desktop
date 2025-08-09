@@ -7,10 +7,29 @@ import { Pankti } from "../../models/Pankti";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_NEXT, SHABAD_PREV, SHABAD_UPDATE } from "../../state/ActionTypes";
 
+const Panel = styled.div`
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    justify-content: center;
+`;
+
 const Gurmukhi = styled.div`
     color: #01579b;
     font-size: 90px;
-    line-height: 1.2;
+    line-height: 1;
+    display: flex;
+`;
+
+const NextPanktiGurmukhi = styled.div`
+    color: #01579b;
+    font-size: 90px;
+    line-height: 1;
+    position: absolute;
+    bottom: 1.5rem;
+    display: flex;
 `;
 
 const Punjabi = styled.div`
@@ -18,8 +37,7 @@ const Punjabi = styled.div`
     font-size: 50px;
     line-height: 1.4;
     margin-top: 80px;
-    padding-left: 40px;
-    padding-right: 40px;
+    display: flex;
 `;
 
 const English = styled.div`
@@ -74,23 +92,30 @@ const ShabadDisplay: React.FC = () => {
         loadShabad();
     }, [searchState]);
 
+    const nextPankti = state.panktis[current+1]?.gurmukhi;
+
+    if (current < 0) {
+        return null;
+    }
+
     return (
-        <div>
+        <Panel>
+            <Gurmukhi className="gurmukhi-font-2">
+                { Format.removeVishraams(state.panktis[current]?.gurmukhi) }
+            </Gurmukhi>
+            <Punjabi className="gurmukhi-font-2">
+                { state.panktis[current]?.punjabi_translation }
+            </Punjabi>
+            <English>
+                { state.panktis[current]?.english_translation }
+            </English>
             {
-                current != -1 &&
-                <>
-                <Gurmukhi className="gurmukhi-font-2">
-                    { Format.removeVishraams(state.panktis[current]?.gurmukhi) }
-                </Gurmukhi>
-                <Punjabi className="gurmukhi-font-2">
-                    { state.panktis[current]?.punjabi_translation }
-                </Punjabi>
-                <English>
-                    { state.panktis[current]?.english_translation }
-                </English>
-                </>
+                nextPankti &&
+                <NextPanktiGurmukhi className="gurmukhi-font-2">
+                    { Format.removeVishraams(nextPankti) }
+                </NextPanktiGurmukhi>
             }
-        </div>
+        </Panel>
     );
 };
 
