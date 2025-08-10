@@ -10,17 +10,7 @@ import { BsKeyboard } from "react-icons/bs";
 import SearchList from "./SearchList";
 import { AppContext } from "../../state/providers/AppProvider";
 
-const SearchInput = styled.input`
-    font-size: 18px;
-    width: 100%;
-    border-radius: 30px;
-    margin: 0px 44px 0px 12px;
-`;
-
 const SearchButton = styled.button`
-    background: #f0f0f0;
-    border-radius: 30px;
-    color: #444;
     font-size: 14px;
     padding: 2px 6px;
     position: absolute;
@@ -33,18 +23,7 @@ const SearchIcon = styled(MdOutlineClear)`
 `;
 
 const KeyboardButton = styled.button`
-    background: none;
     color: #444;
-    font-size: 24px;
-    padding: 2px 6px;
-    position: absolute;
-    right: 4px;
-    margin-top: 8px;
-    box-shadow: none;
-`;
-
-const Row = styled.div`
-    display: flex;
 `;
 
 const SearchPanel: FunctionComponent = () => {
@@ -108,6 +87,7 @@ const SearchPanel: FunctionComponent = () => {
 
             const panktis: Pankti[] = res;
             setPanktis(panktis);
+            setFocusIndex(0);
         });
 
         dispatch({
@@ -145,29 +125,31 @@ const SearchPanel: FunctionComponent = () => {
     }, []);
 
     return (
-        <Tab>
-            <Row>
-                <SearchInput
-                    ref={searchInputRef}
-                    type="text"
-                    onChange={handleSearch}
-                    className="gurmukhi-font-1"
-                    spellCheck="false"
-                    autoComplete="off"
-                    onKeyDown={handleSearchShortcuts}
-                />
-                { searchTerm.length > 0 &&
-                    <SearchButton title="search" onClick={clearSearch}>
-                        <SearchIcon />
-                    </SearchButton>
-                }
+        <>
+            <div className="flex-none">
+                <div className="flex flex-row my-2">
+                    <input
+                        ref={searchInputRef}
+                        type="text"
+                        onChange={handleSearch}
+                        className="gurmukhi-font-1 flex-1 mx-2 px-4 py-2 border-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        spellCheck="false"
+                        autoComplete="off"
+                        onKeyDown={handleSearchShortcuts}
+                    />
+                    { searchTerm.length > 0 &&
+                        <SearchButton title="search" onClick={clearSearch}>
+                            <SearchIcon />
+                        </SearchButton>
+                    }
 
-                <KeyboardButton>
-                    <BsKeyboard />
-                </KeyboardButton>
-            </Row>
+                    <KeyboardButton>
+                        <BsKeyboard />
+                    </KeyboardButton>
+                </div>
+            </div>
             <SearchList panktis={panktis} current={focusIndex} displayShabad={displayShabad} />
-        </Tab>
+        </>
     );
 };
 

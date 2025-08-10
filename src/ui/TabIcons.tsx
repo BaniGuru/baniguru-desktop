@@ -4,21 +4,6 @@ import styled from "styled-components";
 import { AppContext } from "../state/providers/AppProvider";
 import { SET_APP_PAGE } from "../state/ActionTypes";
 
-const Root = styled.div`
-    bottom: 0;
-    left: 0;
-    position: absolute;
-`;
-
-const TabButton = styled.div`
-    padding: 12px;
-    background: #e0e0e0;
-`;
-
-const SearchIcon = styled(FaSearch)`
-    padding: 0px 4px;
-`;
-
 const TabIcons: React.FC = () => {
     const dispatch = useContext(AppContext).dispatch;
 
@@ -32,11 +17,11 @@ const TabIcons: React.FC = () => {
     }
 
     return (
-        <Root>
-            <TabButton onClick={() => switchTab('search')}>
-                <SearchIcon />
-            </TabButton>
-        </Root>
+        <div className="flex w-full bg-gray-200 px-4 py-2">
+            <div onClick={() => switchTab('search')} className="">
+                <FaSearch />
+            </div>
+        </div>
     );
 };
 

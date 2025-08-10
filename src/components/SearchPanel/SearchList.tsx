@@ -1,22 +1,12 @@
 import styled from "styled-components";
 import { Pankti } from "../../models/Pankti";
-import { useCallback, useContext, useEffect, useRef } from "react";
-import { SearchContext } from "../../state/providers/SearchProvider";
-import { SEARCH_SHABAD_PANKTI, SET_APP_PAGE } from "../../state/ActionTypes";
-import { AppContext } from "../../state/providers/AppProvider";
+import { useEffect, useRef } from "react";
 
 type SearchListProps = {
     panktis: Pankti[];
     current: number;
     displayShabad: any;
 };
-
-const List = styled.ul`
-    height: 250px;
-    margin-top: 12px;
-    overflow-y: auto;
-    overflow-x: hidden;
-`;
 
 const ListItem = styled.li`
     cursor: default;
@@ -56,8 +46,6 @@ const SearchList: React.FC<SearchListProps> = ({ panktis, current, displayShabad
     const listContainerRef = useRef<HTMLUListElement | null>(null);
     const itemRefs = useRef<Array<HTMLLIElement | null>>([]);
 
-    
-
     useEffect(() => {
         const container = listContainerRef.current;
         const item = itemRefs.current[current];
@@ -76,7 +64,7 @@ const SearchList: React.FC<SearchListProps> = ({ panktis, current, displayShabad
     }, [current]);
 
     return (
-        <List ref={listContainerRef}>
+        <ul ref={listContainerRef} className="flex-1 flex flex-col overflow-y-auto">
             {panktis.map((pankti, index) => (
                 <ListItem
                     key={index}
@@ -89,7 +77,7 @@ const SearchList: React.FC<SearchListProps> = ({ panktis, current, displayShabad
                     {pankti.gurmukhi.replaceAll(/[;]|[.]|[,]/g, '')}
                 </ListItem>
             ))}
-        </List>
+        </ul>
     );
 };
 

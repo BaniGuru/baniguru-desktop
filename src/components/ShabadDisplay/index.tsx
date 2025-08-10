@@ -9,24 +9,19 @@ import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_NEXT, SHABAD_PREV, SHABAD_UPDATE 
 
 const Panel = styled.div`
     padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    justify-content: center;
 `;
 
 const Gurmukhi = styled.div`
     color: #01579b;
     font-size: 90px;
-    line-height: 1;
+    line-height: 1.2;
     display: flex;
 `;
 
 const NextPanktiGurmukhi = styled.div`
-    color: #01579b;
-    font-size: 90px;
-    line-height: 1;
+    color: #5e9fd2ff;
+    font-size: 70px;
+    line-height: 1.2;
     position: absolute;
     bottom: 1.5rem;
     display: flex;
@@ -36,7 +31,7 @@ const Punjabi = styled.div`
     color:rgb(73, 77, 79);
     font-size: 50px;
     line-height: 1.4;
-    margin-top: 80px;
+    margin-top: 2rem;
     display: flex;
 `;
 
@@ -44,7 +39,7 @@ const English = styled.div`
     color:rgb(81, 89, 94);
     font-size: 45px;
     line-height: 1.4;
-    margin-top: 80px;
+    margin-top: 2rem;
     padding-left: 40px;
     padding-right: 40px;
 `;
@@ -99,19 +94,19 @@ const ShabadDisplay: React.FC = () => {
     }
 
     return (
-        <Panel>
-            <Gurmukhi className="gurmukhi-font-2">
+        <Panel className="w-screen flex flex-col items-center">
+            <Gurmukhi className="gurmukhi-font-2 text-center">
                 { Format.removeVishraams(state.panktis[current]?.gurmukhi) }
             </Gurmukhi>
-            <Punjabi className="gurmukhi-font-2">
+            <Punjabi className="gurmukhi-font-2 text-center">
                 { state.panktis[current]?.punjabi_translation }
             </Punjabi>
-            <English>
+            <English className="text-center">
                 { state.panktis[current]?.english_translation }
             </English>
             {
                 nextPankti &&
-                <NextPanktiGurmukhi className="gurmukhi-font-2">
+                <NextPanktiGurmukhi className="gurmukhi-font-2 text-center">
                     { Format.removeVishraams(nextPankti) }
                 </NextPanktiGurmukhi>
             }

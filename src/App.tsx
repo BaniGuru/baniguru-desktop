@@ -10,12 +10,7 @@ import { AppContext } from "./state/providers/AppProvider";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { DB } from "./utils/DB";
 import LoadingScreen from "./ui/LoadingScreen";
-
-const Tabs = styled.div``;
-
-const Container = styled.div`
-  display: flex;
-`;
+import TabIcons from "./ui/TabIcons";
 
 type DownloadEvent =
   | { event: "started"; data: { url: string; download_id: number; content_length: number } }
@@ -93,23 +88,22 @@ function App() {
   }
 
   return (
-    <Container>
+    <div className="w-full h-full">
       <ShabadProvider>
         <SearchProvider>
           <ShabadDisplay />
-          <Tabs>
-            {
-              state.page === "shabad" &&
-              <ShabadPanel />
-            }
-            {
-              state.page === "search" &&
-              <SearchPanel />
-            }
-          </Tabs>
+          <div className="absolute flex flex-col w-1/3 h-1/3 right-0 bottom-0 overflow-hidden shadow-2xl border-2 border-gray-200">
+            <div className="flex-1 flex flex-col overflow-hidden bg-white">
+              {state.page === "shabad" && <ShabadPanel />}
+              {state.page === "search" && <SearchPanel />}
+            </div>
+            <div className="flex-none">
+              <TabIcons />
+            </div>
+          </div>
         </SearchProvider>
       </ShabadProvider>
-    </Container>
+    </div>
   );
 }
 
