@@ -11,6 +11,10 @@ import { Channel, invoke } from "@tauri-apps/api/core";
 import { DB } from "./utils/DB";
 import LoadingScreen from "./ui/LoadingScreen";
 import TabIcons from "./ui/TabIcons";
+import { SettingPanel } from "./components/SettingPanel";
+import { SettingProvider } from "./state/providers/SettingContext";
+import { RecentPanel } from "./components/RecentPanel";
+import BaniPanel from "./components/BaniPanel";
 
 type DownloadEvent =
   | { event: "started"; data: { url: string; download_id: number; content_length: number } }
@@ -88,6 +92,7 @@ function App() {
   }
 
   return (
+    <SettingProvider>
     <div className="w-full h-full">
       <ShabadProvider>
         <SearchProvider>
@@ -96,6 +101,9 @@ function App() {
             <div className="flex-1 flex flex-col overflow-hidden bg-white">
               {state.page === "shabad" && <ShabadPanel />}
               {state.page === "search" && <SearchPanel />}
+              {state.page === "settings" && <SettingPanel />}
+              {state.page === "recent" && <RecentPanel />}
+              {state.page === "bani" && <BaniPanel />}
             </div>
             <div className="flex-none">
               <TabIcons />
@@ -104,6 +112,7 @@ function App() {
         </SearchProvider>
       </ShabadProvider>
     </div>
+    </SettingProvider>
   );
 }
 

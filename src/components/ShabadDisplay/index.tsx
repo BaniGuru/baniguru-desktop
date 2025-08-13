@@ -6,38 +6,43 @@ import styled from "styled-components";
 import { Pankti } from "../../models/Pankti";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_NEXT, SHABAD_PREV, SHABAD_UPDATE } from "../../state/ActionTypes";
+import { useSettings } from "../../state/providers/SettingContext";
 
 const Panel = styled.div`
     padding: 1rem;
 `;
 
-const Gurmukhi = styled.div`
+interface FontProps {
+  fontSize: number;
+}
+
+const Gurmukhi = styled.div<FontProps>`
     color: #01579b;
-    font-size: 90px;
+    font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.2;
     display: flex;
 `;
 
-const NextPanktiGurmukhi = styled.div`
+const NextPanktiGurmukhi = styled.div<FontProps>`
     color: #5e9fd2ff;
-    font-size: 70px;
+    font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.2;
     position: absolute;
     bottom: 1.5rem;
     display: flex;
 `;
 
-const Punjabi = styled.div`
+const Punjabi = styled.div<FontProps>`
     color:rgb(73, 77, 79);
-    font-size: 50px;
+    font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.4;
     margin-top: 2rem;
     display: flex;
 `;
 
-const English = styled.div`
+const English = styled.div<FontProps>`
     color:rgb(81, 89, 94);
-    font-size: 45px;
+    font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.4;
     margin-top: 2rem;
     padding-left: 40px;
@@ -47,6 +52,7 @@ const English = styled.div`
 const ShabadDisplay: React.FC = () => {
     const searchState = useContext(SearchContext).state;
     const {state, dispatch } = useContext(ShabadContext);
+    const { fontSizes } = useSettings();
     const current = state.current;
 
     useEffect(() => {
@@ -95,18 +101,18 @@ const ShabadDisplay: React.FC = () => {
 
     return (
         <Panel className="w-screen flex flex-col items-center">
-            <Gurmukhi className="gurmukhi-font-2 text-center">
+            <Gurmukhi className="gurmukhi-font-2 text-center" fontSize={fontSizes["ਗੁਰਮੁਖੀ"]}>
                 { Format.removeVishraams(state.panktis[current]?.gurmukhi) }
             </Gurmukhi>
-            <Punjabi className="gurmukhi-font-2 text-center">
+            <Punjabi className="gurmukhi-font-2 text-center" fontSize={fontSizes["ਪੰਜਾਬੀ"]}>
                 { state.panktis[current]?.punjabi_translation }
             </Punjabi>
-            <English className="text-center">
+            <English className="text-center" fontSize={fontSizes["English"]}>
                 { state.panktis[current]?.english_translation }
             </English>
             {
                 nextPankti &&
-                <NextPanktiGurmukhi className="gurmukhi-font-2 text-center">
+                <NextPanktiGurmukhi className="gurmukhi-font-2 text-center" fontSize={fontSizes["Next Pankti"]}>
                     { Format.removeVishraams(nextPankti) }
                 </NextPanktiGurmukhi>
             }

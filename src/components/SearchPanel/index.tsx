@@ -9,6 +9,8 @@ import { MdOutlineClear } from "react-icons/md";
 import { BsKeyboard } from "react-icons/bs";
 import SearchList from "./SearchList";
 import { AppContext } from "../../state/providers/AppProvider";
+import { ShabadContext } from "../../state/providers/ShabadProvider";
+import { saveBaniPosition } from "../../utils/BaniPositionTracker";
 
 const SearchButton = styled.button`
     font-size: 14px;
@@ -31,6 +33,7 @@ const SearchPanel: FunctionComponent = () => {
     const [focusIndex, setFocusIndex] = useState(0);
     const [showShabad, setShowShabad] = useState(false);
     const appDispatch = useContext(AppContext).dispatch;
+    const { state: shabadState } = useContext(ShabadContext);
 
     const appRef = useRef<number>(0);
     appRef.current++;
@@ -108,6 +111,11 @@ const SearchPanel: FunctionComponent = () => {
     }, [searchInputRef]);
 
     const displayShabad = useCallback((pankti: Pankti) => {
+        // Save previous bani position if applicable
+        if (shabadState.panktis.length > 0 && shabadState.panktis[0].bani_id != undefined) {
+            saveBaniPosition(shabadState.panktis[0].bani_id, shabadState.current);
+        }
+
         dispatch({
             type: SEARCH_SHABAD_PANKTI,
             payload: { pankti }

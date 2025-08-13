@@ -13,5 +13,6 @@ export type Pankti = {
     home?: boolean;
     punjabi_translation: string;
     english_translation: string;
+    bani_id?: number;
 };
 

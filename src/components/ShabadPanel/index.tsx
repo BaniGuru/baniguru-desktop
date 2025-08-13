@@ -5,7 +5,7 @@ import Format from "../../utils/Format";
 import styled from "styled-components";
 import { TiTick, TiTickOutline } from "react-icons/ti";
 import { TbHome } from "react-icons/tb";
-import { SET_APP_PAGE, SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_NEXT, SHABAD_PANKTI, SHABAD_PREV, SHABAD_SET_HOME, SHABAD_UPDATE } from "../../state/ActionTypes";
+import { SET_APP_PAGE, SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_NEXT, SHABAD_PANKTI, SHABAD_PREV, SHABAD_SET_HOME, SHABAD_UPDATE, TOGGLE_PANEL } from "../../state/ActionTypes";
 import { AppContext } from "../../state/providers/AppProvider";
 import { SearchContext } from "../../state/providers/SearchProvider";
 
@@ -70,7 +70,6 @@ function easeInOutQuad(t: number): number {
 const ShabadPanel: React.FC = () => {
     const { state, dispatch } = useContext(ShabadContext);
     const appDispatch = useContext(AppContext).dispatch;
-    const {searchInputRef} = useContext(SearchContext);
     const listRef = useRef<HTMLUListElement | null>(null);
     const itemRefs = useRef<Array<HTMLLIElement | null>>([]);
 
@@ -100,13 +99,24 @@ const ShabadPanel: React.FC = () => {
 
         const onESC = (ev: KeyboardEvent) => {
             switch (ev.key) {
-                case "todo":
-                    const shabadState = autoNavigate(state);
-                    dispatch({ type: SHABAD_AUTO_NEXT, payload: {
-                        current: shabadState.current,
-                        panktis: shabadState.panktis,
-                        pilot: shabadState.pilot
-                    } });
+                case " ":
+                    if (ev.ctrlKey) {
+                        setHome(state.current);
+                        break;
+                    }
+
+                    if (state.current === state.home) {
+                        const shabadState = autoNavigate(state);
+                        dispatch({ type: SHABAD_AUTO_NEXT, payload: {
+                            current: shabadState.current,
+                            panktis: shabadState.panktis,
+                            pilot: shabadState.pilot
+                        } });
+                        ev.preventDefault();
+                        break;
+                    }
+
+                    dispatch({ type: SHABAD_HOME });
                     ev.preventDefault();
                     break;
     
@@ -121,11 +131,6 @@ const ShabadPanel: React.FC = () => {
                     dispatch({ type: SHABAD_NEXT });
                     ev.preventDefault();
                     break;
-    
-                case " ":
-                    dispatch({ type: SHABAD_HOME });
-                    ev.preventDefault();
-                    break;
                 
                 case "/":
                     if (ev.ctrlKey) {
@@ -138,11 +143,11 @@ const ShabadPanel: React.FC = () => {
                     }
                     break;
 
-                case "r":
-                case "R":
-                    if (ev.ctrlKey) {
-                        setHome(state.current);
-                    }
+                case "h":
+                case "H":
+                    appDispatch({
+                        type: TOGGLE_PANEL,
+                    })
                     break;
 
             }

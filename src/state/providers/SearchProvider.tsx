@@ -1,15 +1,17 @@
 import React, { createContext, createRef, RefObject, useState} from "react";
-import { GURBANI_SEARCH, SEARCH_SHABAD_PANKTI } from "../ActionTypes";
+import { CLEAR_RECENT_PANKTIS, GURBANI_SEARCH, REMOVE_RECENT_PANKTI, SEARCH_SHABAD_PANKTI } from "../ActionTypes";
 import { Pankti } from "../../models/Pankti";
 
 type initSearchStateType = {
     searchTerm: string;
     searchShabadPankti: Pankti|null;
+    recent: Pankti[];
 };
 
 const initSearchState = {
     searchTerm: "",
     searchShabadPankti: null,
+    recent: [],
 };
 
 const searchReducer = (state: initSearchStateType, action: any) => {
@@ -21,9 +23,26 @@ const searchReducer = (state: initSearchStateType, action: any) => {
             };
 
         case SEARCH_SHABAD_PANKTI:
+            const newPankti = action.payload.pankti;
             return {
                 ...state,
-                searchShabadPankti: action.payload.pankti
+                recent: [
+                    newPankti,
+                    ...state.recent.filter(p => p.id !== newPankti.id)
+                ],
+                searchShabadPankti: newPankti
+            };
+        
+        case REMOVE_RECENT_PANKTI:
+            return {
+                ...state,
+                recent: state.recent.filter((p) => p.id !== action.payload.id),
+            };
+
+        case CLEAR_RECENT_PANKTIS:
+            return {
+                ...state,
+                recent: [],
             };
 
         default:

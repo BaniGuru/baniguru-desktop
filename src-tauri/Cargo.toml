@@ -22,6 +22,7 @@ reqwest = { version = "0.11", features = ["json", "stream"] }
 # Async ecosystem
 tokio = { version = "1.38", features = ["macros", "rt-multi-thread"] }
 futures-util = "0.3.30"
+tauri-plugin-store = "2.3.0"
 
 [features]
 default = ["custom-protocol"]
