@@ -1,4 +1,4 @@
-import React, { createContext, useReducer } from "react";
+import { createContext, useReducer } from "react";
 import { Pankti } from "../../models/Pankti";
 import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_NEXT, SHABAD_PANKTI, SHABAD_PREV, SHABAD_SET_HOME, SHABAD_UPDATE } from "../ActionTypes";
 
@@ -102,7 +102,7 @@ const ShabadContext = createContext<{
     dispatch: () => null
 });
 
-const ShabadProvider: React.FC<{ children: React.ReactNode}> = ({ children }) => {
+const ShabadProvider: React.FC<{ children: React.ReactNode}> = ({ children }: any) => {
     const [state, dispatch] = useReducer(shabadReducer, initShabadState);
 
     return (

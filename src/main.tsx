@@ -1,12 +1,12 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
+import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./style.css";
 import "./theme.css";
 import { SearchProvider } from "./state/providers/SearchProvider";
 import { AppProvider } from "./state/providers/AppProvider";
+import * as React from "react";
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <AppProvider>
         <SearchProvider>

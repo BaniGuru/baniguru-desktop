@@ -1,4 +1,4 @@
-import React, { useContext, useCallback } from "react";
+import { useContext, useCallback } from "react";
 import { SearchContext } from "../../state/providers/SearchProvider";
 import { AppContext } from "../../state/providers/AppProvider";
 import { useSettings } from "../../state/providers/SettingContext";

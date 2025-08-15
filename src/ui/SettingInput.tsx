@@ -1,4 +1,4 @@
-import { FaEye, FaMinus, FaPlus } from "react-icons/fa";
+import { FaMinus, FaPlus } from "react-icons/fa";
 import { useSettings } from "../state/providers/SettingContext";
 
 const fontLanguages = ["ਗੁਰਮੁਖੀ", "ਪੰਜਾਬੀ", "English", "Next Pankti"];

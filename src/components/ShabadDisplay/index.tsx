@@ -1,11 +1,11 @@
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect } from "react";
 import { SearchContext } from "../../state/providers/SearchProvider";
 import Format from "../../utils/Format";
 import { DB } from "../../utils/DB";
 import styled from "styled-components";
 import { Pankti } from "../../models/Pankti";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
-import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_NEXT, SHABAD_PREV, SHABAD_UPDATE } from "../../state/ActionTypes";
+import { SHABAD_UPDATE } from "../../state/ActionTypes";
 import { useSettings } from "../../state/providers/SettingContext";
 
 const Panel = styled.div`

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
 type FontType = "ਗੁਰਮੁਖੀ" | "ਪੰਜਾਬੀ" | "English" | "Next Pankti" | "Search";
 
@@ -91,7 +91,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
     key: keyof Settings["displaySpacing"],
     value: number
   ) => {
-    setDisplaySpacing((prev) => ({
+    setDisplaySpacing((prev: any) => ({
       ...prev,
       [key]: value,
     }));

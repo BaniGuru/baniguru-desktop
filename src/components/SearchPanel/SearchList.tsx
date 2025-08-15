@@ -71,7 +71,7 @@ const SearchList: React.FC<SearchListProps> = ({ panktis, current, displayShabad
                     ref={(el) => {
                         itemRefs.current[index] = el;
                     }}
-                    className={`gurmukhi-font-1 ${current === index ? 'bg-gray-200' : 'bg-white'}`}
+                    className={`gurmukhi-font-1 ${current === index ? 'bg-gray-200' : 'bg-gray-100'}`}
                     onClick={() => displayShabad(pankti)}
                 >
                     {pankti.gurmukhi.replaceAll(/[;]|[.]|[,]/g, '')}

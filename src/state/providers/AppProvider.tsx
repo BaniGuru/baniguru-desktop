@@ -1,4 +1,4 @@
-import React, { createContext, useReducer, useState } from "react";
+import { createContext, useReducer, useState } from "react";
 import { SET_APP_PAGE, TOGGLE_PANEL } from "../ActionTypes";
 
 type AppState = {

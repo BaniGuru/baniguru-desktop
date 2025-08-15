@@ -1,6 +1,7 @@
-import React, { createContext, createRef, RefObject, useState} from "react";
+import { createContext, createRef, RefObject, useState} from "react";
 import { CLEAR_RECENT_PANKTIS, GURBANI_SEARCH, REMOVE_RECENT_PANKTI, SEARCH_SHABAD_PANKTI } from "../ActionTypes";
 import { Pankti } from "../../models/Pankti";
+import * as React from "react";
 
 type initSearchStateType = {
     searchTerm: string;
@@ -22,17 +23,17 @@ const searchReducer = (state: initSearchStateType, action: any) => {
                 searchTerm: action.payload.searchTerm
             };
 
-        case SEARCH_SHABAD_PANKTI:
+        case SEARCH_SHABAD_PANKTI: {
             const newPankti = action.payload.pankti;
+            const alreadyExists = state.recent.some(p => p.id === newPankti.id);
+
             return {
                 ...state,
-                recent: [
-                    newPankti,
-                    ...state.recent.filter(p => p.id !== newPankti.id)
-                ],
+                recent: alreadyExists ? state.recent : [...state.recent, newPankti],
                 searchShabadPankti: newPankti
             };
-        
+        }
+
         case REMOVE_RECENT_PANKTI:
             return {
                 ...state,

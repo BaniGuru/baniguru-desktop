@@ -1,4 +1,4 @@
-import React, { useContext, useCallback, useEffect, useState } from "react";
+import { useContext, useCallback, useEffect, useState } from "react";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { AppContext } from "../../state/providers/AppProvider";
 import { DB } from "../../utils/DB";
@@ -55,7 +55,7 @@ export const BaniPanel = () => {
       setLoadingBaniId(baniId);
       try {
         const db = await DB.getInstance();
-        const lines = await db.select(`
+        const lines: any = await db.select(`
           SELECT
             lines.*,
             punjabi.translation as punjabi_translation,

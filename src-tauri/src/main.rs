@@ -3,11 +3,18 @@
     windows_subsystem = "windows"
 )]
 
+mod server;
+
 use futures_util::StreamExt;
 use serde::Serialize;
 use std::fs::File;
 use std::io::Write;
 use tauri::{ipc::Channel, AppHandle, Manager};
+
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use warp::Filter;
+use warp::Reply;
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase", tag = "event", content = "data")]
@@ -101,6 +108,15 @@ async fn download_sqlite_file_with_channel<'a>(
 }
 
 fn main() {
+
+    println!("Tera template path: {:?}", std::env::current_dir().unwrap().join("templates"));
+
+    
+    // Launch web server in background
+    tauri::async_runtime::spawn(async {
+        server::start_web_server().await
+    });
+
     tauri::Builder::default()
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_sql::Builder::default().build())

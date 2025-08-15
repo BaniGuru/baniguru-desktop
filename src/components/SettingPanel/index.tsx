@@ -1,4 +1,4 @@
-import { FaEye, FaMinus, FaPlus } from "react-icons/fa";
+import { FaEye } from "react-icons/fa";
 import SettingInput from "../../ui/SettingInput";
 
 const languages = ["ਗੁਰਮੁਖੀ", "ਪੰਜਾਬੀ", "English", "Next Pankti"];
