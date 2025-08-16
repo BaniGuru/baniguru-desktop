@@ -7,6 +7,7 @@ import { TiTick, TiTickOutline } from "react-icons/ti";
 import { TbHome } from "react-icons/tb";
 import { SET_APP_PAGE, SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_NEXT, SHABAD_PANKTI, SHABAD_PREV, SHABAD_SET_HOME, TOGGLE_PANEL } from "../../state/ActionTypes";
 import { AppContext } from "../../state/providers/AppProvider";
+import useShabadNavigation from "../../utils/useShabadNavigation";
 
 type ListItemProps = {
     active: boolean;
@@ -68,7 +69,6 @@ function easeInOutQuad(t: number): number {
 
 const ShabadPanel: React.FC = () => {
     const { state, dispatch } = useContext(ShabadContext);
-    const appDispatch = useContext(AppContext).dispatch;
     const listRef = useRef<HTMLUListElement | null>(null);
     const itemRefs = useRef<Array<HTMLLIElement | null>>([]);
 
@@ -80,86 +80,6 @@ const ShabadPanel: React.FC = () => {
             }
         });
     }
-
-    useEffect(() => {
-        const autoNavigate = (state: ShabadState) => {
-            let shabadState = state;
-
-            if (shabadState.pilot + 1 === shabadState.panktis.length) {
-                shabadState.current = shabadState.home;
-            } else {
-                shabadState.pilot++;
-                shabadState.current = shabadState.pilot;
-                shabadState.panktis[shabadState.pilot].visited = true;
-            }
-
-            return shabadState;
-        };
-
-        const onESC = (ev: KeyboardEvent) => {
-            switch (ev.key) {
-                case " ":
-                    if (ev.ctrlKey) {
-                        setHome(state.current);
-                        break;
-                    }
-
-                    if (state.current === state.home) {
-                        const shabadState = autoNavigate(state);
-                        dispatch({ type: SHABAD_AUTO_NEXT, payload: {
-                            current: shabadState.current,
-                            panktis: shabadState.panktis,
-                            pilot: shabadState.pilot
-                        } });
-                        ev.preventDefault();
-                        break;
-                    }
-
-                    dispatch({ type: SHABAD_HOME });
-                    ev.preventDefault();
-                    break;
-    
-                case "ArrowUp":
-                case "ArrowLeft":
-                    dispatch({ type: SHABAD_PREV });
-                    ev.preventDefault();
-                    break;
-    
-                case "ArrowRight":
-                case "ArrowDown":
-                    dispatch({ type: SHABAD_NEXT });
-                    ev.preventDefault();
-                    break;
-                
-                case "/":
-                    if (ev.ctrlKey) {
-                        appDispatch({
-                            type: SET_APP_PAGE,
-                            payload: {
-                                page: 'search'
-                            }
-                        });
-                    }
-                    break;
-
-                case "h":
-                case "H":
-                    appDispatch({
-                        type: TOGGLE_PANEL,
-                    })
-                    break;
-
-            }
-    
-            ev.preventDefault();
-        };
-
-        window.addEventListener("keydown", onESC);
-  
-        return () => {
-          window.removeEventListener("keydown", onESC);
-        };
-    }, [state]);
 
     const showPankti = (index: any) => {
         dispatch({ type: SHABAD_PANKTI, payload: {

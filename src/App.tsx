@@ -1,21 +1,19 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import "./App.css";
 import SearchPanel from "./components/SearchPanel";
-import { SearchProvider } from "./state/providers/SearchProvider";
 import ShabadDisplay from "./components/ShabadDisplay";
-import { ShabadProvider } from "./state/providers/ShabadProvider";
 import ShabadPanel from "./components/ShabadPanel";
-import { AppContext } from "./state/providers/AppProvider";
+import { AppContext, AppState } from "./state/providers/AppProvider";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { DB } from "./utils/DB";
 import LoadingScreen from "./ui/LoadingScreen";
 import TabIcons from "./ui/TabIcons";
 import { SettingPanel } from "./components/SettingPanel";
-import { SettingProvider } from "./state/providers/SettingContext";
 import { RecentPanel } from "./components/RecentPanel";
 import BaniPanel from "./components/BaniPanel";
 import { FaWindowMaximize, FaWindowMinimize } from "react-icons/fa";
-import { TOGGLE_PANEL } from "./state/ActionTypes";
+import { SET_APP_PAGE, TOGGLE_PANEL } from "./state/ActionTypes";
+import useShabadNavigation from "./utils/useShabadNavigation";
 
 type DownloadEvent =
   | { event: "started"; data: { url: string; download_id: number; content_length: number } }
@@ -24,7 +22,7 @@ type DownloadEvent =
   | { event: "skipped"; data: {db_path: string; } } ;
 
 function App() {
-  const {state, setDbPath, dispatch} = useContext(AppContext);
+  const appContext: {state: AppState, setDbPath: any, dispatch: any} = useContext(AppContext);
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const appRef = useRef<number>(0);
@@ -36,6 +34,8 @@ function App() {
   useEffect(() => {
     appRef.current++;
   }, []);
+
+  useShabadNavigation();
 
   useEffect(() => {
     const downloadDB = async () => {
@@ -73,7 +73,7 @@ function App() {
         });
 
         if (path) {
-          setDbPath(path);
+          appContext.setDbPath(path);
           DB.setDbPath(path);
         }
       } catch (err) {
@@ -89,10 +89,25 @@ function App() {
           switch (ev.key) {
               case "h":
               case "H":
-                  dispatch({
-                      type: TOGGLE_PANEL,
-                  })
+                  if (ev.ctrlKey) {
+                    appContext.dispatch({
+                        type: TOGGLE_PANEL,
+                    })
+                  }
                   break;
+                
+              case "/":
+                if (ev.ctrlKey) {
+                    appContext.dispatch({
+                        type: SET_APP_PAGE,
+                        payload: {
+                            page: "search",
+                            show_panel: true,
+                        },
+                    });
+                    ev.preventDefault();
+                }
+                break;
 
           }
       };
@@ -102,10 +117,10 @@ function App() {
       return () => {
         window.removeEventListener("keydown", onESC);
       };
-  }, [state]);
+  }, [appContext.state]);
 
   const togglePanel = () => {
-    dispatch({
+    appContext.dispatch({
       type: TOGGLE_PANEL
     });
   }
@@ -119,12 +134,10 @@ function App() {
   }
 
   return (
-    <SettingProvider>
     <div className="w-full h-full bg-gray-200">
-      <ShabadProvider>
-        <SearchProvider>
+      
           <ShabadDisplay />
-          {state.show_panel &&
+          {appContext.state.show_panel &&
             <div className="absolute flex flex-col w-1/3 h-1/3 right-0 bottom-0 overflow-hidden shadow-2xl border-2 border-gray-300">
               <div className="flex-none h-8 bg-gray-200 flex items-center justify-end">
                 <FaWindowMinimize
@@ -133,27 +146,24 @@ function App() {
                 />
               </div>
               <div className="flex-1 flex flex-col overflow-hidden bg-gray-100">
-                {state.page === "shabad" && <ShabadPanel />}
-                {state.page === "search" && <SearchPanel />}
-                {state.page === "settings" && <SettingPanel />}
-                {state.page === "recent" && <RecentPanel />}
-                {state.page === "bani" && <BaniPanel />}
+                {appContext.state.page === "shabad" && <ShabadPanel />}
+                {appContext.state.page === "search" && <SearchPanel />}
+                {appContext.state.page === "settings" && <SettingPanel />}
+                {appContext.state.page === "recent" && <RecentPanel />}
+                {appContext.state.page === "bani" && <BaniPanel />}
               </div>
               <div className="flex-none">
                 <TabIcons />
               </div>
             </div>
           }
-          {!state.show_panel &&
+          {!appContext.state.show_panel &&
             <FaWindowMaximize
               className="absolute right-0 bottom-0 text-gray-600 cursor-pointer mb-3 mr-4"
               onClick={togglePanel}
             />
           }
-        </SearchProvider>
-      </ShabadProvider>
     </div>
-    </SettingProvider>
   );
 }
 

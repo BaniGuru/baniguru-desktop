@@ -1,11 +1,14 @@
 import { createContext, useReducer, useState } from "react";
 import { SET_APP_PAGE, TOGGLE_PANEL } from "../ActionTypes";
 
-type AppState = {
+export type AppState = {
     page: string;
     show_panel: boolean;
     // dbPath: string;
 };
+
+export const PAGE_SEARCH = "search";
+export const PAGE_SHABAD = "shabad";
 
 const initAppState: AppState = {
     page: "search",
@@ -18,7 +21,7 @@ const appReducer = (state: AppState, action: any) => {
         case SET_APP_PAGE:
             return {
                 ...state,
-                page: action.payload.page
+                ...action.payload,
             };
         case TOGGLE_PANEL:
             return {
