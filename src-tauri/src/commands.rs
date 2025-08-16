@@ -2,7 +2,8 @@
 
 use serde::{Serialize, Deserialize};
 use tauri::State;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
+use tokio::sync::Mutex;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Pankti {
@@ -12,16 +13,14 @@ pub struct Pankti {
 }
 
 #[tauri::command]
-pub fn update_pankti(
+pub async fn update_pankti(
     pankti: Pankti,
     state: State<'_, Mutex<Pankti>>
 ) -> Result<Pankti, String> {
-    let mut panktiState = state.lock().unwrap();
+    let mut panktiState = state.lock().await;
     panktiState.gurmukhi = pankti.gurmukhi.clone();
     panktiState.punjabi = pankti.punjabi.clone();
     panktiState.english = pankti.english.clone();
-
-    // Optionally persist the data here
 
     Ok(pankti.clone())
 }

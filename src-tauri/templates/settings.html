@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="/static/bulma.min.css">
+</head>
+<body>
+<section class="section">
+    <div class="container">
+        <h1 class="title">Customize Display</h1>
+        <form method="post" action="/save_settings">
+            <div class="field">
+                <label class="label">Theme</label>
+                <div class="select">
+                    <select name="theme">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Font</label>
+                <div class="select">
+                    <select name="font">
+                        <option value="GurbaniAkharThick">Gurbani Akhar Thick</option>
+                        <option value="sans-serif">Sans Serif</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Font Size (e.g., 16px)</label>
+                <input class="input" type="text" name="font_size" value="{{ font_size | default(value="16px") }}">
+            </div>
+
+            <div class="field">
+                <label class="label">Background Color (hex code)</label>
+                <input class="input" type="text" name="background_color" value="{{ background_color | default(value="#ffffff") }}">
+            </div>
+
+            <div class="field">
+                <label class="label">Background Opacity (0.0 - 1.0)</label>
+                <input class="input" type="number" step="0.1" min="0" max="1" name="background_opacity" value="{{ background_opacity | default(value="1.0") }}">
+            </div>
+
+            <div class="field">
+                <label class="label">Font Gap (e.g., 10px)</label>
+                <input class="input" type="text" name="font_gap" value="{{ font_gap | default(value="10px") }}">
+            </div>
+
+            <div class="field">
+                <button type="submit" class="button is-primary">Save Settings</button>
+            </div>
+        </form>
+    </div>
+</section>
+</body>
+</html>

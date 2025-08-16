@@ -5,6 +5,8 @@
 
 mod commands;
 mod server;
+mod settings;
+// use settings::{load_settings, save_settings, UserSettings};
 
 use futures_util::StreamExt;
 use serde::Serialize;
@@ -120,6 +122,12 @@ fn main() {
         .setup(|app| {
             let app_handle = app.handle().clone();
 
+            let config_path = app
+                .path()
+                .app_data_dir()
+                .expect("Failed to get app_data_dir")
+                .join("settings.json");
+
             // Create initial Pankti data
             let pankti = Pankti {
                 gurmukhi: "ਸਤਿ ਨਾਮੁ".to_string(),
@@ -128,6 +136,7 @@ fn main() {
             };
 
             app.manage(Mutex::new(pankti));
+            app.manage(config_path);
 
             // Spawn async task with cloned Arc<Mutex<Pankti>>
             tauri::async_runtime::spawn(async move {

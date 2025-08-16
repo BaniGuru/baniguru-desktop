@@ -64,7 +64,7 @@ const ShabadDisplay: React.FC = () => {
         };
 
         sendDataToBackend();
-    }, [state.panktis]);
+    }, [state.panktis, state.current]);
 
     useEffect(() => {
         const loadShabad = async () => {
