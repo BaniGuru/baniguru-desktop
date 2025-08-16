@@ -3,6 +3,7 @@
     windows_subsystem = "windows"
 )]
 
+mod commands;
 mod server;
 
 use futures_util::StreamExt;
@@ -10,11 +11,13 @@ use serde::Serialize;
 use std::fs::File;
 use std::io::Write;
 use tauri::{ipc::Channel, AppHandle, Manager};
-
-use std::net::SocketAddr;
-use std::path::PathBuf;
-use warp::Filter;
-use warp::Reply;
+use tauri::async_runtime::spawn;
+use crate::commands::Pankti;
+use crate::commands::update_pankti;
+use std::sync::{Arc};
+use tokio::sync::Mutex;
+use crate::server::start_web_server;
+use tauri::State;
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase", tag = "event", content = "data")]
@@ -74,7 +77,6 @@ async fn download_sqlite_file_with_channel<'a>(
     let mut dest = File::create(&db_path).map_err(|e| format!("File create error: {}", e))?;
     let mut stream = response.bytes_stream();
 
-    let mut downloaded: u64 = 0;
     let download_id = 1;
 
     // Send started event
@@ -90,7 +92,6 @@ async fn download_sqlite_file_with_channel<'a>(
         let chunk = chunk.map_err(|e| format!("Stream error: {}", e))?;
         dest.write_all(&chunk)
             .map_err(|e| format!("Write error: {}", e))?;
-        downloaded += chunk.len() as u64;
 
         on_event
             .send(DownloadEvent::Progress {
@@ -108,22 +109,34 @@ async fn download_sqlite_file_with_channel<'a>(
 }
 
 fn main() {
-
-    println!("Tera template path: {:?}", std::env::current_dir().unwrap().join("templates"));
-
-    
-    // Launch web server in background
-    tauri::async_runtime::spawn(async {
-        server::start_web_server().await
-    });
-
     tauri::Builder::default()
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_sql::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
             greet,
-            download_sqlite_file_with_channel
+            download_sqlite_file_with_channel,
+            update_pankti
         ])
+        .setup(|app| {
+            let app_handle = app.handle().clone();
+
+            // Create initial Pankti data
+            let pankti = Pankti {
+                gurmukhi: "ਸਤਿ ਨਾਮੁ".to_string(),
+                punjabi: "ਸਲੋਕ".to_string(),
+                english: "True is the name".to_string(),
+            };
+
+            app.manage(Mutex::new(pankti));
+
+            // Spawn async task with cloned Arc<Mutex<Pankti>>
+            tauri::async_runtime::spawn(async move {
+                start_web_server(app_handle).await;
+            });
+
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+

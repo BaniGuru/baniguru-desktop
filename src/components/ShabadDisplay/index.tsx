@@ -7,6 +7,7 @@ import { Pankti } from "../../models/Pankti";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { SHABAD_UPDATE } from "../../state/ActionTypes";
 import { useSettings } from "../../state/providers/SettingContext";
+import { updateServerPankti } from "../../utils/TauriCommands";
 
 const Panel = styled.div`
     padding: 1rem;
@@ -54,6 +55,16 @@ const ShabadDisplay: React.FC = () => {
     const {state, dispatch } = useContext(ShabadContext);
     const { fontSizes } = useSettings();
     const current = state.current;
+
+    useEffect(() => {
+        const sendDataToBackend = async () => {
+            if (state.current < 0) return;
+
+            await updateServerPankti(state.panktis[state.current]);  // Call the utility function
+        };
+
+        sendDataToBackend();
+    }, [state.panktis]);
 
     useEffect(() => {
         const loadShabad = async () => {
