@@ -58,6 +58,8 @@ export const BaniPanel = () => {
         const lines: any = await db.select(`
           SELECT
             lines.*,
+            bani_lines.line_id,
+            bani_lines.bani_id,
             punjabi.translation as punjabi_translation,
             english.translation as english_translation
           FROM bani_lines

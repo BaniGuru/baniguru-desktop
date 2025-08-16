@@ -11,7 +11,7 @@ export const updateServerPankti = async (pankti: Pankti) => {
       },
     });
 
-    console.log('Updated Panktis from backend:', updatedPankti);
+    // console.log('Updated Panktis from backend:', updatedPankti);
   } catch (error) {
     console.error('Error invoking backend command:', error);
   }

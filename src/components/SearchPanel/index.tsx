@@ -123,7 +123,7 @@ const SearchPanel: FunctionComponent = () => {
             type: SET_APP_PAGE,
             payload: { page: "shabad" }
         });
-    }, [dispatch, appDispatch]);
+    }, [dispatch, appDispatch, shabadState]);
 
     useEffect(() => {
         searchInputRef?.current?.focus();
