@@ -5,10 +5,18 @@ use std::{fs, path::PathBuf};
 pub struct UserSettings {
     pub theme: String,
     pub font: String,
-    pub font_size: Option<String>,        // e.g. "16px", "20px"
-    pub background_color: Option<String>, // e.g. "#ffffff"
-    pub background_opacity: Option<f32>,  // 0.0 to 1.0
-    pub font_gap: Option<String>,          // e.g. "10px"
+    pub gurmukhi_font_size: i32,  // Changed Integer to i32
+    pub punjabi_font_size: i32,   // Changed Integer to i32
+    pub english_font_size: i32,   // Changed Integer to i32
+    pub background_color: String,    // Changed Integer to i32
+    pub gurmukhi_font_color: String,
+    pub punjabi_font_color: String,
+    pub english_font_color: String,
+    pub background_opacity: f32,
+    pub panel_gap_x: i32,
+    pub panel_gap_y: i32,
+    pub punjabi_gap: i32,         // Changed Integer to i32
+    pub english_gap: i32,         // Changed Integer to i32
 }
 
 impl Default for UserSettings {
@@ -16,10 +24,18 @@ impl Default for UserSettings {
         Self {
             theme: "light".into(),
             font: "GurbaniAkharThick".into(),
-            font_size: Some("16px".into()),
-            background_color: Some("#ffffff".into()),
-            background_opacity: Some(0.1),
-            font_gap: Some("10px".into()),
+            gurmukhi_font_size: 16,
+            punjabi_font_size: 16,
+            english_font_size: 16,
+            background_color: "rgba(234, 228, 57, 0.5)".into(),
+            gurmukhi_font_color: "#FFFFFF".into(),
+            punjabi_font_color: "#FFFFFF".into(),
+            english_font_color: "#FFFFFF".into(),
+            background_opacity: 1.0,
+            panel_gap_x: 2,
+            panel_gap_y: 4,
+            punjabi_gap: 2,
+            english_gap: 2,
         }
     }
 }

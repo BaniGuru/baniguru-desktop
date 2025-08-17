@@ -4,31 +4,22 @@
 }
 
 html, body {
-    height: 100%;
     margin: 0;
-    background: transparent; /* 🔹 Fully transparent background */
+    background: transparent;
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
 }
 
 .top-aligned-container {
-    display: flex;
+    display: inline-flex;
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
-    min-height: 100vh;
-    padding: 2rem 1rem;
     text-align: center;
-
-    background-color: rgba(0, 0, 0, 0.6); /* 🔹 Light black background only here */
-}
-
-.fit-text {
-    font-size: calc(1rem + 2vw);
-    line-height: 1.4;
-    max-width: 90%;
-    margin-bottom: 1rem;
+    border-radius: 10px;
 }
 
 .gurmukhi-1 {
     font-family: 'GurbaniAkharThick';
-    font-weight: bold;
 }

@@ -79,7 +79,7 @@ const ShabadDisplay: React.FC = () => {
                     punjabi.translation as punjabi_translation,
                     english.translation as english_translation
                 FROM lines
-                LEFT JOIN translations AS punjabi ON lines.id = punjabi.line_id AND punjabi.translation_source_id = 3
+                LEFT JOIN translations AS punjabi ON lines.id = punjabi.line_id AND punjabi.translation_source_id = 6
                 LEFT JOIN translations AS english ON lines.id = english.line_id AND english.translation_source_id = 1
                 WHERE shabad_id = '${searchState.searchShabadPankti.shabad_id}'
             `).then((panktis: any) => {

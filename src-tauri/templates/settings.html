@@ -1,60 +1,323 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <title>{{ title }}</title>
-    <link rel="stylesheet" href="/static/bulma.min.css">
+    <link rel="stylesheet" href="static/bulma.min.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.11.2/css/all.css">
 </head>
+
 <body>
-<section class="section">
-    <div class="container">
-        <h1 class="title">Customize Display</h1>
+    <section class="section">
+        <h3 class="title">Overlay Settings</h3>
         <form method="post" action="/save_settings">
-            <div class="field">
-                <label class="label">Theme</label>
-                <div class="select">
-                    <select name="theme">
-                        <option value="light">Light</option>
-                        <option value="dark">Dark</option>
-                    </select>
+            <div class="fixed-grid">
+                <div class="grid">
+                    <div class="field">
+                        <label class="label">Theme</label>
+                        <div class="select">
+                            <select name="theme">
+                                <option value="light">Light</option>
+                                <option value="dark">Dark</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Font</label>
+                        <div class="select">
+                            <select name="font">
+                                <option value="GurbaniAkharThick">Gurbani Akhar Thick</option>
+                                <option value="sans-serif">Sans Serif</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Background Color</label>
+                        <div class="field has-addons">
+                            <p class="control">
+                                <input class="input" type="text" name="background_color" id="background_color_text"
+                                    value="{{ background_color }}">
+                            </p>
+                            <p class="control">
+                                <input class="input" type="color" id="background_color_picker"
+                                    value="{{ background_color }}">
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="cell">
+                        <label class="label">Background Opacity (0.0 - 1.0)</label>
+                        <div class="field has-addons">
+                            <p class="control">
+                                <button class="button" type="button"
+                                    onclick="changeValue('background_opacity', -0.1, 0, 1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-minus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                            <input class="input" type="number" step="0.1" min="0" max="1" name="background_opacity"
+                                id="background_opacity" value="{{ background_opacity }}">
+                            <p class="control">
+                                <button class="button" type="button"
+                                    onclick="changeValue('background_opacity', 0.1, 0, 1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-plus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="cell">
+                        <label class="label">Gurmukhi Font Size</label>
+                        <div class="field has-addons">
+                            <p class="control">
+                                <button class="button" type="button" onclick="changeValue('gurmukhi_font_size', -1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-minus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                            <input class="input" type="number" name="gurmukhi_font_size" id="gurmukhi_font_size"
+                                value="{{ gurmukhi_font_size }}">
+                            <p class="control">
+                                <button class="button" type="button" onclick="changeValue('gurmukhi_font_size', 1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-plus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Gurmukhi Font Color</label>
+                        <div class="field has-addons">
+                            <p class="control">
+                                <input class="input" type="text" name="gurmukhi_font_color"
+                                    id="gurmukhi_font_color_text" value="{{ gurmukhi_font_color }}">
+                            </p>
+                            <p class="control">
+                                <input class="input" type="color" id="gurmukhi_font_color_picker"
+                                    value="{{ gurmukhi_font_color }}">
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="cell">
+                        <label class="label">Punjabi Font Size</label>
+                        <div class="field has-addons">
+                            <p class="control">
+                                <button class="button" type="button" onclick="changeValue('punjabi_font_size', -1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-minus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                            <input class="input" type="number" name="punjabi_font_size" id="punjabi_font_size"
+                                value="{{ punjabi_font_size }}">
+                            <p class="control">
+                                <button class="button" type="button" onclick="changeValue('punjabi_font_size', 1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-plus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Punjabi Font Color</label>
+                        <div class="field has-addons">
+                            <p class="control">
+                                <input class="input" type="text" name="punjabi_font_color" id="punjabi_font_color_text"
+                                    value="{{ punjabi_font_color }}">
+                            </p>
+                            <p class="control">
+                                <input class="input" type="color" id="punjabi_font_color_picker"
+                                    value="{{ punjabi_font_color }}">
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="cell">
+                        <label class="label">English Font Size</label>
+                        <div class="field has-addons">
+                            <p class="control">
+                                <button class="button" type="button" onclick="changeValue('english_font_size', -1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-minus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                            <input class="input" type="number" name="english_font_size" id="english_font_size"
+                                value="{{ english_font_size }}">
+                            <p class="control">
+                                <button class="button" type="button" onclick="changeValue('english_font_size', 1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-plus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">English Font Color</label>
+                        <div class="field has-addons">
+                            <p class="control">
+                                <input class="input" type="text" name="english_font_color" id="english_font_color_text"
+                                    value="{{ english_font_color }}">
+                            </p>
+                            <p class="control">
+                                <input class="input" type="color" id="english_font_color_picker"
+                                    value="{{ english_font_color }}">
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="cell">
+                        <label class="label">Panel Gap X</label>
+                        <div class="field has-addons">
+                            <p class="control">
+                                <button class="button" type="button" onclick="changeValue('panel_gap_x', -1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-minus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                            <input class="input" type="number" name="panel_gap_x" id="panel_gap_x" value="{{ panel_gap_x }}">
+                            <p class="control">
+                                <button class="button" type="button" onclick="changeValue('panel_gap_x', 1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-plus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="cell">
+                        <label class="label">Panel Gap Y</label>
+                        <div class="field has-addons">
+                            <p class="control">
+                                <button class="button" type="button" onclick="changeValue('panel_gap_y', -1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-minus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                            <input class="input" type="number" name="panel_gap_y" id="panel_gap_y" value="{{ panel_gap_y }}">
+                            <p class="control">
+                                <button class="button" type="button" onclick="changeValue('panel_gap_y', 1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-plus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="cell">
+                        <label class="label">Punjabi Gap</label>
+                        <div class="field has-addons">
+                            <p class="control">
+                                <button class="button" type="button" onclick="changeValue('punjabi_gap', -1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-minus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                            <input class="input" type="number" name="punjabi_gap" id="punjabi_gap"
+                                value="{{ punjabi_gap }}">
+                            <p class="control">
+                                <button class="button" type="button" onclick="changeValue('punjabi_gap', 1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-plus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="cell">
+                        <label class="label">English Gap</label>
+                        <div class="field has-addons">
+                            <p class="control">
+                                <button class="button" type="button" onclick="changeValue('english_gap', -1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-minus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                            <input class="input" type="number" name="english_gap" id="english_gap"
+                                value="{{ english_gap }}">
+                            <p class="control">
+                                <button class="button" type="button" onclick="changeValue('english_gap', 1)">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-plus"></i>
+                                    </span>
+                                </button>
+                            </p>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="field">
-                <label class="label">Font</label>
-                <div class="select">
-                    <select name="font">
-                        <option value="GurbaniAkharThick">Gurbani Akhar Thick</option>
-                        <option value="sans-serif">Sans Serif</option>
-                    </select>
+                <div class="field">
+                    <button type="submit" class="button is-primary">Save Settings</button>
                 </div>
-            </div>
-
-            <div class="field">
-                <label class="label">Font Size (e.g., 16px)</label>
-                <input class="input" type="text" name="font_size" value="{{ font_size | default(value="16px") }}">
-            </div>
-
-            <div class="field">
-                <label class="label">Background Color (hex code)</label>
-                <input class="input" type="text" name="background_color" value="{{ background_color | default(value="#ffffff") }}">
-            </div>
-
-            <div class="field">
-                <label class="label">Background Opacity (0.0 - 1.0)</label>
-                <input class="input" type="number" step="0.1" min="0" max="1" name="background_opacity" value="{{ background_opacity | default(value="1.0") }}">
-            </div>
-
-            <div class="field">
-                <label class="label">Font Gap (e.g., 10px)</label>
-                <input class="input" type="text" name="font_gap" value="{{ font_gap | default(value="10px") }}">
-            </div>
-
-            <div class="field">
-                <button type="submit" class="button is-primary">Save Settings</button>
             </div>
         </form>
-    </div>
-</section>
+    </section>
+
+    <script>
+        function changeValue(id, delta, min = 0, max = Infinity) {
+            const input = document.getElementById(id);
+            if (!input) return;
+
+            const step = parseFloat(input.step) || 1;
+            let currentValue = parseFloat(input.value) || 0;
+
+            // Special case for opacity: we want to keep it within 1 decimal place
+            if (id === 'background_opacity') {
+                let newValue = Math.round((currentValue + delta) * 10) / 10;
+                newValue = Math.min(Math.max(newValue, min), max);
+                input.value = newValue.toFixed(1);  // Ensure one decimal place for opacity
+            } else {
+                // For other fields, round as needed
+                let newValue = Math.round((currentValue + delta) * 10) / 10;
+                newValue = Math.min(Math.max(newValue, min), max);
+                input.value = newValue.toFixed(step < 1 ? 1 : 0);
+            }
+        }
+
+        // Sync color text input and color picker for background and font colors
+        const colorSync = (textId, pickerId) => {
+            const colorText = document.getElementById(textId);
+            const colorPicker = document.getElementById(pickerId);
+
+            colorText.addEventListener('input', () => {
+                if (/^rgba?\((\d{1,3}), (\d{1,3}), (\d{1,3}), ([0-1](?:\.\d{1,2})?)\)$/i.test(colorText.value)) {
+                    const rgbaValues = colorText.value.match(/^rgba?\((\d{1,3}), (\d{1,3}), (\d{1,3}), ([0-1](?:\.\d{1,2})?)\)$/);
+                    const hexColor = `#${(1 << 24 | (parseInt(rgbaValues[1]) << 16) | (parseInt(rgbaValues[2]) << 8) | parseInt(rgbaValues[3])).toString(16).slice(1)}`;
+                    colorPicker.value = hexColor;
+                }
+            });
+
+            colorPicker.addEventListener('input', () => {
+                const hexColor = colorPicker.value;
+                colorText.value = hexColor;
+            });
+        };
+
+        colorSync('gurmukhi_font_color_text', 'gurmukhi_font_color_picker');
+        colorSync('punjabi_font_color_text', 'punjabi_font_color_picker');
+        colorSync('english_font_color_text', 'english_font_color_picker');
+    </script>
 </body>
+
 </html>

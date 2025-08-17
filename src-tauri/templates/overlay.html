@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="static/bulma.min.css">
+    <link rel="stylesheet" href="static/style.css">
+    <style>
+        
+    </style>
+
+
+    <script>
+        let previousData = {
+        gurmukhi: '',
+        punjabi: '',
+        english: '',
+        font: '',
+        panel_gap_x: 0,
+        panel_gap_y: 0,
+        punjabi_gap: 0,
+        english_gap: 0,
+        gurmukhi_font_size: 0,
+        punjabi_font_size: 0,
+        english_font_size: 0,
+        gurmukhi_font_color: '',
+        punjabi_font_color: '',
+        english_font_color: '',
+        background_color: '',
+        font_size: 0
+    };
+
+    fetchData = async () => {
+        const res = await fetch('/api/custom_data');
+        const data = await res.json();
+
+        // Compare the new data with the previous data
+        if (
+            data.gurmukhi != previousData.gurmukhi
+        ) {
+            const gurmukhiEl = document.getElementById('gurmukhi');
+            const punjabiEl = document.getElementById('punjabi');
+            const englishEl = document.getElementById('english');
+            const containerEl = document.getElementById('container');
+
+            gurmukhiEl.textContent = data.gurmukhi;
+            punjabiEl.textContent = data.punjabi;
+            englishEl.textContent = data.english;
+
+            gurmukhiEl.style.fontFamily = data.font;
+            punjabiEl.style.fontFamily = data.font;
+
+            containerEl.style.paddingTop = data.panel_gap_x + 'px';
+            containerEl.style.paddingRight = data.panel_gap_y + 'px';
+            containerEl.style.paddingBottom = data.panel_gap_x + 'px';
+            containerEl.style.paddingLeft = data.panel_gap_y + 'px';
+
+            punjabiEl.style.marginTop = data.punjabi_gap + 'px';
+            englishEl.style.marginTop = data.english_gap + 'px';
+
+            gurmukhiEl.style.fontSize = data.gurmukhi_font_size + 'px';
+            punjabiEl.style.fontSize = data.punjabi_font_size + 'px';
+            englishEl.style.fontSize = data.english_font_size + 'px';
+
+            gurmukhiEl.style.color = data.gurmukhi_font_color;
+            punjabiEl.style.color = data.punjabi_font_color;
+            englishEl.style.color = data.english_font_color;
+
+            containerEl.style.backgroundColor = `${data.background_color}`;
+            document.body.style.fontSize = data.font_size + 'px';
+
+            fitTextToOneLineWithEllipsis(gurmukhiEl, data.gurmukhi_font_size);
+            fitTextToOneLineWithEllipsis(punjabiEl, data.punjabi_font_size);
+            fitTextToOneLineWithEllipsis(englishEl, data.english_font_size);
+
+            // Update previous data with the current data
+            previousData = { ...data };
+        }
+
+        setTimeout(fetchData, 1000);
+    };
+
+    fetchData();
+
+    function fitTextToOneLineWithEllipsis(element, maxFontSizePx) {
+    const parentElement = element.parentElement;
+    
+    // Get the available width of the parent
+    const parentWidth = parentElement.clientWidth;
+    let fontSize = maxFontSizePx;
+    let fontChange = false;
+
+    // Set initial styles for ellipsis and overflow handling
+    element.style.whiteSpace = 'nowrap';  // Ensure text stays on one line
+    element.style.overflow = 'hidden';    // Hide any overflowing text
+    element.style.textOverflow = 'ellipsis'; // Add ellipsis if text overflows
+    element.style.fontSize = fontSize + 'px';
+
+    // Reduce the font size until the text fits or the minimum size is reached
+    while (element.scrollWidth > parentWidth && fontSize > 16) {
+        fontSize -= 1;
+        element.style.fontSize = fontSize + 'px';
+        fontChange = true;
+    }
+
+    if (fontChange) {
+        parentElement.style.width = '100%';
+        element.style.width = '100%';
+        parentElement.style.paddingLeft = '0px';
+        parentElement.style.paddingRight = '0px';
+    }
+}
+
+    </script>
+
+</head>
+
+<body>
+    <section class="top-aligned-container" id="container">
+        <p class="gurmukhi-1" id="gurmukhi">{{ gurmukhi }}</p>
+        <p class="" id="punjabi">{{ punjabi }}</p>
+        <p class="" id="english">{{ english }}</p>
+    </section>
+</body>
+
+</html>
