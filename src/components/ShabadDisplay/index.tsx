@@ -1,4 +1,4 @@
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { SearchContext } from "../../state/providers/SearchProvider";
 import Format from "../../utils/Format";
 import { DB } from "../../utils/DB";
@@ -9,52 +9,84 @@ import { SHABAD_UPDATE } from "../../state/ActionTypes";
 import { useSettings } from "../../state/providers/SettingContext";
 import { updateServerPankti } from "../../utils/TauriCommands";
 
-const Panel = styled.div`
-    padding: 1rem;
+interface PanelProps {
+    startSpace: number;
+    endSpace: number;
+    leftSpace: number;
+}
+
+const Panel = styled.div<PanelProps>`
+    padding-top: ${({ startSpace }) => `${startSpace}px`};
+    padding-bottom: ${({ endSpace }) => `${endSpace}px`};
+    padding-left: ${({ leftSpace }) => `${leftSpace}px`};
+    padding-right: ${({ leftSpace }) => `${leftSpace}px`};
 `;
 
 interface FontProps {
-  fontSize: number;
+    fontSize: number;
+    contentSpace: number;
 }
 
 const Gurmukhi = styled.div<FontProps>`
     color: #01579b;
     font-size: ${({ fontSize }) => `${fontSize}px`};
-    line-height: 1.2;
+    line-height: 1.3;
     display: flex;
+    font-family: "Open Gurbani Akhar";
+    font-weight: 900;
 `;
 
-const NextPanktiGurmukhi = styled.div<FontProps>`
+interface NextPanktiProps {
+    fontSize: number;
+    endSpace: number;
+    leftSpace: number;
+}
+
+const NextPanktiGurmukhi = styled.div<NextPanktiProps>`
     color: #5e9fd2ff;
     font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.2;
     position: absolute;
-    bottom: 1.5rem;
+    bottom: ${({ endSpace }) => `${endSpace}px`};
     display: flex;
+    font-family: "Open Gurbani Akhar";
+    font-weight: 900;
+    padding-left: ${({ leftSpace }) => `${leftSpace}px`};
+    padding-right: ${({ leftSpace }) => `${leftSpace}px`};
+
+    white-space: nowrap;
+    display: block;
 `;
 
 const Punjabi = styled.div<FontProps>`
-    color:rgb(73, 77, 79);
+    color:rgba(80, 80, 80, 1);
     font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.4;
-    margin-top: 2rem;
+    margin-top: ${({ contentSpace }) => `${contentSpace}px`};
     display: flex;
+    font-family: "Open Anmol Uni", sans-serif;
+    font-weight: 900;
 `;
 
 const English = styled.div<FontProps>`
-    color:rgb(81, 89, 94);
+    color:rgba(90, 90, 90, 1);
     font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.4;
-    margin-top: 2rem;
+    margin-top: ${({ contentSpace }) => `${contentSpace}px`};
     padding-left: 40px;
     padding-right: 40px;
+    font-family: "Noto Sans", sans-serif;
+    font-weight: 700;
 `;
 
 const ShabadDisplay: React.FC = () => {
     const searchState = useContext(SearchContext).state;
     const {state, dispatch } = useContext(ShabadContext);
-    const { fontSizes } = useSettings();
+    const { fontSizes, displaySpacing } = useSettings();
     const current = state.current;
+
+    const nextPanktiRef = useRef<HTMLDivElement>(null);
+    const [nextPanktiFontSize, setNextPanktiFontSize] = useState(fontSizes["Next Pankti"]);
 
     useEffect(() => {
         const sendDataToBackend = async () => {
@@ -106,24 +138,75 @@ const ShabadDisplay: React.FC = () => {
 
     const nextPankti = state.panktis[current+1]?.gurmukhi;
 
+    useEffect(() => {
+        const resizeFontToFit = () => {
+            const element = nextPanktiRef.current;
+            if (!element) return;
+
+            const containerWidth = element.parentElement?.clientWidth || 0;
+            console.log('width: ', containerWidth);
+            let currentFontSize = fontSizes["Next Pankti"];
+            const minFontSize = 10;
+            element.style.overflow = 'hidden';
+            element.style.fontSize = `${currentFontSize}px`;
+
+            while (element.scrollWidth > containerWidth && currentFontSize > minFontSize) {
+                currentFontSize -= 1;
+                element.style.fontSize = `${currentFontSize}px`;
+            }
+            console.log('font size: ', currentFontSize);
+
+            element.style.overflow = 'visible';
+            setNextPanktiFontSize(currentFontSize);
+        };
+
+        if (nextPankti) {
+            // Resize when nextPankti changes
+            resizeFontToFit();
+        }
+    }, [nextPankti, fontSizes]);
+
     if (current < 0) {
         return null;
     }
 
     return (
-        <Panel className="w-screen flex flex-col items-center">
-            <Gurmukhi className="gurmukhi-font-2 text-center" fontSize={fontSizes["ਗੁਰਮੁਖੀ"]}>
+        <Panel
+            className="w-screen flex flex-col items-center"
+            startSpace={displaySpacing.startSpace}
+            endSpace={displaySpacing.endSpace}
+            leftSpace={displaySpacing.leftSpace}
+        >
+            <Gurmukhi
+                className="text-center"
+                fontSize={fontSizes["ਗੁਰਮੁਖੀ"]}
+                contentSpace={displaySpacing.gurmukhiSpace}
+            >
                 { Format.removeVishraams(state.panktis[current]?.gurmukhi) }
             </Gurmukhi>
-            <Punjabi className="gurmukhi-font-2 text-center" fontSize={fontSizes["ਪੰਜਾਬੀ"]}>
+            <Punjabi
+                className="text-center"
+                fontSize={fontSizes["ਪੰਜਾਬੀ"]}
+                contentSpace={displaySpacing.gurmukhiSpace}
+            >
                 { state.panktis[current]?.punjabi_translation }
             </Punjabi>
-            <English className="text-center" fontSize={fontSizes["English"]}>
+            <English
+                className="text-center"
+                fontSize={fontSizes["English"]}
+                contentSpace={displaySpacing.translationSpace}
+            >
                 { state.panktis[current]?.english_translation }
             </English>
             {
                 nextPankti &&
-                <NextPanktiGurmukhi className="gurmukhi-font-2 text-center" fontSize={fontSizes["Next Pankti"]}>
+                <NextPanktiGurmukhi
+                    ref={nextPanktiRef}
+                    className="gurmukhi-font-2 text-center"
+                    fontSize={nextPanktiFontSize}
+                    endSpace={displaySpacing.endSpace}
+                    leftSpace={displaySpacing.leftSpace}
+                >
                     { Format.removeVishraams(nextPankti) }
                 </NextPanktiGurmukhi>
             }

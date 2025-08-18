@@ -24,9 +24,14 @@ const appReducer = (state: AppState, action: any) => {
                 ...action.payload,
             };
         case TOGGLE_PANEL:
+            let page = state.page;
+            if (state.show_panel) {
+                page = PAGE_SHABAD;
+            }
             return {
                 ...state,
-                show_panel: !state.show_panel
+                page: page,
+                show_panel: !state.show_panel,
             }
     }
 

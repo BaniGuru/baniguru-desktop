@@ -4,16 +4,24 @@ type FontType = "ਗੁਰਮੁਖੀ" | "ਪੰਜਾਬੀ" | "English" | "Ne
 
 type Settings = {
   fontSizes: Record<FontType, number>;
+  panelSetting: {
+    panelWidth: number;
+    panelHeight: number;
+    panelFontSize: number;
+  }
   displaySpacing: {
     startSpace: number;
     endSpace: number;
-    contentSpace: number;
+    leftSpace: number;
+    gurmukhiSpace: number;
+    translationSpace: number;
   };
   width: number;
   height: number;
   updateFontSize: (font: FontType, size: number) => void;
   updateSpacing: (key: keyof Settings["displaySpacing"], value: number) => void;
   updateSetting: (key: "width" | "height", value: number) => void;
+  updatePanelSetting: (key: keyof Settings["panelSetting"], value: number) => void;
 };
 
 const defaultFontSizes: Record<FontType, number> = {
@@ -27,8 +35,16 @@ const defaultFontSizes: Record<FontType, number> = {
 const defaultDisplaySpacing = {
   startSpace: 10,
   endSpace: 10,
-  contentSpace: 12,
+  leftSpace: 10,
+  gurmukhiSpace: 12,
+  translationSpace: 10,
 };
+
+const defaultPanelSetting = {
+  panelWidth: 33,
+  panelHeight: 33,
+  panelFontSize: 12,
+}
 
 const defaultWidth = 800;
 const defaultHeight = 600;
@@ -43,6 +59,7 @@ const getInitialSettings = () => {
       return {
         fontSizes: { ...defaultFontSizes, ...parsed.fontSizes },
         displaySpacing: { ...defaultDisplaySpacing, ...parsed.displaySpacing },
+        panelSetting: {...defaultPanelSetting, ...parsed.panelSetting},
         width: parsed.width ?? defaultWidth,
         height: parsed.height ?? defaultHeight,
       };
@@ -54,6 +71,7 @@ const getInitialSettings = () => {
   return {
     fontSizes: defaultFontSizes,
     displaySpacing: defaultDisplaySpacing,
+    panelSetting: defaultPanelSetting,
     width: defaultWidth,
     height: defaultHeight,
   };
@@ -66,6 +84,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
 
   const [fontSizes, setFontSizes] = useState<Record<FontType, number>>(initialSettings.fontSizes);
   const [displaySpacing, setDisplaySpacing] = useState(initialSettings.displaySpacing);
+  const [panelSetting, setPanelSetting] = useState(initialSettings.panelSetting);
   const [width, setWidth] = useState(initialSettings.width);
   const [height, setHeight] = useState(initialSettings.height);
 
@@ -76,9 +95,10 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
       displaySpacing,
       width,
       height,
+      panelSetting
     };
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(allSettings));
-  }, [fontSizes, displaySpacing, width, height]);
+  }, [fontSizes, displaySpacing, width, height, panelSetting]);
 
   const updateFontSize = (font: FontType, size: number) => {
     setFontSizes((prev) => ({
@@ -102,16 +122,28 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
     if (key === "height") setHeight(value);
   };
 
+  const updatePanelSetting = (
+    key: keyof Settings["panelSetting"],
+    value: number
+  ) => {
+    setPanelSetting((prev: any) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
   return (
     <SettingContext.Provider
       value={{
         fontSizes,
         displaySpacing,
+        panelSetting,
         width,
         height,
         updateFontSize,
         updateSpacing,
         updateSetting,
+        updatePanelSetting,
       }}
     >
       {children}

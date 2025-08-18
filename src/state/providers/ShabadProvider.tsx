@@ -7,6 +7,7 @@ export type ShabadState = {
     current: number;
     home: number;
     pilot: number;
+    auto_pilot: boolean;
 };
 
 const initShabadState: ShabadState = {
@@ -14,84 +15,87 @@ const initShabadState: ShabadState = {
     current: -1,
     home: -1,
     pilot: -1,
+    auto_pilot: false,
 };
 
 const shabadReducer = (state: ShabadState, action: any) => {
-    let shabadState = state;
+    let shabadState = {
+        ...state
+    };
     const payload = action?.payload;
 
     switch (action.type) {
         case SHABAD_AUTO_NEXT:
-            return {
-                ...state,
-                ...payload,
-            };
+            if ((shabadState.pilot + 1) === shabadState.panktis.length) {
+                shabadState.current = shabadState.home;
+            } else {
+                shabadState.pilot++;
+                if (shabadState.pilot === shabadState.home) {
+                    shabadState.panktis[shabadState.pilot].visited = true;
+                    shabadState.pilot++;
+                }
+                shabadState.current = shabadState.pilot;
+                shabadState.panktis[shabadState.pilot].visited = true;
+                shabadState.auto_pilot = true;
+            }
+
+            break;
 
         case SHABAD_NEXT:
             if (state.current + 1 < state.panktis.length) {
-                shabadState.panktis[state.current + 1].visited = true;
+                shabadState.current++;
 
-                return {
-                    ...shabadState,
-                    current: state.current + 1,
-                };
+                if (shabadState.auto_pilot) {
+                    shabadState.pilot++;
+                    shabadState.panktis[shabadState.pilot].visited = true;
+                }
+
+                if (shabadState.panktis[shabadState.current].bani_id) {
+                    shabadState.panktis[shabadState.current].visited = true;
+                }
+
+                break;
             }
 
-            return state;
+            break;
 
         case SHABAD_PREV:
-            if (state.current - 1 >= 0) {
-                shabadState.panktis[state.current - 1].visited = true;
-
-                return {
-                    ...state,
-                    current: state.current - 1,
-                };
+            if (state.current === 0) {
+                break;
             }
-            return state;
+
+            shabadState.auto_pilot = false;
+            shabadState.current -= 1;
+            break;
 
         case SHABAD_UPDATE:
-            payload.panktis[payload.current].home = true;
-            shabadState.pilot = -1;
-
-            return {
-                ...shabadState,
-                panktis: {},
+            shabadState = {
+                ...initShabadState,
                 ...payload,
                 home: payload.current,
             };
+            break;
 
         case SHABAD_HOME:
-            return {
-                ...state,
-                current: state.home
-            };
+            shabadState.auto_pilot = false;
+            shabadState.current = shabadState.home;
+            break;
 
         case SHABAD_SET_HOME:
-            shabadState.panktis[shabadState.home].home = false;
-            shabadState.panktis[action.payload.home].home = true;
-
-            return {
-                ...state,
-                home: action.payload.home,
-                current: action.payload.home
-            }
+            shabadState.current = payload.home;
+            shabadState.home = payload.home;
+            break;
 
         case SHABAD_PANKTI:
+            shabadState.auto_pilot = false;
             if (payload?.current >= 0 && payload.current < state.panktis.length) {
                 shabadState.panktis[payload.current].visited = true;
-
-                return {
-                    ...state,
-                    current: payload.current,
-                };
+                shabadState.current = payload.current;
             }
-            return state;
+            break;
     }
 
-    return {
-        ...state
-    };
+    return shabadState;
 }
 
 const ShabadContext = createContext<{

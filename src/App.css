@@ -13,13 +13,90 @@
     src: url('./assets/fonts/GurbaniAkhar/GUAK_TH.TTF');
 }
 
+@font-face {
+    font-family: "Noto Sans";
+    font-style: normal;
+    font-weight: 400;
+    src: url("./assets/fonts/NotoSans-Regular.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Noto Sans";
+    font-style: normal;
+    font-weight: 500;
+    src: url("./assets/fonts/NotoSans-Medium.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Noto Sans";
+    font-style: normal;
+    font-weight: 600;
+    src: url("./assets/fonts/NotoSans-SemiBold.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Noto Sans";
+    font-style: normal;
+    font-weight: 700;
+    src: url("./assets/fonts/NotoSans-Bold.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Noto Sans Devanagari";
+    font-style: normal;
+    font-weight: 600;
+    src: url("./assets/fonts/NotoSansDevanagariUI-SemiBold.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Noto Sans Nastaliq Urdu";
+    font-style: normal;
+    font-weight: 400;
+    src: url("./assets/fonts/NotoNastaliqUrdu-Regular.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "Open Gurbani Akhar";
+    font-style: normal;
+    font-weight: 400;
+    src: url("./assets/fonts/OpenGurbaniAkhar-Regular.otf") format("opentype");
+}
+
+@font-face {
+    font-family: "Open Gurbani Akhar";
+    font-style: normal;
+    font-weight: 700;
+    src: url("./assets/fonts/OpenGurbaniAkhar-Bold.otf") format("opentype");
+}
+
+@font-face {
+    font-family: "Open Gurbani Akhar";
+    font-style: normal;
+    font-weight: 900;
+    src: url("./assets/fonts/OpenGurbaniAkhar-Black.otf") format("opentype");
+}
+
+@font-face {
+    font-family: "Open Anmol Uni";
+    font-style: normal;
+    font-weight: 900;
+    src: url("./assets/fonts/OpenAnmolUni-Bold.otf") format("opentype");
+}
+
+@font-face {
+    font-family: "Open Anmol Uni";
+    font-style: normal;
+    font-weight: 700;
+    src: url("./assets/fonts/AnmolUniBaniHeavy.ttf") format("truetype");
+}
+
 * {
     padding: 0;
     margin: 0;
 }
 
 .gurmukhi-font-1 {
-    font-family: 'Gurblipi';
+    font-family: 'Anmol_Regular';
 }
   
 .gurmukhi-font-2 {

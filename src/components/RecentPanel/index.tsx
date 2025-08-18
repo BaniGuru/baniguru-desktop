@@ -57,7 +57,7 @@ export const RecentPanel = () => {
   }, [dispatch]);
 
   if (!recentPanktis || recentPanktis.length === 0) {
-    return <div className="p-4 text-gray-600">No recent panktis found.</div>;
+    return <div className="p-4 text-gray-600">No recent found.</div>;
   }
 
   return (
@@ -66,18 +66,18 @@ export const RecentPanel = () => {
         {recentPanktis.map((pankti) => (
           <div
             key={pankti.id}
-            className="flex justify-between items-center mb-3 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition"
+            className="flex justify-between items-center mb-3 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition border-b border-gray-200"
           >
             <span
               onClick={() => displayShabad(pankti)}
-              className="gurmukhi-font-2 text-left flex-1 text-[#01579b]"
-              style={{ fontSize: `${fontSizes["Search"] ?? 20}px` }}
+              className="gurmukhi-font-2 text-left flex-1"
+              
             >
               {Format.removeVishraams(pankti.gurmukhi)}
             </span>
             <button
               onClick={() => removePankti(pankti.id)}
-              className="ml-2 text-gray-400 hover:text-red-500 text-lg"
+              className="mr-2 text-gray-400 hover:text-red-500"
               title="Remove"
             >
               <MdClose />

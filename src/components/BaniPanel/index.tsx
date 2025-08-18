@@ -119,7 +119,7 @@ export const BaniPanel = () => {
         {banis.map((bani) => (
           <li
             key={bani.id}
-            className={`cursor-pointer text-blue-700 hover:text-blue-900 font-medium text-lg border-b border-gray-200 pb-2 gurmukhi-font ${
+            className={`cursor-pointer text-gray-700 hover:text-gray-900 border-b border-gray-200 pb-2 gurmukhi-font ${
               loadingBaniId === bani.id ? "opacity-50 pointer-events-none" : ""
             }`}
             onClick={() => loadBaniLines(bani.id)}

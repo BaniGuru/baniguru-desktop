@@ -10,7 +10,6 @@ type SearchListProps = {
 
 const ListItem = styled.li`
     cursor: default;
-    font-size: 20px;
     list-style: none;
     padding: 12px;
     text-align: left;

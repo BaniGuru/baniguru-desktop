@@ -17,7 +17,6 @@ const ListItem = styled.li<ListItemProps>`
     background: ${props => props.active ? "#dfdfdf" : "#f5f5f5"};
     color: #424242;
     cursor: default;
-    font-size: 20px;
     list-style: none;
     padding: 8px 12px;
     text-align: left;
@@ -25,10 +24,10 @@ const ListItem = styled.li<ListItemProps>`
 `;
 
 const VisitedStatus = styled.div`
-    align-items: top;
+    align-items: center;
     color: #bbb;
     display: flex;
-    font-size: 16px;
+    font-size: 22px;
     margin-left: 8px;
     margin-right: 12px;
 
@@ -119,7 +118,7 @@ const ShabadPanel: React.FC = () => {
                     <VisitedStatus>
                         <VisitedChangeHomeIcon onClick={() => setHome(index)} />
                         {
-                            pankti.home ? <TbHome /> :
+                            index === state.home ? <TbHome /> :
                             pankti.visited ? <TiTick /> : <TiTickOutline />
                         }
                     </VisitedStatus>

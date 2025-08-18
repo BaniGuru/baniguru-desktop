@@ -11,9 +11,12 @@ import TabIcons from "./ui/TabIcons";
 import { SettingPanel } from "./components/SettingPanel";
 import { RecentPanel } from "./components/RecentPanel";
 import BaniPanel from "./components/BaniPanel";
-import { FaWindowMaximize, FaWindowMinimize } from "react-icons/fa";
+import { FaTimes, FaWindowMaximize, FaWindowMinimize } from "react-icons/fa";
 import { SET_APP_PAGE, TOGGLE_PANEL } from "./state/ActionTypes";
 import useShabadNavigation from "./utils/useShabadNavigation";
+import styled from "styled-components";
+import { useSettings } from "./state/providers/SettingContext";
+import { closeWindow, maximizeWindow, minimizeWindow, useAutoHideCursor } from "./utils/useAutoHideCursor";
 
 type DownloadEvent =
   | { event: "started"; data: { url: string; download_id: number; content_length: number } }
@@ -21,11 +24,25 @@ type DownloadEvent =
   | { event: "finished"; data: { download_id: number } }
   | { event: "skipped"; data: {db_path: string; } } ;
 
+
+interface TabPanelProps {
+    width: number;
+    height: number;
+    fontSize: number;
+}
+
+const TabPanel = styled.div<TabPanelProps>`
+    width: ${({ width }) => `${width}%`};
+    height: ${({ height }) => `${height}%`};
+    font-size: ${({ fontSize }) => `${fontSize}px`};
+`;
+
 function App() {
   const appContext: {state: AppState, setDbPath: any, dispatch: any} = useContext(AppContext);
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const appRef = useRef<number>(0);
+  const {panelSetting} = useSettings();
   
   const contentLengthRef = useRef<number>(0);
   const downloadedRef = useRef<number>(0);
@@ -36,6 +53,7 @@ function App() {
   }, []);
 
   useShabadNavigation();
+  const { mouseVisible, showTitleBar } = useAutoHideCursor({ delay: 5, titleBarThreshold: 100 });
 
   useEffect(() => {
     const downloadDB = async () => {
@@ -134,11 +152,31 @@ function App() {
   }
 
   return (
-    <div className="w-full h-full bg-gray-200">
-      
+    <div className="w-full h-full bg-gray-200" style={{ cursor: mouseVisible ? "default" : "none" }}>
+          {mouseVisible && showTitleBar && (
+            <div
+              id="header"
+              className="fixed top-0 left-0 w-full h-10 bg-gray-400 text-gray-800 flex justify-between items-center px-4 z-50 select-none"
+            >
+              <div className="ml-4 text-lg">Gurbani Explorer - SinghECloud.com</div>
+              <div>
+                <button onClick={minimizeWindow} className="border-2 p-1 m-1 border-gray-800 mx-2 hover:text-black">
+                  <FaWindowMinimize />
+                </button>
+                <button onClick={closeWindow} className="border-2 p-1 m-1 border-gray-800 mx-2 hover:text-red-500">
+                  <FaTimes />
+                </button>
+              </div>
+            </div>
+          )}
           <ShabadDisplay />
           {appContext.state.show_panel &&
-            <div className="absolute flex flex-col w-1/3 h-1/3 right-0 bottom-0 overflow-hidden shadow-2xl border-2 border-gray-300">
+            <TabPanel
+              className="absolute flex flex-col w-1/3 h-1/3 right-0 bottom-0 overflow-hidden shadow-2xl border-2 border-gray-300"
+              width={panelSetting.panelWidth}
+              height={panelSetting.panelHeight}
+              fontSize={panelSetting.panelFontSize}
+            >
               <div className="flex-none h-8 bg-gray-200 flex items-center justify-end">
                 <FaWindowMinimize
                   className="text-gray-600 cursor-pointer mb-3 mr-4"
@@ -155,7 +193,7 @@ function App() {
               <div className="flex-none">
                 <TabIcons />
               </div>
-            </div>
+            </TabPanel>
           }
           {!appContext.state.show_panel &&
             <FaWindowMaximize

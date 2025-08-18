@@ -2,25 +2,11 @@
 import { KeyboardEvent, useContext, useEffect } from "react";
 import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_PREV, SHABAD_NEXT, SHABAD_SET_HOME, TOGGLE_PANEL, SET_APP_PAGE } from "../state/ActionTypes";
 import { AppContext, AppState, PAGE_SHABAD } from "../state/providers/AppProvider";
-import { ShabadContext } from "../state/providers/ShabadProvider";
+import { ShabadContext, ShabadState } from "../state/providers/ShabadProvider";
 
 const useShabadNavigation = () => {
     const shabadContext: any = useContext(ShabadContext);
     const appContext: {dispatch: any, state: AppState} = useContext(AppContext);
-
-    const autoNavigate = (shabadContext: any) => {
-        let shabadState = shabadContext.state;
-
-        if (shabadState.pilot + 1 === shabadState.panktis.length) {
-            shabadState.current = shabadState.home;
-        } else {
-            shabadState.pilot++;
-            shabadState.current = shabadState.pilot;
-            shabadState.panktis[shabadState.pilot].visited = true;
-        }
-
-        return shabadState;
-    };
 
     useEffect(() => {
         const onESC: any = (ev: KeyboardEvent) => {
@@ -53,15 +39,10 @@ const useShabadNavigation = () => {
                 }
 
                 if (shabadContext.state.current === shabadContext.state.home) {
-                    const shabadState = autoNavigate(shabadContext.state);
                     shabadContext.dispatch({
-                        type: SHABAD_AUTO_NEXT,
-                        payload: {
-                            current: shabadState.current,
-                            panktis: shabadState.panktis,
-                            pilot: shabadState.pilot,
-                        },
+                        type: SHABAD_AUTO_NEXT
                     });
+
                     ev.preventDefault();
                     break;
                 }

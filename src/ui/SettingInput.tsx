@@ -2,7 +2,8 @@ import { FaMinus, FaPlus } from "react-icons/fa";
 import { useSettings } from "../state/providers/SettingContext";
 
 const fontLanguages = ["ਗੁਰਮੁਖੀ", "ਪੰਜਾਬੀ", "English", "Next Pankti"];
-const spacingKeys = ["Start Space", "End Space", "Content Space"];
+const spacingKeys = ["Start Space", "End Space", "Left Space", "Gurmukhi Space", "Translation Space"];
+const panelSettingKeys = ["panelWidth", "panelHeight", "panelFontSize"];
 
 const normalizeSpacingKey = (label: string) =>
   label.replace(" ", "").charAt(0).toLowerCase() + label.replace(" ", "").slice(1);
@@ -10,21 +11,29 @@ const normalizeSpacingKey = (label: string) =>
 const SettingInput = ({
   lang,
   Icon,
+  name,
 }: {
   lang: string;
   Icon?: React.ElementType;
+  name?: string;
 }) => {
   const {
     fontSizes,
     displaySpacing,
+    panelSetting,
     updateFontSize,
     updateSpacing,
+    updatePanelSetting,
   } = useSettings();
 
   const isFont = fontLanguages.includes(lang);
   const isSpacing = spacingKeys.includes(lang);
+  const isSettingPanel = panelSettingKeys.includes(name ?? '');
 
   const getValue = () => {
+    if (isSettingPanel && name) {
+      return panelSetting[name as keyof typeof panelSetting];
+    }
     if (isFont) {
       return fontSizes[lang as keyof typeof fontSizes];
     }
@@ -42,6 +51,10 @@ const SettingInput = ({
   };
 
   const updateValue = (newValue: number) => {
+    if (isSettingPanel) {
+      updatePanelSetting(name as keyof typeof panelSetting, newValue);
+      return;
+    }
     if (isFont) {
       updateFontSize(lang as keyof typeof fontSizes, newValue);
     } else if (isSpacing) {
