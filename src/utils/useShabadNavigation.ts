@@ -1,8 +1,8 @@
 // src/hooks/useShabadNavigation.ts
 import { KeyboardEvent, useContext, useEffect } from "react";
-import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_PREV, SHABAD_NEXT, SHABAD_SET_HOME, TOGGLE_PANEL, SET_APP_PAGE } from "../state/ActionTypes";
+import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_PREV, SHABAD_NEXT, SHABAD_SET_HOME } from "../state/ActionTypes";
 import { AppContext, AppState, PAGE_SHABAD } from "../state/providers/AppProvider";
-import { ShabadContext, ShabadState } from "../state/providers/ShabadProvider";
+import { ShabadContext } from "../state/providers/ShabadProvider";
 
 const useShabadNavigation = () => {
     const shabadContext: any = useContext(ShabadContext);

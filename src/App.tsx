@@ -16,7 +16,7 @@ import { SET_APP_PAGE, TOGGLE_PANEL } from "./state/ActionTypes";
 import useShabadNavigation from "./utils/useShabadNavigation";
 import styled from "styled-components";
 import { useSettings } from "./state/providers/SettingContext";
-import { closeWindow, maximizeWindow, minimizeWindow, useAutoHideCursor } from "./utils/useAutoHideCursor";
+import { closeWindow, minimizeWindow, useAutoHideCursor } from "./utils/useAutoHideCursor";
 
 type DownloadEvent =
   | { event: "started"; data: { url: string; download_id: number; content_length: number } }

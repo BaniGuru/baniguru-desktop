@@ -1,7 +1,6 @@
 import { useContext, useCallback } from "react";
 import { SearchContext } from "../../state/providers/SearchProvider";
 import { AppContext } from "../../state/providers/AppProvider";
-import { useSettings } from "../../state/providers/SettingContext";
 import {
   SEARCH_SHABAD_PANKTI,
   SET_APP_PAGE,
@@ -17,7 +16,6 @@ import { saveBaniPosition } from "../../utils/BaniPositionTracker";
 export const RecentPanel = () => {
   const { state, dispatch } = useContext(SearchContext);
   const { dispatch: appDispatch } = useContext(AppContext);
-  const { fontSizes } = useSettings();
   const { state: shabadState } = useContext(ShabadContext);
 
   const recentPanktis = state.recent as Pankti[] | undefined;

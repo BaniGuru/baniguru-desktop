@@ -1,13 +1,11 @@
 import { useContext, useEffect, useRef } from "react";
-import { ShabadContext, ShabadState } from "../../state/providers/ShabadProvider";
+import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { Pankti } from "../../models/Pankti";
 import Format from "../../utils/Format";
 import styled from "styled-components";
 import { TiTick, TiTickOutline } from "react-icons/ti";
 import { TbHome } from "react-icons/tb";
-import { SET_APP_PAGE, SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_NEXT, SHABAD_PANKTI, SHABAD_PREV, SHABAD_SET_HOME, TOGGLE_PANEL } from "../../state/ActionTypes";
-import { AppContext } from "../../state/providers/AppProvider";
-import useShabadNavigation from "../../utils/useShabadNavigation";
+import { SHABAD_PANKTI, SHABAD_SET_HOME } from "../../state/ActionTypes";
 
 type ListItemProps = {
     active: boolean;
