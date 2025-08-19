@@ -28,14 +28,6 @@ interface FontProps {
     contentSpace: number;
 }
 
-const Gurmukhi = styled.div<FontProps>`
-    font-size: ${({ fontSize }) => `${fontSize}px`};
-    line-height: 1.3;
-    display: flex;
-    font-family: "Open Gurbani Akhar";
-    font-weight: 900;
-`;
-
 interface NextPanktiProps {
     fontSize: number;
     endSpace: number;
@@ -169,17 +161,17 @@ const ShabadDisplay: React.FC = () => {
         return null;
     }
 
-    const vishraamStyles = {
-        heavy: {
-            color: '#e56c00',
-        },
-        medium: {
-            color: '#01579b',
-        },
-        light: {
-            color: '#01579b',
-        },
-    };
+    // const vishraamStyles = {
+    //     heavy: {
+    //         color: '#e56c00',
+    //     },
+    //     medium: {
+    //         color: '#01579b',
+    //     },
+    //     light: {
+    //         color: '#01579b',
+    //     },
+    // };
 
     return (
         <Panel

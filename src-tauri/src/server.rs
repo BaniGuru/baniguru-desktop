@@ -10,6 +10,9 @@ use warp::http;
 use crate::settings::{load_settings, save_settings, UserSettings};
 use warp::reply::Json;
 use serde_json::json;
+use include_dir::{include_dir, Dir};
+use mime_guess::from_path;
+use warp::hyper::{Response, Body};
 
 fn hex_to_rgb(hex: &str) -> (u8, u8, u8) {
     let hex = hex.trim_start_matches('#');
@@ -19,10 +22,24 @@ fn hex_to_rgb(hex: &str) -> (u8, u8, u8) {
     (r, g, b)
 }
 
+static TEMPLATE_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/templates");
+static STATIC_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/static");
+
+fn build_tera_from_embedded() -> Tera {
+    let mut tera = Tera::default();
+
+    for file in TEMPLATE_DIR.files() {
+        if let Some(path) = file.path().to_str() {
+            tera.add_raw_template(path, file.contents_utf8().unwrap())
+                .unwrap_or_else(|e| panic!("Failed to add template {}: {}", path, e));
+        }
+    }
+
+    tera
+}
+
 pub async fn start_web_server(app_handle: AppHandle) {
-    let tera = Tera::new("templates/**/*")
-        .expect("Could not initialize Tera templates.");
-    let tera = Arc::new(tera);
+    let tera = Arc::new(build_tera_from_embedded());
 
     let app_handle_clone = app_handle.clone();
     let app_handle_clone_for_save = app_handle.clone();
@@ -30,7 +47,24 @@ pub async fn start_web_server(app_handle: AppHandle) {
     let app_handle_clone_for_settings = app_handle.clone();
     let tera_clone = tera.clone();
 
-    let static_files = warp::path("static").and(warp::fs::dir("static"));
+    let static_files = warp::path!("static" / String).and_then(|filename: String| async move {
+
+    match STATIC_DIR.get_file(&filename) {
+        Some(file) => {
+                let mime = from_path(&filename).first_or_octet_stream();
+                let contents = file.contents();
+                Ok::<_, warp::Rejection>(
+                    Response::builder()
+                        .header("Content-Type", mime.to_string())
+                        .body(Body::from(contents.to_vec()))
+                        .unwrap(),
+                )
+            }
+            None => {
+                Err(warp::reject::not_found())
+            }
+        }
+    });
 
     // Render settings page
     let settings_page = warp::path("settings").and_then(move || {

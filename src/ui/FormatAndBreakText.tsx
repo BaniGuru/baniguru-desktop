@@ -36,7 +36,6 @@ const FormatAndBreakText: React.FC<Props> = ({
 
     const words = text.trim().split(/\s+/);
     const containerWidth = containerRef.current.clientWidth;
-    console.log('container width: ', containerWidth);
 
     const measurer = document.createElement("span");
     measurer.style.visibility = "hidden";
@@ -66,8 +65,6 @@ const FormatAndBreakText: React.FC<Props> = ({
       return;
     }
 
-    console.log('2 lines');
-
     // for lines with 2 widths find lines
     measurer.textContent = "";
     let lineWords: string[] = [];
@@ -80,11 +77,11 @@ const FormatAndBreakText: React.FC<Props> = ({
 
       measurer.textContent += word;
       if (measurer.offsetWidth > containerWidth) {
-        const lineWordsArr = lineWords.filter((word, i) => i <= breakWord);
+        const lineWordsArr = lineWords.slice(0, breakWord + 1);
         if (lineWordsArr.length > 0) {
           linesArr.push(lineWordsArr);
         }
-        lineWords = lineWords.filter((word, i) => i > breakWord);
+        lineWords = lineWords.slice(breakWord + 1);
         measurer.textContent = word;
         lineWords.push(word);
       } else {
@@ -101,7 +98,6 @@ const FormatAndBreakText: React.FC<Props> = ({
     document.body.removeChild(measurer);
 
     setLines(linesArr);
-    console.log(linesArr);
     setIsMeasured(true);
   }, [text]);
 

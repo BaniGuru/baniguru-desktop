@@ -139,9 +139,9 @@ fn main() {
 
             // Create initial Pankti data
             let pankti = Pankti {
-                gurmukhi: "ਸਤਿ ਨਾਮੁ".to_string(),
-                punjabi: "ਸਲੋਕ".to_string(),
-                english: "True is the name".to_string(),
+                gurmukhi: "ਸਤਿਨਾਮੁ ਵਾਹਿਗੁਰੂ".to_string(),
+                punjabi: "".to_string(),
+                english: "Satnaam Waheguru".to_string(),
             };
 
             app.manage(Mutex::new(pankti));
