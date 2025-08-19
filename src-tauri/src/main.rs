@@ -42,6 +42,14 @@ enum DownloadEvent<'a> {
 }
 
 #[tauri::command]
+fn get_local_ip() -> Result<String, String> {
+    match local_ip_address::local_ip() {
+        Ok(ip) => Ok(ip.to_string()),
+        Err(e) => Err(format!("Failed to get local IP: {}", e)),
+    }
+}
+
+#[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
@@ -117,7 +125,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             greet,
             download_sqlite_file_with_channel,
-            update_pankti
+            update_pankti,
+            get_local_ip
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();

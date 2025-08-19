@@ -141,6 +141,9 @@ const SearchPanel: FunctionComponent = () => {
                         className="gurmukhi-font-1 flex-1 mx-2 px-4 py-2 border-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
                         spellCheck="false"
                         autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        inputMode="none"
                         onKeyDown={handleSearchShortcuts}
                     />
                     { searchTerm.length > 0 &&

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Gurbani Explorer",
-  "version": "0.1.0",
-  "identifier": "com.tauri-app.app",
+  "version": "0.1.1",
+  "identifier": "com.singhecloud.gurbani",
   "build": {
     "beforeDevCommand": "yarn dev",
     "devUrl": "http://localhost:1420",

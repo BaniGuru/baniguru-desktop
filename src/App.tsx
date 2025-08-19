@@ -156,7 +156,7 @@ function App() {
           {mouseVisible && showTitleBar && (
             <div
               id="header"
-              className="fixed top-0 left-0 w-full h-10 bg-gray-400 text-gray-800 flex justify-between items-center px-4 z-50 select-none"
+              className="fixed top-0 left-0 w-full h-10 bg-white border-2 border-gray-800 text-gray-800 flex justify-between items-center px-4 z-50 select-none"
             >
               <div className="ml-4 text-lg">Gurbani Explorer - SinghECloud.com</div>
               <div>
@@ -195,11 +195,13 @@ function App() {
               </div>
             </TabPanel>
           }
-          {!appContext.state.show_panel &&
+          {!appContext.state.show_panel && mouseVisible &&
+            <div className="absolute right-4 bottom-4 p-3 border-2 border-gray-300 rounded-2xl bg-white">
             <FaWindowMaximize
-              className="absolute right-0 bottom-0 text-gray-600 cursor-pointer mb-3 mr-4"
+              className=" text-gray-800 cursor-pointer"
               onClick={togglePanel}
             />
+            </div>
           }
     </div>
   );

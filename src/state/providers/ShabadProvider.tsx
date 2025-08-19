@@ -95,6 +95,7 @@ const shabadReducer = (state: ShabadState, action: any) => {
             break;
     }
 
+    console.log('action: ', action);
     return shabadState;
 }
 

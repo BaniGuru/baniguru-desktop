@@ -8,6 +8,8 @@ import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { SHABAD_UPDATE } from "../../state/ActionTypes";
 import { useSettings } from "../../state/providers/SettingContext";
 import { updateServerPankti } from "../../utils/TauriCommands";
+import FormatAndBreakText from "../../ui/FormatAndBreakText";
+import { AppContext, PAGE_SHABAD } from "../../state/providers/AppProvider";
 
 interface PanelProps {
     startSpace: number;
@@ -17,7 +19,6 @@ interface PanelProps {
 
 const Panel = styled.div<PanelProps>`
     padding-top: ${({ startSpace }) => `${startSpace}px`};
-    padding-bottom: ${({ endSpace }) => `${endSpace}px`};
     padding-left: ${({ leftSpace }) => `${leftSpace}px`};
     padding-right: ${({ leftSpace }) => `${leftSpace}px`};
 `;
@@ -44,16 +45,13 @@ interface NextPanktiProps {
 const NextPanktiGurmukhi = styled.div<NextPanktiProps>`
     font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.2;
-    position: absolute;
-    bottom: ${({ endSpace }) => `${endSpace}px`};
-    display: flex;
+    margin-bottom: ${({ endSpace }) => `${endSpace}px`};
     font-family: "Open Gurbani Akhar";
     font-weight: 900;
     padding-left: ${({ leftSpace }) => `${leftSpace}px`};
     padding-right: ${({ leftSpace }) => `${leftSpace}px`};
 
     white-space: nowrap;
-    display: block;
 `;
 
 const Punjabi = styled.div<FontProps>`
@@ -78,6 +76,7 @@ const English = styled.div<FontProps>`
 const ShabadDisplay: React.FC = () => {
     const searchState = useContext(SearchContext).state;
     const {state, dispatch } = useContext(ShabadContext);
+    const {state: appState} = useContext(AppContext);
     const { fontSizes, displaySpacing } = useSettings();
     const current = state.current;
 
@@ -96,7 +95,7 @@ const ShabadDisplay: React.FC = () => {
 
     useEffect(() => {
         const loadShabad = async () => {
-            if (searchState.searchShabadPankti == null) {
+            if (searchState.searchShabadPankti == null || appState.page !== PAGE_SHABAD) {
                 return;
             }
 
@@ -147,7 +146,6 @@ const ShabadDisplay: React.FC = () => {
             if (!element) return;
 
             const containerWidth = element.parentElement?.clientWidth || 0;
-            console.log('width: ', containerWidth);
             let currentFontSize = fontSizes["Next Pankti"];
             const minFontSize = 10;
             element.style.overflow = 'hidden';
@@ -157,14 +155,12 @@ const ShabadDisplay: React.FC = () => {
                 currentFontSize -= 1;
                 element.style.fontSize = `${currentFontSize}px`;
             }
-            console.log('font size: ', currentFontSize);
 
             element.style.overflow = 'visible';
             setNextPanktiFontSize(currentFontSize);
         };
 
         if (nextPankti) {
-            // Resize when nextPankti changes
             resizeFontToFit();
         }
     }, [nextPankti, fontSizes]);
@@ -187,34 +183,40 @@ const ShabadDisplay: React.FC = () => {
 
     return (
         <Panel
-            className="w-screen flex flex-col items-center"
+            className="w-screen h-screen flex flex-col justify-between overflow-hidden"
             startSpace={displaySpacing.startSpace}
             endSpace={displaySpacing.endSpace}
             leftSpace={displaySpacing.leftSpace}
         >
-            <Gurmukhi
-                as="div"
-                className="text-center text-gray-900"
-                fontSize={fontSizes["ਗੁਰਮੁਖੀ"]}
-                contentSpace={displaySpacing.gurmukhiSpace}
-                dangerouslySetInnerHTML={{
-                    __html: Format.formatVishraams(state.panktis[current]?.gurmukhi, vishraamStyles)
-                }}
-            />
-            <Punjabi
-                className="text-center text-gray-700"
-                fontSize={fontSizes["ਪੰਜਾਬੀ"]}
-                contentSpace={displaySpacing.gurmukhiSpace}
-            >
-                { state.panktis[current]?.punjabi_translation }
-            </Punjabi>
-            <English
-                className="text-center text-gray-700"
-                fontSize={fontSizes["English"]}
-                contentSpace={displaySpacing.translationSpace}
-            >
-                { state.panktis[current]?.english_translation }
-            </English>
+            <div className="flex-1 flex flex-col items-center w-full">
+                <div className="flex flex-row w-full justify-center">
+                    <FormatAndBreakText
+                        containerClassName="text-black text-center"
+                        containerStyle={{
+                            fontSize: fontSizes["ਗੁਰਮੁਖੀ"] + "px",
+                            lineHeight: 1.3,
+                            fontFamily: "Open Gurbani Akhar",
+                            fontWeight: 900
+                        }}
+                        text={state.panktis[current]?.gurmukhi || ""}
+                    />
+                </div>
+                
+                <Punjabi
+                    className="text-center text-gray-900"
+                    fontSize={fontSizes["ਪੰਜਾਬੀ"]}
+                    contentSpace={displaySpacing.gurmukhiSpace}
+                >
+                    { state.panktis[current]?.punjabi_translation }
+                </Punjabi>
+                <English
+                    className="text-center text-gray-900"
+                    fontSize={fontSizes["English"]}
+                    contentSpace={displaySpacing.translationSpace}
+                >
+                    { state.panktis[current]?.english_translation }
+                </English>
+            </div>
             {
                 nextPankti &&
                 <NextPanktiGurmukhi

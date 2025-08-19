@@ -163,7 +163,7 @@ pub async fn start_web_server(app_handle: AppHandle) {
         .or(static_files);
 
     warp::serve(routes)
-        .run(([0, 0, 0, 0], 8080))
+        .run(([0, 0, 0, 0], 54321))
         .await;
 }
 

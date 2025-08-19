@@ -7,4 +7,5 @@ html, body, #root {
   height: 100%; /* if you want full viewport height */
   margin: 0;
   padding: 0;
+  overflow: hidden;
 }
