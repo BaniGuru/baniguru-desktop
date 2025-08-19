@@ -63,9 +63,16 @@ export const BaniPanel = () => {
             punjabi.translation as punjabi_translation,
             english.translation as english_translation
           FROM bani_lines
-          LEFT JOIN lines ON lines.id = bani_lines.line_id
-          LEFT JOIN translations AS punjabi ON lines.id = punjabi.line_id AND punjabi.translation_source_id = 3
-          LEFT JOIN translations AS english ON lines.id = english.line_id AND english.translation_source_id = 1
+          INNER JOIN lines ON lines.id = bani_lines.line_id
+          INNER JOIN shabads ON lines.shabad_id = shabads.id
+          LEFT JOIN translations AS punjabi ON lines.id = punjabi.line_id AND (
+              (shabads.source_id = 1 AND punjabi.translation_source_id = 6) OR
+              (shabads.source_id != 1 AND punjabi.translation_source_id IN (8, 11, 13, 15, 17, 19, 21))
+          )
+          LEFT JOIN translations AS english ON lines.id = english.line_id AND (
+              (shabads.source_id = 1 AND english.translation_source_id = 1) OR
+              (shabads.source_id != 1 AND english.translation_source_id IN (7, 9, 10, 12, 14, 16, 18, 20, 22))
+          )
           WHERE bani_id = ${baniId}
           ORDER BY line_group, order_id
         `);

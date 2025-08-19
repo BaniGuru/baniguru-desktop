@@ -28,7 +28,6 @@ interface FontProps {
 }
 
 const Gurmukhi = styled.div<FontProps>`
-    color: #01579b;
     font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.3;
     display: flex;
@@ -43,7 +42,6 @@ interface NextPanktiProps {
 }
 
 const NextPanktiGurmukhi = styled.div<NextPanktiProps>`
-    color: #5e9fd2ff;
     font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.2;
     position: absolute;
@@ -59,7 +57,6 @@ const NextPanktiGurmukhi = styled.div<NextPanktiProps>`
 `;
 
 const Punjabi = styled.div<FontProps>`
-    color:rgba(80, 80, 80, 1);
     font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.4;
     margin-top: ${({ contentSpace }) => `${contentSpace}px`};
@@ -69,7 +66,6 @@ const Punjabi = styled.div<FontProps>`
 `;
 
 const English = styled.div<FontProps>`
-    color:rgba(90, 90, 90, 1);
     font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.4;
     margin-top: ${({ contentSpace }) => `${contentSpace}px`};
@@ -111,8 +107,15 @@ const ShabadDisplay: React.FC = () => {
                     punjabi.translation as punjabi_translation,
                     english.translation as english_translation
                 FROM lines
-                LEFT JOIN translations AS punjabi ON lines.id = punjabi.line_id AND punjabi.translation_source_id = 6
-                LEFT JOIN translations AS english ON lines.id = english.line_id AND english.translation_source_id = 1
+                INNER JOIN shabads ON lines.shabad_id = shabads.id
+                LEFT JOIN translations AS punjabi ON lines.id = punjabi.line_id AND (
+                    (shabads.source_id = 1 AND punjabi.translation_source_id = 6) OR
+                    (shabads.source_id != 1 AND punjabi.translation_source_id IN (8, 11, 13, 15, 17, 19, 21))
+                )
+                LEFT JOIN translations AS english ON lines.id = english.line_id AND (
+                    (shabads.source_id = 1 AND english.translation_source_id = 1) OR
+                    (shabads.source_id != 1 AND english.translation_source_id IN (7, 9, 10, 12, 14, 16, 18, 20, 22))
+                )
                 WHERE shabad_id = '${searchState.searchShabadPankti.shabad_id}'
             `).then((panktis: any) => {
                 if (! panktis) {
@@ -170,6 +173,18 @@ const ShabadDisplay: React.FC = () => {
         return null;
     }
 
+    const vishraamStyles = {
+        heavy: {
+            color: '#e56c00',
+        },
+        medium: {
+            color: '#01579b',
+        },
+        light: {
+            color: '#01579b',
+        },
+    };
+
     return (
         <Panel
             className="w-screen flex flex-col items-center"
@@ -178,21 +193,23 @@ const ShabadDisplay: React.FC = () => {
             leftSpace={displaySpacing.leftSpace}
         >
             <Gurmukhi
-                className="text-center"
+                as="div"
+                className="text-center text-gray-900"
                 fontSize={fontSizes["ਗੁਰਮੁਖੀ"]}
                 contentSpace={displaySpacing.gurmukhiSpace}
-            >
-                { Format.removeVishraams(state.panktis[current]?.gurmukhi) }
-            </Gurmukhi>
+                dangerouslySetInnerHTML={{
+                    __html: Format.formatVishraams(state.panktis[current]?.gurmukhi, vishraamStyles)
+                }}
+            />
             <Punjabi
-                className="text-center"
+                className="text-center text-gray-700"
                 fontSize={fontSizes["ਪੰਜਾਬੀ"]}
                 contentSpace={displaySpacing.gurmukhiSpace}
             >
                 { state.panktis[current]?.punjabi_translation }
             </Punjabi>
             <English
-                className="text-center"
+                className="text-center text-gray-700"
                 fontSize={fontSizes["English"]}
                 contentSpace={displaySpacing.translationSpace}
             >
@@ -202,7 +219,7 @@ const ShabadDisplay: React.FC = () => {
                 nextPankti &&
                 <NextPanktiGurmukhi
                     ref={nextPanktiRef}
-                    className="gurmukhi-font-2 text-center"
+                    className="gurmukhi-font-2 text-center text-gray-500"
                     fontSize={nextPanktiFontSize}
                     endSpace={displaySpacing.endSpace}
                     leftSpace={displaySpacing.leftSpace}
