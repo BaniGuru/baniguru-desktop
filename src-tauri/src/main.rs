@@ -6,20 +6,16 @@
 mod commands;
 mod server;
 mod settings;
-// use settings::{load_settings, save_settings, UserSettings};
 
 use futures_util::StreamExt;
 use serde::Serialize;
 use std::fs::File;
 use std::io::Write;
 use tauri::{ipc::Channel, AppHandle, Manager};
-use tauri::async_runtime::spawn;
 use crate::commands::Pankti;
 use crate::commands::update_pankti;
-use std::sync::{Arc};
 use tokio::sync::Mutex;
 use crate::server::start_web_server;
-use tauri::State;
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase", tag = "event", content = "data")]
@@ -60,14 +56,6 @@ async fn download_sqlite_file_with_channel<'a>(
     app: AppHandle,
     on_event: Channel<DownloadEvent<'a>>,
 ) -> Result<String, String> {
-    let response = reqwest::get(&url)
-        .await
-        .map_err(|e| format!("Failed to fetch file: {}", e))?;
-
-    let total_size = response
-        .content_length()
-        .ok_or("Failed to get content length")?;
-
     let app_data_path = app
         .path()
         .app_data_dir()
@@ -78,11 +66,19 @@ async fn download_sqlite_file_with_channel<'a>(
     let db_path = app_data_path.join("bani.db");
 
     if db_path.exists() {
-        on_event.send(DownloadEvent::Skipped {
+        let _ = on_event.send(DownloadEvent::Skipped {
             db_path: &db_path.to_string_lossy().to_string()
         });
         return Ok(db_path.to_string_lossy().to_string());
     }
+
+    let response = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("Failed to fetch file: {}", e))?;
+
+    let total_size = response
+        .content_length()
+        .ok_or("Failed to get content length")?;
 
     let mut dest = File::create(&db_path).map_err(|e| format!("File create error: {}", e))?;
     let mut stream = response.bytes_stream();
@@ -139,9 +135,9 @@ fn main() {
 
             // Create initial Pankti data
             let pankti = Pankti {
-                gurmukhi: "ਸਤਿਨਾਮੁ ਵਾਹਿਗੁਰੂ".to_string(),
+                gurmukhi: "".to_string(),
                 punjabi: "".to_string(),
-                english: "Satnaam Waheguru".to_string(),
+                english: "".to_string(),
             };
 
             app.manage(Mutex::new(pankti));

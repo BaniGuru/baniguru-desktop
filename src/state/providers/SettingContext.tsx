@@ -18,10 +18,12 @@ type Settings = {
   };
   width: number;
   height: number;
+  version: string;
   updateFontSize: (font: FontType, size: number) => void;
   updateSpacing: (key: keyof Settings["displaySpacing"], value: number) => void;
   updateSetting: (key: "width" | "height", value: number) => void;
   updatePanelSetting: (key: keyof Settings["panelSetting"], value: number) => void;
+  updateVersion: (version: string) => void;
 };
 
 const defaultFontSizes: Record<FontType, number> = {
@@ -48,6 +50,7 @@ const defaultPanelSetting = {
 
 const defaultWidth = 800;
 const defaultHeight = 600;
+export const appVersion = "0.0.1";
 
 const LOCAL_STORAGE_KEY = "settings";
 
@@ -62,6 +65,7 @@ const getInitialSettings = () => {
         panelSetting: {...defaultPanelSetting, ...parsed.panelSetting},
         width: parsed.width ?? defaultWidth,
         height: parsed.height ?? defaultHeight,
+        version: parsed.version ?? '',
       };
     }
   } catch (e) {
@@ -74,6 +78,7 @@ const getInitialSettings = () => {
     panelSetting: defaultPanelSetting,
     width: defaultWidth,
     height: defaultHeight,
+    version: '',
   };
 };
 
@@ -87,6 +92,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
   const [panelSetting, setPanelSetting] = useState(initialSettings.panelSetting);
   const [width, setWidth] = useState(initialSettings.width);
   const [height, setHeight] = useState(initialSettings.height);
+  const [version, setVersion] = useState(initialSettings.version);
 
   // Save settings to localStorage on change
   useEffect(() => {
@@ -95,10 +101,11 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
       displaySpacing,
       width,
       height,
+      version,
       panelSetting
     };
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(allSettings));
-  }, [fontSizes, displaySpacing, width, height, panelSetting]);
+  }, [fontSizes, displaySpacing, width, height, version, panelSetting]);
 
   const updateFontSize = (font: FontType, size: number) => {
     setFontSizes((prev) => ({
@@ -132,6 +139,10 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
     }));
   };
 
+  const updateVersion = (version: string) => {
+    setVersion(version);
+  }
+
   return (
     <SettingContext.Provider
       value={{
@@ -140,10 +151,12 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
         panelSetting,
         width,
         height,
+        version,
         updateFontSize,
         updateSpacing,
         updateSetting,
         updatePanelSetting,
+        updateVersion,
       }}
     >
       {children}

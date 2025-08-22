@@ -38,6 +38,41 @@ const SearchPanel: FunctionComponent = () => {
     // console.log("search ref: ", appRef.current);
 
     const handleSearchShortcuts = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        const blockedKeys: Record<string, string> = {
+                "R": "r",
+                "S": "s",
+                "H": "h",
+                "L": "l",
+                "N": "n",
+                "M": "m",
+            };
+
+            if (blockedKeys[event.key]) {
+                event.preventDefault();
+
+                const replacementChar = blockedKeys[event.key];
+
+                const input = event.currentTarget;
+                const start = input.selectionStart ?? 0;
+                const end = input.selectionEnd ?? 0;
+
+                const newValue =
+                    searchTerm.slice(0, start) + replacementChar + searchTerm.slice(end);
+
+                setSearchTerm(newValue);
+
+                if (searchInputRef.current) {
+                    searchInputRef.current.value = newValue;
+
+                    setTimeout(() => {
+                        searchInputRef.current?.setSelectionRange(start + 1, start + 1);
+                    }, 0);
+                }
+
+                return;
+            }
+
+
         if (event.key === 'c' && event.ctrlKey && searchInputRef?.current?.value) {
             searchInputRef.current.value = "";
             event.preventDefault();
@@ -55,21 +90,17 @@ const SearchPanel: FunctionComponent = () => {
             displayShabad(panktis[focusIndex]);
             event.preventDefault();
         }
-        console.log(event.key);
+
+        if (["w", "W", "y", "Y", "u", "U", "i", "I", "o", "O", "z", "Z"].includes(event.key)) {
+            event.preventDefault();
+        }
     };
 
-    const handleSearch = async (e: ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setSearchTerm(value);
-        if (value.length < 2) {
-            return;
-        }
-
+    const searchByFirstLetters = async (value: string) => {
         const db = await DB.getInstance();
-
         db.select(`
             SELECT
-                *,
+                lines.*,
                 CASE
                     WHEN first_letters like '${value}' THEN 1
                     WHEN first_letters like '${value}%' THEN 2
@@ -77,9 +108,10 @@ const SearchPanel: FunctionComponent = () => {
                     WHEN first_letters like '%${value}%' THEN 4
                 END AS rank
             FROM lines
+            INNER JOIN shabads ON lines.shabad_id = shabads.id
             WHERE
                 first_letters like '%${value}%'
-            ORDER BY rank
+            ORDER BY shabads.source_id, rank
             LIMIT 100
         `).then((res: any) => {
             if (!res) {
@@ -90,6 +122,49 @@ const SearchPanel: FunctionComponent = () => {
             setPanktis(panktis);
             setFocusIndex(0);
         });
+    }
+
+    const searchByWords = async (value: string) => {
+        const searchValue = value.trim();
+        const db = await DB.getInstance();
+        db.select(`
+            SELECT
+                search_lines.*,
+                CASE
+                    WHEN gurmukhi_normalized like '${searchValue}' THEN 1
+                    WHEN gurmukhi_normalized like '${searchValue}%' THEN 2
+                    WHEN gurmukhi_normalized like '%${searchValue}' THEN 3
+                    WHEN gurmukhi_normalized like '%${searchValue}%' THEN 4
+                END AS rank
+            FROM search_lines
+            INNER JOIN shabads ON search_lines.shabad_id = shabads.id
+            WHERE
+                gurmukhi_normalized like '%${searchValue}%'
+            ORDER BY shabads.source_id, rank
+            LIMIT 100
+        `).then((res: any) => {
+            if (!res) {
+                return;
+            }
+
+            const panktis: Pankti[] = res;
+            setPanktis(panktis);
+            setFocusIndex(0);
+        });
+    };
+
+    const handleSearch = async (e: ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.trim();
+        setSearchTerm(value);
+        if (value.length < 2) {
+            return;
+        }
+
+        if (value.includes(' ')) {
+            searchByWords(value);
+        } else {
+            searchByFirstLetters(value);
+        }
 
         dispatch({
             type: GURBANI_SEARCH,

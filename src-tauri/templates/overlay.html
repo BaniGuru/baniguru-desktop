@@ -13,37 +13,28 @@
 
 
     <script>
-        let previousData = {
-        gurmukhi: '',
-        punjabi: '',
-        english: '',
-        font: '',
-        panel_gap_x: 0,
-        panel_gap_y: 0,
-        punjabi_gap: 0,
-        english_gap: 0,
-        gurmukhi_font_size: 0,
-        punjabi_font_size: 0,
-        english_font_size: 0,
-        gurmukhi_font_color: '',
-        punjabi_font_color: '',
-        english_font_color: '',
-        background_color: '',
-        font_size: 0
+        let previousGurmukhi = localStorage.getItem('gurmukhi') || '';
+        let intialGurmukhi = '';
+
+    const timeoutDuration = 5 * 60 * 1000;
+    let timeoutId;
+
+    const hideSectionAfterTimeout = () => {
+        const containerEl = document.getElementById('container');
+        containerEl.style.display = 'none'; // Hide the section
     };
 
     fetchData = async () => {
         const res = await fetch('/api/custom_data');
         const data = await res.json();
 
-        // Compare the new data with the previous data
-        if (
-            data.gurmukhi != previousData.gurmukhi
-        ) {
+        
+        const containerEl = document.getElementById('container');
+
+        if (data.gurmukhi != intialGurmukhi) {
             const gurmukhiEl = document.getElementById('gurmukhi');
             const punjabiEl = document.getElementById('punjabi');
             const englishEl = document.getElementById('english');
-            const containerEl = document.getElementById('container');
 
             gurmukhiEl.textContent = data.gurmukhi;
             punjabiEl.textContent = data.punjabi;
@@ -74,15 +65,44 @@
             fitTextToOneLineWithEllipsis(gurmukhiEl, data.gurmukhi_font_size);
             fitTextToOneLineWithEllipsis(punjabiEl, data.punjabi_font_size);
             fitTextToOneLineWithEllipsis(englishEl, data.english_font_size);
+        }
+
+        // Compare the new data with the previous data
+        if (
+            data.gurmukhi != previousGurmukhi
+        ) {
+            containerEl.style.display = 'inline-flex';
 
             // Update previous data with the current data
-            previousData = { ...data };
+            previousGurmukhi = data.gurmukhi;
+
+            localStorage.setItem('gurmukhi', data.gurmukhi);
+            localStorage.setItem('lastUpdate', Date.now().toString());
+
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(hideSectionAfterTimeout, timeoutDuration);
         }
 
         setTimeout(fetchData, 1000);
     };
 
-    fetchData();
+    const checkInactivityTimeout = () => {
+        const lastUpdate = parseInt(localStorage.getItem('lastUpdate'), 10);
+        if (lastUpdate) {
+            const timeElapsed = Date.now() - lastUpdate;
+            if (timeElapsed > timeoutDuration) {
+                hideSectionAfterTimeout(); // Hide section if 5 minutes passed
+            } else {
+                const remainingTime = timeoutDuration - timeElapsed;
+                timeoutId = setTimeout(hideSectionAfterTimeout, remainingTime);
+            }
+        }
+    };
+
+    window.onload = () => {
+        checkInactivityTimeout();
+        fetchData();
+    };
 
     function fitTextToOneLineWithEllipsis(element, maxFontSizePx) {
     const parentElement = element.parentElement;

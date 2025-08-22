@@ -14,14 +14,6 @@ use include_dir::{include_dir, Dir};
 use mime_guess::from_path;
 use warp::hyper::{Response, Body};
 
-fn hex_to_rgb(hex: &str) -> (u8, u8, u8) {
-    let hex = hex.trim_start_matches('#');
-    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(255);
-    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(255);
-    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(255);
-    (r, g, b)
-}
-
 static TEMPLATE_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/templates");
 static STATIC_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/static");
 
@@ -221,8 +213,6 @@ async fn render_overlay_page(
 
     let path = app_handle.state::<PathBuf>();
     let settings = load_settings(&path);
-
-    let (r, g, b) = hex_to_rgb(settings.background_color.to_string().as_str());
 
     let mut context = Context::new();
     context.insert("title", "Gurbani");

@@ -24,18 +24,18 @@ impl Default for UserSettings {
         Self {
             theme: "light".into(),
             font: "GurbaniAkharThick".into(),
-            gurmukhi_font_size: 30,
-            punjabi_font_size: 18,
-            english_font_size: 18,
-            background_color: "rgba(0, 0, 0, 0.6)".into(),
-            gurmukhi_font_color: "#FFFFFF".into(),
+            gurmukhi_font_size: 22,
+            punjabi_font_size: 15,
+            english_font_size: 15,
+            background_color: "rgba(0, 0, 0, 0.8)".into(),
+            gurmukhi_font_color: "#ffd532".into(),
             punjabi_font_color: "#FFFFFF".into(),
             english_font_color: "#FFFFFF".into(),
-            background_opacity: 1.0,
+            background_opacity: 0.8,
             panel_gap_x: 4,
             panel_gap_y: 12,
-            punjabi_gap: 4,
-            english_gap: 0,
+            punjabi_gap: -1,
+            english_gap: -5,
         }
     }
 }

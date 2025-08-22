@@ -15,7 +15,7 @@ import { FaTimes, FaWindowMaximize, FaWindowMinimize } from "react-icons/fa";
 import { SET_APP_PAGE, TOGGLE_PANEL } from "./state/ActionTypes";
 import useShabadNavigation from "./utils/useShabadNavigation";
 import styled from "styled-components";
-import { useSettings } from "./state/providers/SettingContext";
+import { appVersion, useSettings } from "./state/providers/SettingContext";
 import { closeWindow, minimizeWindow, useAutoHideCursor } from "./utils/useAutoHideCursor";
 
 type DownloadEvent =
@@ -42,7 +42,7 @@ function App() {
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const appRef = useRef<number>(0);
-  const {panelSetting} = useSettings();
+  const {panelSetting, version, updateVersion} = useSettings();
   
   const contentLengthRef = useRef<number>(0);
   const downloadedRef = useRef<number>(0);
@@ -79,6 +79,13 @@ function App() {
             break;
           
           case "skipped":
+            if (version !== appVersion) {
+              DB.schemaExists = false;
+              updateVersion(appVersion);
+            } else {
+              DB.schemaExists = true;
+            }
+
             setReady(true);
             break;
         }
@@ -93,6 +100,9 @@ function App() {
         if (path) {
           appContext.setDbPath(path);
           DB.setDbPath(path);
+
+          // trigger instance
+          DB.getInstance();
         }
       } catch (err) {
         console.error("Download error:", err);
