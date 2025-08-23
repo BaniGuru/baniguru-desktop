@@ -34,8 +34,8 @@ const SearchPanel: FunctionComponent = () => {
     const { state: shabadState } = useContext(ShabadContext);
 
     const appRef = useRef<number>(0);
+    const listContainerRef = useRef<HTMLUListElement | null>(null);
     appRef.current++;
-    // console.log("search ref: ", appRef.current);
 
     const handleSearchShortcuts = (event: React.KeyboardEvent<HTMLInputElement>) => {
         const blockedKeys: Record<string, string> = {
@@ -121,6 +121,11 @@ const SearchPanel: FunctionComponent = () => {
             const panktis: Pankti[] = res;
             setPanktis(panktis);
             setFocusIndex(0);
+            if (listContainerRef.current) {
+                listContainerRef.current.scrollTo({
+                    top: 0
+                })
+            }
         });
     }
 
@@ -150,6 +155,11 @@ const SearchPanel: FunctionComponent = () => {
             const panktis: Pankti[] = res;
             setPanktis(panktis);
             setFocusIndex(0);
+            if (listContainerRef.current) {
+                listContainerRef.current.scrollTo({
+                    top: 0
+                })
+            }
         });
     };
 
@@ -232,7 +242,7 @@ const SearchPanel: FunctionComponent = () => {
                     </KeyboardButton>
                 </div>
             </div>
-            <SearchList panktis={panktis} current={focusIndex} displayShabad={displayShabad} />
+            <SearchList listContainerRef={listContainerRef} panktis={panktis} current={focusIndex} displayShabad={displayShabad} />
         </>
     );
 };

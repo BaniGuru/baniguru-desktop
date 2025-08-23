@@ -121,6 +121,7 @@ function App() {
                     appContext.dispatch({
                         type: TOGGLE_PANEL,
                     })
+                    ev.preventDefault();
                   }
                   break;
                 

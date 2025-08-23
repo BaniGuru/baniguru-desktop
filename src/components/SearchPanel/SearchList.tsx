@@ -6,6 +6,7 @@ type SearchListProps = {
     panktis: Pankti[];
     current: number;
     displayShabad: any;
+    listContainerRef: React.MutableRefObject<HTMLUListElement | null>;
 };
 
 const ListItem = styled.li`
@@ -39,10 +40,8 @@ function easeInOutQuad(t: number): number {
     return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 }
 
-const SearchList: React.FC<SearchListProps> = ({ panktis, current, displayShabad }) => {
+const SearchList: React.FC<SearchListProps> = ({ panktis, current, displayShabad, listContainerRef }) => {
     
-
-    const listContainerRef = useRef<HTMLUListElement | null>(null);
     const itemRefs = useRef<Array<HTMLLIElement | null>>([]);
 
     useEffect(() => {

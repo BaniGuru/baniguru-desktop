@@ -5,7 +5,7 @@ import { DB } from "../../utils/DB";
 import styled from "styled-components";
 import { Pankti } from "../../models/Pankti";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
-import { SHABAD_UPDATE } from "../../state/ActionTypes";
+import { RECENT_SEARCH_UPDATE, SHABAD_UPDATE } from "../../state/ActionTypes";
 import { useSettings } from "../../state/providers/SettingContext";
 import { updateServerPankti } from "../../utils/TauriCommands";
 import FormatAndBreakText from "../../ui/FormatAndBreakText";
@@ -66,7 +66,7 @@ const English = styled.div<FontProps>`
 `;
 
 const ShabadDisplay: React.FC = () => {
-    const searchState = useContext(SearchContext).state;
+    const searchContext = useContext(SearchContext);
     const {state, dispatch } = useContext(ShabadContext);
     const {state: appState} = useContext(AppContext);
     const { fontSizes, displaySpacing } = useSettings();
@@ -87,9 +87,14 @@ const ShabadDisplay: React.FC = () => {
 
     useEffect(() => {
         const loadShabad = async () => {
-            if (searchState.searchShabadPankti == null || appState.page !== PAGE_SHABAD) {
+            if (appState.page !== PAGE_SHABAD ||
+                searchContext.state.searchShabadPankti == null ||
+                searchContext.state.searchShabadPankti.shabad_id == null
+            ) {
                 return;
             }
+
+            const searchPankti: Pankti = searchContext.state.searchShabadPankti;
 
             const instance = await DB.getInstance();
             instance.select(`
@@ -107,19 +112,32 @@ const ShabadDisplay: React.FC = () => {
                     (shabads.source_id = 1 AND english.translation_source_id = 1) OR
                     (shabads.source_id != 1 AND english.translation_source_id IN (7, 9, 10, 12, 14, 16, 18, 20, 22))
                 )
-                WHERE shabad_id = '${searchState.searchShabadPankti.shabad_id}'
+                WHERE shabad_id = '${searchPankti.shabad_id}'
             `).then((panktis: any) => {
                 if (! panktis) {
                     return;
                 }
 
                 const current = panktis.findIndex(
-                    (pankti: Pankti) => pankti.id === searchState.searchShabadPankti?.id
+                    (pankti: Pankti) => pankti.id === searchPankti.id
                 );
+
+                searchContext.dispatch({
+                    type: RECENT_SEARCH_UPDATE,
+                    payload: {
+                        shabadId: searchPankti.shabad_id,
+                        pankti: panktis[current],
+                        visited: [],
+                        home: current,
+                        active: current,
+                        shabad_state: state,
+                    }
+                });
 
                 dispatch({
                     type: SHABAD_UPDATE,
                     payload: {
+                        shabadId: searchPankti.shabad_id,
                         panktis: panktis,
                         current: current,
                     }
@@ -128,7 +146,7 @@ const ShabadDisplay: React.FC = () => {
         };
 
         loadShabad();
-    }, [searchState]);
+    }, [searchContext.state.searchShabadPankti, appState.page]);
 
     const nextPankti = state.panktis[current+1]?.gurmukhi;
 

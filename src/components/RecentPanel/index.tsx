@@ -1,5 +1,5 @@
 import { useContext, useCallback } from "react";
-import { SearchContext } from "../../state/providers/SearchProvider";
+import { recentShabad, SearchContext } from "../../state/providers/SearchProvider";
 import { AppContext } from "../../state/providers/AppProvider";
 import {
   SEARCH_SHABAD_PANKTI,
@@ -18,7 +18,7 @@ export const RecentPanel = () => {
   const { dispatch: appDispatch } = useContext(AppContext);
   const { state: shabadState } = useContext(ShabadContext);
 
-  const recentPanktis = state.recent as Pankti[] | undefined;
+  const recentShabads = state.recent as recentShabad[] | undefined;
 
   const displayShabad = useCallback(
     (pankti: Pankti) => {
@@ -54,42 +54,43 @@ export const RecentPanel = () => {
     dispatch({ type: CLEAR_RECENT_PANKTIS });
   }, [dispatch]);
 
-  if (!recentPanktis || recentPanktis.length === 0) {
+  if (!recentShabads || recentShabads.length === 0) {
     return <div className="p-4 text-gray-600">No recent found.</div>;
   }
 
   return (
-    <div className="p-4 flex flex-col h-full">
+    <div className="flex flex-col h-full py-2">
       <div className="flex-1 overflow-auto">
-        {recentPanktis.map((pankti) => (
+        {recentShabads.map((recentShabad) => (
           <div
-            key={pankti.id}
+            key={recentShabad.pankti.id}
             className="flex justify-between items-center mb-3 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition border-b border-gray-200"
           >
-            <span
-              onClick={() => displayShabad(pankti)}
-              className="gurmukhi-font-2 text-left flex-1"
-              
-            >
-              {Format.removeVishraams(pankti.gurmukhi)}
-            </span>
+            
             <button
-              onClick={() => removePankti(pankti.id)}
-              className="mr-2 text-gray-400 hover:text-red-500"
+              onClick={() => removePankti(recentShabad.pankti.shabad_id)}
+              className="mr-4 text-gray-400 hover:bg-red-500 p-1 rounded-full hover:text-white"
               title="Remove"
             >
               <MdClose />
             </button>
+            <span
+              onClick={() => displayShabad(recentShabad.pankti)}
+              className="gurmukhi-font-2 text-left flex-1 text-gray-600"
+              
+            >
+              {Format.removeVishraams(recentShabad.pankti.gurmukhi)}
+            </span>
           </div>
         ))}
       </div>
 
-      <div className="pt-4 text-right">
+      <div className="text-right relative">
         <button
           onClick={clearAll}
-          className="bg-gray-600 text-white p-2 rounded-md hover:bg-red-700 transition text-sm"
+          className="bg-gray-600 text-white p-2 rounded-md hover:bg-red-700 transition text-sm absolute right-8 bottom-2"
         >
-          Clear All
+          Clear
         </button>
       </div>
     </div>

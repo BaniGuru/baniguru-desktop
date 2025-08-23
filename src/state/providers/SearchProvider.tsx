@@ -1,12 +1,20 @@
 import { createContext, createRef, RefObject, useState} from "react";
-import { CLEAR_RECENT_PANKTIS, GURBANI_SEARCH, REMOVE_RECENT_PANKTI, SEARCH_SHABAD_PANKTI } from "../ActionTypes";
+import { CLEAR_RECENT_PANKTIS, GURBANI_SEARCH, REMOVE_RECENT_PANKTI, SEARCH_SHABAD_PANKTI, RECENT_SEARCH_UPDATE } from "../ActionTypes";
 import { Pankti } from "../../models/Pankti";
 import * as React from "react";
+
+export type recentShabad = {
+    shabadId: string;
+    pankti: Pankti;
+    visited: [],
+    home: number,
+    active: number,
+};
 
 type initSearchStateType = {
     searchTerm: string;
     searchShabadPankti: Pankti|null;
-    recent: Pankti[];
+    recent: recentShabad[];
 };
 
 const initSearchState = {
@@ -24,20 +32,40 @@ const searchReducer = (state: initSearchStateType, action: any) => {
             };
 
         case SEARCH_SHABAD_PANKTI: {
-            const newPankti = action.payload.pankti;
-            const alreadyExists = state.recent.some(p => p.id === newPankti.id);
+            return {
+                ...state,
+                searchShabadPankti: action.payload.pankti
+            };
+        }
+
+        case RECENT_SEARCH_UPDATE: {
+            
+            const shabadId = action.payload.shabadId;
+            const alreadyExists = state.recent.some(p => p.shabadId === shabadId);
 
             return {
                 ...state,
-                recent: alreadyExists ? state.recent : [...state.recent, newPankti],
-                searchShabadPankti: newPankti
+                recent: alreadyExists ? [
+                    ...state.recent
+                    // TODO: update current to search one
+                ] :
+                [
+                    {
+                        shabadId: action.payload.shabadId,
+                        pankti: action.payload.pankti,
+                        visited: [],
+                        home: action.payload.home ?? 0,
+                        active: action.payload.active ?? 0,
+                    },
+                    ...state.recent,
+                ],
             };
         }
 
         case REMOVE_RECENT_PANKTI:
             return {
                 ...state,
-                recent: state.recent.filter((p) => p.id !== action.payload.id),
+                recent: state.recent.filter((p) => p.shabadId !== action.payload.id),
             };
 
         case CLEAR_RECENT_PANKTIS:
