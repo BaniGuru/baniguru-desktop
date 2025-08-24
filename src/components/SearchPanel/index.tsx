@@ -8,7 +8,6 @@ import { MdOutlineClear } from "react-icons/md";
 import { BsKeyboard } from "react-icons/bs";
 import SearchList from "./SearchList";
 import { AppContext } from "../../state/providers/AppProvider";
-import { ShabadContext } from "../../state/providers/ShabadProvider";
 
 const SearchButton = styled.button`
     font-size: 14px;
@@ -30,8 +29,6 @@ const SearchPanel: FunctionComponent = () => {
     const {dispatch, searchInputRef, searchTerm, setSearchTerm, panktis, setPanktis} = useContext(SearchContext);
     const [focusIndex, setFocusIndex] = useState(0);
     const appDispatch = useContext(AppContext).dispatch;
-    const { state: shabadState } = useContext(ShabadContext);
-
     const appRef = useRef<number>(0);
     const listContainerRef = useRef<HTMLUListElement | null>(null);
     appRef.current++;

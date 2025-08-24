@@ -17,7 +17,6 @@ import useShabadNavigation from "./utils/useShabadNavigation";
 import styled from "styled-components";
 import { appVersion, useSettings } from "./state/providers/SettingContext";
 import { closeWindow, minimizeWindow, useAutoHideCursor } from "./utils/useAutoHideCursor";
-import { BaniProvider } from "./state/providers/BaniProvider";
 
 type DownloadEvent =
   | { event: "started"; data: { url: string; download_id: number; content_length: number } }

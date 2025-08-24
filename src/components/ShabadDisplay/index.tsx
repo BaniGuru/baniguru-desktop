@@ -10,7 +10,7 @@ import { useSettings } from "../../state/providers/SettingContext";
 import { updateServerPankti } from "../../utils/TauriCommands";
 import FormatAndBreakText from "../../ui/FormatAndBreakText";
 import { AppContext, PAGE_SHABAD } from "../../state/providers/AppProvider";
-import { BANI_ACTION_Add, BANI_ACTION_UPDATE, BaniContext, BaniRecent } from "../../state/providers/BaniProvider";
+import { BANI_ACTION_UPDATE, BaniContext } from "../../state/providers/BaniProvider";
 
 interface PanelProps {
     startSpace: number;

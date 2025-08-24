@@ -45,6 +45,7 @@ export const BaniPanel = () => {
   // Load bani lines when a bani is clicked
   const loadBaniLines = useCallback(
     async (baniId: number) => {
+      setLoadingBaniId(baniId);
       const index = baniState.banis.findIndex((baniRecent: BaniRecent) => baniRecent.baniId === baniId)
       if (index >= 0) {
         console.log('bani exists already');
@@ -109,7 +110,6 @@ export const BaniPanel = () => {
         home: false,
       }));
 
-      console.log('dispathing bani add...');
       baniDispatch({
           type: BANI_ACTION_Add,
           payload: {

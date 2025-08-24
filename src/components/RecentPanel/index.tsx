@@ -14,7 +14,7 @@ import { ShabadContext } from "../../state/providers/ShabadProvider";
 export const RecentPanel = () => {
   const { state, dispatch } = useContext(SearchContext);
   const { dispatch: appDispatch } = useContext(AppContext);
-  const { state: shabadState, dispatch: shabadDispatch } = useContext(ShabadContext);
+  const { dispatch: shabadDispatch } = useContext(ShabadContext);
 
   const recentShabads = state.recent as RecentShabad[] | undefined;
 
