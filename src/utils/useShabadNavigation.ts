@@ -43,15 +43,11 @@ const useShabadNavigation = () => {
                     break;
                 }
 
-                let pilotPankti: Pankti | null = null;
                 let pilotIndex = -1;
 
                 for (let i = 0; i < panktis.length; i++) {
-                    const pankti: Pankti = panktis[i];
-
-                    if (pankti.visited !== true) {
+                    if (panktis[i].visited !== true) {
                         pilotIndex = i;
-                        pilotPankti = pankti;
                         break;
                     }
                 }
@@ -72,15 +68,17 @@ const useShabadNavigation = () => {
             case "ArrowLeft":
                 ev.preventDefault();
 
-                const prevIndex = shabadContext.state.current + 1;
-                if (prevIndex < (shabadContext.state.panktis.length - 1)) {
-                    shabadContext.dispatch({
-                        type: SHABAD_AUTO_NEXT,
-                        payload: {
-                            current: prevIndex
-                        }
-                    });
+                const prevIndex = shabadContext.state.current - 1;
+                if (prevIndex < 0) {
+                    break;
                 }
+
+                shabadContext.dispatch({
+                    type: SHABAD_AUTO_NEXT,
+                    payload: {
+                        current: prevIndex
+                    }
+                });
                 break;
 
             case "ArrowRight":
@@ -98,7 +96,7 @@ const useShabadNavigation = () => {
                 }
                 break;
         }
-    }, [shabadContext.dispatch, appContext, shabadContext.state]);
+    }, [shabadContext.dispatch, appContext.state.page, shabadContext.state]);
 
     useEffect(() => {
         window.addEventListener("keydown", handleShabadNavigation);

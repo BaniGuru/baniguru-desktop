@@ -4,7 +4,7 @@ import { AppContext } from "../../state/providers/AppProvider";
 import { DB } from "../../utils/DB";
 import { Pankti } from "../../models/Pankti";
 import { SET_APP_PAGE, SHABAD_UPDATE } from "../../state/ActionTypes";
-import { saveBaniPosition, getBaniPosition } from "../../utils/BaniPositionTracker"; // helper
+import { BANI_ACTION_Add, BaniContext, BaniRecent } from "../../state/providers/BaniProvider";
 
 type Bani = {
   id: number;
@@ -14,6 +14,7 @@ type Bani = {
 
 export const BaniPanel = () => {
   const { state: shabadState, dispatch: shabadDispatch } = useContext(ShabadContext);
+  const { state: baniState, dispatch: baniDispatch} = useContext(BaniContext);
   const { dispatch: appDispatch } = useContext(AppContext);
 
   const [banis, setBanis] = useState<Bani[]>([]);
@@ -44,76 +45,93 @@ export const BaniPanel = () => {
   // Load bani lines when a bani is clicked
   const loadBaniLines = useCallback(
     async (baniId: number) => {
-      // Save current bani position before switching
-      if (
-        shabadState.panktis.length > 0 &&
-        shabadState.panktis[0].bani_id != null
-      ) {
-        saveBaniPosition(shabadState.panktis[0].bani_id, shabadState.current);
-      }
-
-      setLoadingBaniId(baniId);
-      try {
-        const db = await DB.getInstance();
-        const lines: any = await db.select(`
-          SELECT
-            lines.*,
-            bani_lines.line_id,
-            bani_lines.bani_id,
-            punjabi.translation as punjabi_translation,
-            english.translation as english_translation
-          FROM bani_lines
-          INNER JOIN lines ON lines.id = bani_lines.line_id
-          INNER JOIN shabads ON lines.shabad_id = shabads.id
-          LEFT JOIN translations AS punjabi ON lines.id = punjabi.line_id AND (
-              (shabads.source_id = 1 AND punjabi.translation_source_id = 6) OR
-              (shabads.source_id != 1 AND punjabi.translation_source_id IN (8, 11, 13, 15, 17, 19, 21))
-          )
-          LEFT JOIN translations AS english ON lines.id = english.line_id AND (
-              (shabads.source_id = 1 AND english.translation_source_id = 1) OR
-              (shabads.source_id != 1 AND english.translation_source_id IN (7, 9, 10, 12, 14, 16, 18, 20, 22))
-          )
-          WHERE bani_id = ${baniId}
-          ORDER BY line_group, order_id
-        `);
-
-        if (!lines || lines.length === 0) {
-          console.warn("No lines found for bani", baniId);
-          return;
-        }
-
-        // Map lines to Pankti format
-        const panktis: Pankti[] = lines.map((line: any) => ({
-          id: line.line_id,
-          bani_id: line.bani_id,
-          gurmukhi: line.gurmukhi,
-          punjabi_translation: line.punjabi_translation,
-          english_translation: line.english_translation,
-          visited: false,
-          home: false,
-        }));
-
-        // Restore last known line index for this bani
-        const restoredIndex = getBaniPosition(baniId);
-
-        // Dispatch to ShabadContext
+      const index = baniState.banis.findIndex((baniRecent: BaniRecent) => baniRecent.baniId === baniId)
+      if (index >= 0) {
+        console.log('bani exists already');
+        const bani = baniState.banis[index];
         shabadDispatch({
           type: SHABAD_UPDATE,
           payload: {
-            panktis,
-            current: Math.min(restoredIndex, panktis.length - 1),
+            baniId: baniId,
+            panktis: bani.panktis,
+            current: bani.current,
+            home: bani.home
           },
         });
 
-        // Navigate to Shabad page
         appDispatch({ type: SET_APP_PAGE, payload: { page: "shabad" } });
-      } catch (err) {
-        console.error("Failed to load bani", err);
-      } finally {
-        setLoadingBaniId(null);
+        return;
       }
+
+      // Save current bani position before switching
+      // if (
+      //   shabadState.panktis.length > 0 &&
+      //   shabadState.panktis[0].bani_id != null
+      // ) {
+      //   saveBaniPosition(shabadState.panktis[0].bani_id, shabadState.current);
+      // }
+
+      const db = await DB.getInstance();
+      const lines: any = await db.select(`
+        SELECT
+          lines.*,
+          bani_lines.line_id,
+          bani_lines.bani_id,
+          punjabi.translation as punjabi_translation,
+          english.translation as english_translation
+        FROM bani_lines
+        INNER JOIN lines ON lines.id = bani_lines.line_id
+        INNER JOIN shabads ON lines.shabad_id = shabads.id
+        LEFT JOIN translations AS punjabi ON lines.id = punjabi.line_id AND (
+            (shabads.source_id = 1 AND punjabi.translation_source_id = 6) OR
+            (shabads.source_id != 1 AND punjabi.translation_source_id IN (8, 11, 13, 15, 17, 19, 21))
+        )
+        LEFT JOIN translations AS english ON lines.id = english.line_id AND (
+            (shabads.source_id = 1 AND english.translation_source_id = 1) OR
+            (shabads.source_id != 1 AND english.translation_source_id IN (7, 9, 10, 12, 14, 16, 18, 20, 22))
+        )
+        WHERE bani_id = ${baniId}
+        ORDER BY line_group, order_id
+      `);
+
+      if (!lines || lines.length === 0) {
+        console.warn("No lines found for bani", baniId);
+        return;
+      }
+
+      const panktis: Pankti[] = lines.map((line: any) => ({
+        id: line.line_id,
+        bani_id: line.bani_id,
+        gurmukhi: line.gurmukhi,
+        punjabi_translation: line.punjabi_translation,
+        english_translation: line.english_translation,
+        visited: false,
+        home: false,
+      }));
+
+      console.log('dispathing bani add...');
+      baniDispatch({
+          type: BANI_ACTION_Add,
+          payload: {
+          baniId: baniId,
+          panktis: panktis,
+          current: 0,
+          home: 0,
+          }
+      });
+
+      shabadDispatch({
+        type: SHABAD_UPDATE,
+        payload: {
+          baniId: baniId,
+          panktis,
+          current: 0,
+        },
+      });
+
+      appDispatch({ type: SET_APP_PAGE, payload: { page: "shabad" } });
     },
-    [shabadDispatch, appDispatch, shabadState]
+    [shabadDispatch, appDispatch, baniDispatch, shabadState, BANI_ACTION_Add]
   );
 
   if (loadingBanis) {

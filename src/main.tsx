@@ -7,6 +7,7 @@ import { AppProvider } from "./state/providers/AppProvider";
 import * as React from "react";
 import { ShabadProvider } from "./state/providers/ShabadProvider";
 import { SettingProvider } from "./state/providers/SettingContext";
+import { BaniProvider } from "./state/providers/BaniProvider";
 
 createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
@@ -14,7 +15,9 @@ createRoot(document.getElementById("root") as HTMLElement).render(
         <SearchProvider>
           <ShabadProvider>
             <SettingProvider>
-              <App />
+              <BaniProvider>
+                <App />
+              </BaniProvider>
             </SettingProvider>
           </ShabadProvider>
         </SearchProvider>

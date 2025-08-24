@@ -9,7 +9,6 @@ import { BsKeyboard } from "react-icons/bs";
 import SearchList from "./SearchList";
 import { AppContext } from "../../state/providers/AppProvider";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
-import { saveBaniPosition } from "../../utils/BaniPositionTracker";
 
 const SearchButton = styled.button`
     font-size: 14px;
@@ -106,6 +105,7 @@ const SearchPanel: FunctionComponent = () => {
                     WHEN first_letters like '${value}%' THEN 2
                     WHEN first_letters like '%${value}' THEN 3
                     WHEN first_letters like '%${value}%' THEN 4
+                    ELSE 5
                 END AS rank
             FROM lines
             INNER JOIN shabads ON lines.shabad_id = shabads.id
@@ -136,16 +136,20 @@ const SearchPanel: FunctionComponent = () => {
             SELECT
                 search_lines.*,
                 CASE
-                    WHEN gurmukhi_normalized like '${searchValue}' THEN 1
-                    WHEN gurmukhi_normalized like '${searchValue}%' THEN 2
-                    WHEN gurmukhi_normalized like '%${searchValue}' THEN 3
-                    WHEN gurmukhi_normalized like '%${searchValue}%' THEN 4
+                    WHEN TRIM(gurmukhi_normalized) LIKE CONCAT('${searchValue}') THEN 1
+                    WHEN TRIM(gurmukhi_normalized) LIKE CONCAT('${searchValue}', '%') THEN 2
+                    WHEN TRIM(gurmukhi_normalized) LIKE CONCAT('% ', '${searchValue}') THEN 3
+                    WHEN TRIM(gurmukhi_normalized) LIKE CONCAT('% ', '${searchValue}', '%') THEN 4
+                    ELSE 5
                 END AS rank
             FROM search_lines
             INNER JOIN shabads ON search_lines.shabad_id = shabads.id
             WHERE
-                gurmukhi_normalized like '%${searchValue}%'
-            ORDER BY shabads.source_id, rank
+                TRIM(gurmukhi_normalized) LIKE CONCAT('${searchValue}') OR
+                TRIM(gurmukhi_normalized) LIKE CONCAT('${searchValue}', '%') OR
+                TRIM(gurmukhi_normalized) LIKE CONCAT('% ', '${searchValue}') OR
+                TRIM(gurmukhi_normalized) LIKE CONCAT('% ', '${searchValue}', '%')
+            ORDER BY rank, shabads.source_id
             LIMIT 100
         `).then((res: any) => {
             if (!res) {
@@ -194,11 +198,6 @@ const SearchPanel: FunctionComponent = () => {
     }, [searchInputRef]);
 
     const displayShabad = useCallback((pankti: Pankti) => {
-        // Save previous bani position if applicable
-        if (shabadState.panktis.length > 0 && shabadState.panktis[0].bani_id != undefined) {
-            saveBaniPosition(shabadState.panktis[0].bani_id, shabadState.current);
-        }
-
         dispatch({
             type: SEARCH_SHABAD_PANKTI,
             payload: { pankti }
@@ -208,7 +207,7 @@ const SearchPanel: FunctionComponent = () => {
             type: SET_APP_PAGE,
             payload: { page: "shabad" }
         });
-    }, [dispatch, appDispatch, shabadState]);
+    }, []);
 
     useEffect(() => {
         searchInputRef?.current?.focus();

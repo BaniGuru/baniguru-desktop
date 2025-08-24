@@ -1,20 +1,20 @@
 import { createContext, createRef, RefObject, useState} from "react";
-import { CLEAR_RECENT_PANKTIS, GURBANI_SEARCH, REMOVE_RECENT_PANKTI, SEARCH_SHABAD_PANKTI, RECENT_SEARCH_UPDATE } from "../ActionTypes";
+import { CLEAR_RECENT_PANKTIS, GURBANI_SEARCH, REMOVE_RECENT_PANKTI, SEARCH_SHABAD_PANKTI, RECENT_SEARCH_UPDATE, RECENT_VISITED_UPDATE } from "../ActionTypes";
 import { Pankti } from "../../models/Pankti";
 import * as React from "react";
 
-export type recentShabad = {
+export type RecentShabad = {
     shabadId: string;
     pankti: Pankti;
-    visited: [],
+    panktis: Pankti[],
     home: number,
-    active: number,
+    current: number,
 };
 
 type initSearchStateType = {
     searchTerm: string;
     searchShabadPankti: Pankti|null;
-    recent: recentShabad[];
+    recent: RecentShabad[];
 };
 
 const initSearchState = {
@@ -24,6 +24,8 @@ const initSearchState = {
 };
 
 const searchReducer = (state: initSearchStateType, action: any) => {
+    const payload = action.payload;
+
     switch (action.type) {
         case GURBANI_SEARCH:
             return {
@@ -38,29 +40,47 @@ const searchReducer = (state: initSearchStateType, action: any) => {
             };
         }
 
-        case RECENT_SEARCH_UPDATE: {
-            
+        case RECENT_SEARCH_UPDATE:
             const shabadId = action.payload.shabadId;
-            const alreadyExists = state.recent.some(p => p.shabadId === shabadId);
+            const recentIndex = state.recent.findIndex(r => r.shabadId === shabadId);
+            if (recentIndex >= 0) {
+                break;
+            }
 
             return {
                 ...state,
-                recent: alreadyExists ? [
-                    ...state.recent
-                    // TODO: update current to search one
-                ] :
-                [
+                recent: [
                     {
                         shabadId: action.payload.shabadId,
                         pankti: action.payload.pankti,
-                        visited: [],
+                        panktis: action.payload.panktis,
                         home: action.payload.home ?? 0,
-                        active: action.payload.active ?? 0,
+                        current: action.payload.current ?? 0,
                     },
                     ...state.recent,
-                ],
+                ]
             };
-        }
+
+        case RECENT_VISITED_UPDATE:
+            const index = state.recent.findIndex(p => p.shabadId === payload.shabadId);
+            if (index < 0) {
+                break;
+            }
+
+            let recent = [
+                ...state.recent
+            ];
+            recent[index] = {
+                ...state.recent[index],
+                panktis: payload.panktis,
+                home: payload.home,
+                current: payload.current,
+            };
+
+            return {
+                ...state,
+                recent: recent
+            }
 
         case REMOVE_RECENT_PANKTI:
             return {
@@ -73,10 +93,9 @@ const searchReducer = (state: initSearchStateType, action: any) => {
                 ...state,
                 recent: [],
             };
-
-        default:
-            return state;
     }
+
+    return state;
 }
 
 const SearchContext = createContext<{

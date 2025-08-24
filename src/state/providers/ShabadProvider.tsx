@@ -1,8 +1,9 @@
 import { createContext, useReducer } from "react";
 import { Pankti } from "../../models/Pankti";
-import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_NEXT, SHABAD_PANKTI, SHABAD_PREV, SHABAD_SET_HOME, SHABAD_UPDATE } from "../ActionTypes";
+import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_PANKTI, SHABAD_PREV, SHABAD_SET_HOME, SHABAD_UPDATE } from "../ActionTypes";
 
 export type ShabadState = {
+    baniId: number | null,
     shabadId: string,
     panktis: Pankti[],
     current: number;
@@ -10,6 +11,7 @@ export type ShabadState = {
 };
 
 const initShabadState: ShabadState = {
+    baniId: null,
     shabadId: '',
     panktis: [],
     current: -1,
@@ -30,6 +32,12 @@ const shabadReducer = (state: ShabadState, action: any) => {
 
     switch (action.type) {
         case SHABAD_AUTO_NEXT:
+            if (payload.current < 0 ||
+                payload.current >= state.panktis.length
+            ) {
+                break;
+            }
+        
             return {
                 ...state,
                 current: payload.current,
@@ -54,14 +62,12 @@ const shabadReducer = (state: ShabadState, action: any) => {
                 ...payload,
                 home: payload.current,
             };
-            break;
 
         case SHABAD_HOME:
             return {
                 ...state,
                 current: state.home
             };
-            break;
 
         case SHABAD_SET_HOME:
             return {
@@ -69,27 +75,19 @@ const shabadReducer = (state: ShabadState, action: any) => {
                 current: payload.home,
                 home: payload.home,
             };
-            break;
 
         case SHABAD_PANKTI:
             if (payload?.current >= 0 && payload.current < state.panktis.length) {
                 return {
                     ...state,
-                    panktis: {
-                        ...state.panktis,
-                        [payload.current]: {
-                            ...state.panktis[payload.current],
-                            visited: true,
-                        }
-                    },
-                    current: payload.home,
-                    home: payload.home,
+                    current: payload.current,
+                    panktis: markVisited(state.panktis, payload.current)
                 };
             }
             break;
     }
 
-    return shabadState;
+    return state;
 }
 
 const ShabadContext = createContext<{

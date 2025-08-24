@@ -14,4 +14,3 @@ export type Pankti = {
     english_translation: string;
     bani_id?: number;
 };
-

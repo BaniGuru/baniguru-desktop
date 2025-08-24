@@ -1,35 +1,39 @@
 import { useContext, useCallback } from "react";
-import { recentShabad, SearchContext } from "../../state/providers/SearchProvider";
+import { RecentShabad, SearchContext } from "../../state/providers/SearchProvider";
 import { AppContext } from "../../state/providers/AppProvider";
 import {
-  SEARCH_SHABAD_PANKTI,
   SET_APP_PAGE,
   REMOVE_RECENT_PANKTI,
   CLEAR_RECENT_PANKTIS,
+  SHABAD_UPDATE,
 } from "../../state/ActionTypes";
 import Format from "../../utils/Format";
-import { Pankti } from "../../models/Pankti";
 import { MdClose } from "react-icons/md";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
-import { saveBaniPosition } from "../../utils/BaniPositionTracker";
 
 export const RecentPanel = () => {
   const { state, dispatch } = useContext(SearchContext);
   const { dispatch: appDispatch } = useContext(AppContext);
-  const { state: shabadState } = useContext(ShabadContext);
+  const { state: shabadState, dispatch: shabadDispatch } = useContext(ShabadContext);
 
-  const recentShabads = state.recent as recentShabad[] | undefined;
+  const recentShabads = state.recent as RecentShabad[] | undefined;
 
   const displayShabad = useCallback(
-    (pankti: Pankti) => {
-      // Save bani position if in a bani
-      if (shabadState.panktis.length > 0 && shabadState.panktis[0].bani_id != null) {
-        saveBaniPosition(shabadState.panktis[0].bani_id, shabadState.current);
+    (shabadId: string) => {
+      const recentIndex = state.recent.findIndex(r => r.shabadId === shabadId);
+      if (recentIndex < 0) {
+        return;
       }
 
-      dispatch({
-        type: SEARCH_SHABAD_PANKTI,
-        payload: { pankti },
+      const recentShabad: RecentShabad = state.recent[recentIndex];
+      shabadDispatch({
+          type: SHABAD_UPDATE,
+          payload: {
+              shabadId: recentShabad.shabadId,
+              panktis: recentShabad.panktis,
+              home: recentShabad.home,
+              current: recentShabad.current,
+          }
       });
 
       appDispatch({
@@ -37,7 +41,7 @@ export const RecentPanel = () => {
         payload: { page: "shabad" },
       });
     },
-    [dispatch, appDispatch]
+    [dispatch, appDispatch, shabadDispatch, state.recent]
   );
 
   const removePankti = useCallback(
@@ -75,7 +79,7 @@ export const RecentPanel = () => {
               <MdClose />
             </button>
             <span
-              onClick={() => displayShabad(recentShabad.pankti)}
+              onClick={() => displayShabad(recentShabad.pankti.shabad_id)}
               className="gurmukhi-font-2 text-left flex-1 text-gray-600"
               
             >

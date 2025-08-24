@@ -5,11 +5,12 @@ import { DB } from "../../utils/DB";
 import styled from "styled-components";
 import { Pankti } from "../../models/Pankti";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
-import { RECENT_SEARCH_UPDATE, SHABAD_UPDATE } from "../../state/ActionTypes";
+import { RECENT_SEARCH_UPDATE, RECENT_VISITED_UPDATE, SHABAD_UPDATE } from "../../state/ActionTypes";
 import { useSettings } from "../../state/providers/SettingContext";
 import { updateServerPankti } from "../../utils/TauriCommands";
 import FormatAndBreakText from "../../ui/FormatAndBreakText";
 import { AppContext, PAGE_SHABAD } from "../../state/providers/AppProvider";
+import { BANI_ACTION_Add, BANI_ACTION_UPDATE, BaniContext, BaniRecent } from "../../state/providers/BaniProvider";
 
 interface PanelProps {
     startSpace: number;
@@ -67,6 +68,7 @@ const English = styled.div<FontProps>`
 
 const ShabadDisplay: React.FC = () => {
     const searchContext = useContext(SearchContext);
+    const baniContext = useContext(BaniContext);
     const {state, dispatch } = useContext(ShabadContext);
     const {state: appState} = useContext(AppContext);
     const { fontSizes, displaySpacing } = useSettings();
@@ -127,10 +129,9 @@ const ShabadDisplay: React.FC = () => {
                     payload: {
                         shabadId: searchPankti.shabad_id,
                         pankti: panktis[current],
-                        visited: [],
+                        panktis: panktis,
                         home: current,
-                        active: current,
-                        shabad_state: state,
+                        current: current
                     }
                 });
 
@@ -146,7 +147,7 @@ const ShabadDisplay: React.FC = () => {
         };
 
         loadShabad();
-    }, [searchContext.state.searchShabadPankti, appState.page]);
+    }, [searchContext.state.searchShabadPankti]);
 
     const nextPankti = state.panktis[current+1]?.gurmukhi;
 
@@ -175,21 +176,46 @@ const ShabadDisplay: React.FC = () => {
         }
     }, [nextPankti, fontSizes]);
 
+    useEffect(() => {
+        if (state.baniId !== null) {
+            return;
+        }
+
+        searchContext.dispatch({
+            type: RECENT_VISITED_UPDATE,
+            payload: {
+                // baniId: state?.baniId,
+                shabadId: state.shabadId,
+                panktis: state.panktis,
+                current: state.current,
+                home: state.home,
+            }
+        });
+    }, [state.current, state.shabadId, state.baniId]);
+
+    useEffect(() => {
+        if (state.baniId === null) {
+            return;
+        }
+
+        if (baniContext.state.banis.findIndex(r => r.baniId === state.baniId) < 0) {
+            return;
+        }
+
+        baniContext.dispatch({
+            type: BANI_ACTION_UPDATE,
+            payload: {
+                baniId: state.baniId,
+                panktis: state.panktis,
+                current: state.current,
+                home: state.home,
+            }
+        });
+    }, [state.baniId, state.current]);
+
     if (current < 0) {
         return null;
     }
-
-    // const vishraamStyles = {
-    //     heavy: {
-    //         color: '#e56c00',
-    //     },
-    //     medium: {
-    //         color: '#01579b',
-    //     },
-    //     light: {
-    //         color: '#01579b',
-    //     },
-    // };
 
     return (
         <Panel
