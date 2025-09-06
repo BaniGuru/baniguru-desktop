@@ -193,7 +193,7 @@ const ShabadDisplay: React.FC = () => {
                 home: state.home,
             }
         });
-    }, [state.current, state.shabadId, state.baniId]);
+    }, [state.current, state.shabadId, state.baniId, state.home]);
 
     useEffect(() => {
         if (state.baniId === null) {

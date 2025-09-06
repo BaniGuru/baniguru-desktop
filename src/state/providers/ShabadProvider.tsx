@@ -60,7 +60,7 @@ const shabadReducer = (state: ShabadState, action: any) => {
             return {
                 ...initShabadState,
                 ...payload,
-                home: payload.current,
+                home: payload.home ??  payload.current,
             };
 
         case SHABAD_HOME:
