@@ -11,6 +11,7 @@ import { updateServerPankti } from "../../utils/TauriCommands";
 import FormatAndBreakText from "../../ui/FormatAndBreakText";
 import { AppContext, PAGE_SHABAD } from "../../state/providers/AppProvider";
 import { BANI_ACTION_UPDATE, BaniContext } from "../../state/providers/BaniProvider";
+import { useThemeColors } from "../../utils/useTheme";
 
 interface PanelProps {
     startSpace: number;
@@ -76,6 +77,7 @@ const ShabadDisplay: React.FC = () => {
 
     const nextPanktiRef = useRef<HTMLDivElement>(null);
     const [nextPanktiFontSize, setNextPanktiFontSize] = useState(fontSizes["Next Pankti"]);
+    const { palette } = useThemeColors();
 
     useEffect(() => {
         const sendDataToBackend = async () => {
@@ -223,12 +225,14 @@ const ShabadDisplay: React.FC = () => {
             startSpace={displaySpacing.startSpace}
             endSpace={displaySpacing.endSpace}
             leftSpace={displaySpacing.leftSpace}
+            // style={palette.background}
         >
             <div className="flex-1 flex flex-col items-center w-full">
                 <div className="flex flex-row w-full justify-center">
                     <FormatAndBreakText
-                        containerClassName="text-black text-center"
+                        containerClassName="text-center"
                         containerStyle={{
+                            color: palette.gurmukhi,
                             fontSize: fontSizes["ਗੁਰਮੁਖੀ"] + "px",
                             lineHeight: 1.3,
                             fontFamily: "Open Gurbani Akhar",
@@ -239,16 +243,18 @@ const ShabadDisplay: React.FC = () => {
                 </div>
                 
                 <Punjabi
-                    className="text-center text-gray-900"
+                    className="text-center"
                     fontSize={fontSizes["ਪੰਜਾਬੀ"]}
                     contentSpace={displaySpacing.gurmukhiSpace}
+                    style={{ color: palette.punjabi }}
                 >
                     { state.panktis[current]?.punjabi_translation }
                 </Punjabi>
                 <English
-                    className="text-center text-gray-900"
+                    className="text-center"
                     fontSize={fontSizes["English"]}
                     contentSpace={displaySpacing.translationSpace}
+                    style={{ color: palette.english }}
                 >
                     { state.panktis[current]?.english_translation }
                 </English>
@@ -257,10 +263,11 @@ const ShabadDisplay: React.FC = () => {
                 nextPankti &&
                 <NextPanktiGurmukhi
                     ref={nextPanktiRef}
-                    className="gurmukhi-font-2 text-center text-gray-500"
+                    className="gurmukhi-font-2 text-center"
                     fontSize={nextPanktiFontSize}
                     endSpace={displaySpacing.endSpace}
                     leftSpace={displaySpacing.leftSpace}
+                    style={{ color: palette.gurmukhi }}
                 >
                     { Format.removeVishraams(nextPankti) }
                 </NextPanktiGurmukhi>

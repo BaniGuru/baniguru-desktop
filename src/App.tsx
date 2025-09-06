@@ -17,6 +17,8 @@ import useShabadNavigation from "./utils/useShabadNavigation";
 import styled from "styled-components";
 import { appVersion, useSettings } from "./state/providers/SettingContext";
 import { closeWindow, minimizeWindow, useAutoHideCursor } from "./utils/useAutoHideCursor";
+import { useThemeColors } from "./utils/useTheme";
+
 
 type DownloadEvent =
   | { event: "started"; data: { url: string; download_id: number; content_length: number } }
@@ -32,7 +34,7 @@ interface TabPanelProps {
 }
 
 const AppPanel = styled.div`
-
+    
 `;
 
 const TabPanel = styled.div<TabPanelProps>`
@@ -47,6 +49,7 @@ function App() {
   const [progress, setProgress] = useState<number>(0);
   const appRef = useRef<number>(0);
   const {panelSetting, version, updateVersion} = useSettings();
+  const { palette } = useThemeColors();
   
   const contentLengthRef = useRef<number>(0);
   const downloadedRef = useRef<number>(0);
@@ -103,6 +106,7 @@ function App() {
 
         if (path) {
           appContext.setDbPath(path);
+          console.log(path);
           DB.setDbPath(path);
 
           // trigger instance
@@ -167,7 +171,9 @@ function App() {
   }
 
   return (
-    <AppPanel className="w-full h-full bg-gray-200" style={{ cursor: mouseVisible ? "default" : "none" }}>
+    <AppPanel className="w-full h-full"
+      style={ { background: palette.background, cursor: mouseVisible ? "default" : "none" }}
+    >
           {mouseVisible && showTitleBar && (
             <div
               id="header"

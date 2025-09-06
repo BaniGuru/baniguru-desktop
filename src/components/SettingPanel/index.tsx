@@ -2,6 +2,7 @@ import { FaEye } from "react-icons/fa";
 import SettingInput from "../../ui/SettingInput";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { ShabadTheme } from "../../ui/ShabadTheme";
 
 const languages = ["ਗੁਰਮੁਖੀ", "ਪੰਜਾਬੀ", "English", "Next Pankti"];
 
@@ -33,6 +34,14 @@ export const SettingPanel = () => {
       <SettingInput lang="Left Space" />
       <SettingInput lang="Gurmukhi Space" />
       <SettingInput lang="Translation Space" />
+
+      <div className="text-2xl ml-4">Themes</div>
+      <ShabadTheme name="Light" />
+      <ShabadTheme name="Blue" />
+      <ShabadTheme name="Dark" />
+      <ShabadTheme name="Sepia" />
+      <ShabadTheme name="ShabadOs1" />
+      <ShabadTheme name="ShabadOs2" />
 
       <hr />
       <div className="text-2xl ml-4">Overlay</div>
