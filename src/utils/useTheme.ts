@@ -2,12 +2,11 @@
 import { useEffect, useMemo } from "react";
 import { useSettings } from "../state/providers/SettingContext";
 
-import bg1 from './assets/images/guru-granth-sahib-ji-theme1.png';
+// import bg1 from './assets/images/guru-granth-sahib-ji-theme1.png';
 import bg2 from './../assets/images/guru-granth-sahib-ji-theme2.png';
 
 import shabados1 from './../assets/images/logo-shabados-1.png';
 import shabados2 from './../assets/images/logo-shabados-2.png';
-import { url } from "inspector";
 
 /** Define the color palette shape your UI needs */
 export type ThemeColors = {
