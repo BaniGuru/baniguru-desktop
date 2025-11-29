@@ -17,12 +17,13 @@ interface PanelProps {
     startSpace: number;
     endSpace: number;
     leftSpace: number;
+    rightSpace: number;
 }
 
 const Panel = styled.div<PanelProps>`
     padding-top: ${({ startSpace }) => `${startSpace}px`};
     padding-left: ${({ leftSpace }) => `${leftSpace}px`};
-    padding-right: ${({ leftSpace }) => `${leftSpace}px`};
+    padding-right: ${({ rightSpace }) => `${rightSpace}px`};
 `;
 
 interface FontProps {
@@ -72,7 +73,7 @@ const ShabadDisplay: React.FC = () => {
     const baniContext = useContext(BaniContext);
     const {state, dispatch } = useContext(ShabadContext);
     const {state: appState} = useContext(AppContext);
-    const { fontSizes, displaySpacing } = useSettings();
+    const { fontSizes, displaySpacing, activeThemeName, visibility } = useSettings();
     const current = state.current;
 
     const nextPanktiRef = useRef<HTMLDivElement>(null);
@@ -225,9 +226,11 @@ const ShabadDisplay: React.FC = () => {
             startSpace={displaySpacing.startSpace}
             endSpace={displaySpacing.endSpace}
             leftSpace={displaySpacing.leftSpace}
+            rightSpace={displaySpacing.rightSpace}
             // style={palette.background}
+            style={{backgroundColor: activeThemeName === "Bandi Chorh Diwas" ?  "rgb(200 200 200 / 80%)": "rgb(200 200 200 / 20%)"}}
         >
-            <div className="flex-1 flex flex-col items-center w-full">
+            <div className={`flex-1 flex flex-col items-start w-full ${activeThemeName === "Bandi Chorh Diwas" ? 'justify-between' : 'justify-start'}`}>
                 <div className="flex flex-row w-full justify-center">
                     <FormatAndBreakText
                         containerClassName="text-center"
@@ -242,24 +245,32 @@ const ShabadDisplay: React.FC = () => {
                     />
                 </div>
                 
-                <Punjabi
-                    className="text-center"
-                    fontSize={fontSizes["ਪੰਜਾਬੀ"]}
-                    contentSpace={displaySpacing.gurmukhiSpace}
-                    style={{ color: palette.punjabi }}
-                >
-                    { state.panktis[current]?.punjabi_translation }
-                </Punjabi>
-                <English
-                    className="text-center"
-                    fontSize={fontSizes["English"]}
-                    contentSpace={displaySpacing.translationSpace}
-                    style={{ color: palette.english }}
-                >
-                    { state.panktis[current]?.english_translation }
-                </English>
+                <div className="flex flex-col w-full items-center">
+                    { visibility.ਪੰਜਾਬੀ &&
+                        <Punjabi
+                            className="text-center"
+                            fontSize={fontSizes["ਪੰਜਾਬੀ"]}
+                            contentSpace={displaySpacing.gurmukhiSpace}
+                            style={{ color: palette.punjabi }}
+                        >
+                            { state.panktis[current]?.punjabi_translation }
+                        </Punjabi>
+                    }
+                    {
+                        visibility.English &&
+                        <English
+                            className="text-center"
+                            fontSize={fontSizes["English"]}
+                            contentSpace={displaySpacing.translationSpace}
+                            style={{ color: palette.english }}
+                        >
+                            { state.panktis[current]?.english_translation }
+                        </English>
+                    }
+                </div>
             </div>
             {
+                visibility["Next Pankti"] &&
                 nextPankti &&
                 <NextPanktiGurmukhi
                     ref={nextPanktiRef}

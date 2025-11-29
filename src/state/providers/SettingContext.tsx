@@ -5,6 +5,8 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
    ========================= */
 type FontType = "ਗੁਰਮੁਖੀ" | "ਪੰਜਾਬੀ" | "English" | "Next Pankti" | "Search";
 
+export type LangType = "ਗੁਰਮੁਖੀ" | "ਪੰਜਾਬੀ" | "English" | "Next Pankti" | "Akhand Paath";
+
 type Margin = [top: number, left: number, right: number, bottom: number];
 
 type Theme = {
@@ -14,6 +16,7 @@ type Theme = {
 
 type Settings = {
   fontSizes: Record<FontType, number>;
+  visibility: Record<LangType, boolean>;
   panelSetting: {
     panelWidth: number;
     panelHeight: number;
@@ -23,6 +26,7 @@ type Settings = {
     startSpace: number;
     endSpace: number;
     leftSpace: number;
+    rightSpace: number,
     gurmukhiSpace: number;
     translationSpace: number;
   };
@@ -52,6 +56,8 @@ type Settings = {
   getThemeMarginBaseline: (name?: string) => Margin;
   isThemeMarginDefault: (name?: string) => boolean;
   setThemeMarginToDefault: (name?: string) => void;
+
+  setVisibility: any;
 };
 
 /* =========================
@@ -65,10 +71,19 @@ const defaultFontSizes: Record<FontType, number> = {
   "Search": 20,
 };
 
+const defaultVisibility: Record<LangType, boolean> = {
+  "ਗੁਰਮੁਖੀ": true,
+  "ਪੰਜਾਬੀ": true,
+  "English": true,
+  "Next Pankti": true,
+  "Akhand Paath": false,
+};
+
 const defaultDisplaySpacing = {
   startSpace: 10,
   endSpace: 10,
   leftSpace: 10,
+  rightSpace: 10,
   gurmukhiSpace: 12,
   translationSpace: 10,
 };
@@ -90,6 +105,8 @@ const defaultThemes: Theme[] = [
   { name: "Sepia",  margin: [0, 0, 0, 0] },
   { name: "ShabadOs1", margin: [0, 0, 0, 0] },
   { name: "ShabadOs2", margin: [0, 0, 0, 0] },
+  { name: "Bandi Chorh Diwas", margin: [0, 0, 0, 0] },
+  { name: "Guru Nanak Dev Ji", margin: [0, 0, 0, 0] }
 ];
 
 const LOCAL_STORAGE_KEY = "settings";
@@ -146,6 +163,7 @@ const getInitialSettings = () => {
 
       return {
         fontSizes: { ...defaultFontSizes, ...parsed.fontSizes },
+        visibility: {...(parsed.visibility ?? defaultVisibility), "Akhand Paath": false},
         displaySpacing: { ...defaultDisplaySpacing, ...parsed.displaySpacing },
         panelSetting: { ...defaultPanelSetting, ...parsed.panelSetting },
         width: parsed.width ?? defaultWidth,
@@ -184,6 +202,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
   const initial = getInitialSettings();
 
   const [fontSizes, setFontSizes] = useState<Record<FontType, number>>(initial.fontSizes);
+  const [visibility, setVisibility] = useState<Record<LangType, boolean>>(initial.visibility);
   const [displaySpacing, setDisplaySpacing] = useState(initial.displaySpacing);
   const [panelSetting, setPanelSetting] = useState(initial.panelSetting);
   const [width, setWidth] = useState(initial.width);
@@ -206,6 +225,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
       LOCAL_STORAGE_KEY,
       JSON.stringify({
         fontSizes,
+        visibility,
         displaySpacing,
         width,
         height,
@@ -215,7 +235,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
         activeThemeName,
       })
     );
-  }, [fontSizes, displaySpacing, width, height, version, panelSetting, themes, activeThemeName]);
+  }, [fontSizes, visibility, displaySpacing, width, height, version, panelSetting, themes, activeThemeName]);
 
   /* ----- Existing updaters ----- */
   const updateFontSize = (font: FontType, size: number) => {
@@ -319,6 +339,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
   return (
     <SettingContext.Provider
       value={{
+        visibility,
         fontSizes,
         displaySpacing,
         panelSetting,
@@ -340,6 +361,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
         getThemeMarginBaseline,
         isThemeMarginDefault,
         setThemeMarginToDefault,
+        setVisibility,
       }}
     >
       {children}

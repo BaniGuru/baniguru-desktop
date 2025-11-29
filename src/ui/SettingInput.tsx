@@ -2,7 +2,7 @@ import { FaMinus, FaPlus } from "react-icons/fa";
 import { useSettings } from "../state/providers/SettingContext";
 
 const fontLanguages = ["ਗੁਰਮੁਖੀ", "ਪੰਜਾਬੀ", "English", "Next Pankti"];
-const spacingKeys = ["Start Space", "End Space", "Left Space", "Gurmukhi Space", "Translation Space"];
+const spacingKeys = ["Start Space", "End Space", "Left Space", "Right Space", "Gurmukhi Space", "Translation Space"];
 const panelSettingKeys = ["panelWidth", "panelHeight", "panelFontSize"];
 
 const normalizeSpacingKey = (label: string) =>
@@ -24,6 +24,8 @@ const SettingInput = ({
     updateFontSize,
     updateSpacing,
     updatePanelSetting,
+    visibility,
+    setVisibility
   } = useSettings();
 
   const isFont = fontLanguages.includes(lang);
@@ -77,9 +79,17 @@ const SettingInput = ({
     }
   };
 
+  const toggleVisible = () => {
+    if (isFont) {
+      if (lang === "Next Pankti" || lang === "ਪੰਜਾਬੀ" || lang === "English") {
+        setVisibility({...visibility, [lang]: !visibility[lang]});
+      }
+    }
+  };
+
   return (
     <div className="flex flex-row items-center w-full">
-      {Icon && <Icon className="mx-4 flex-none text-xl" />}
+      {Icon && <Icon className="mx-4 flex-none text-xl" onClick={toggleVisible} />}
       <div className={`flex-1 text-xl ${!Icon ? 'ml-4' : ''}`}>{lang}</div>
 
       <button
@@ -93,7 +103,7 @@ const SettingInput = ({
         type="text"
         className="w-14 h-10 text-center border border-gray-300 flex-none"
         min={1}
-        max={99}
+        max={300}
         value={getValue()}
         onChange={handleChange}
       />

@@ -2,7 +2,8 @@
 import { useEffect, useMemo } from "react";
 import { useSettings } from "../state/providers/SettingContext";
 
-// import bg1 from './assets/images/guru-granth-sahib-ji-theme1.png';
+import bandiChorDiwas from './../assets/images/bandi_chor_diwas.jpg';
+import guruNanakDevJi from './../assets/images/guru-nanak-dev-ji.png';
 import bg2 from './../assets/images/guru-granth-sahib-ji-theme2.png';
 
 import shabados1 from './../assets/images/logo-shabados-1.png';
@@ -68,6 +69,18 @@ const THEME_CATALOG: Record<string, ThemeColors> = {
     "punjabi": "#302E2C",
     "english": "#413F3E",
     "background": `url(${shabados2}) center center / cover no-repeat`
+  },
+  "Bandi Chorh Diwas": {
+    gurmukhi: "#000000",
+    "punjabi": "#302E2C",
+    "english": "#413F3E",
+    "background": `url(${bandiChorDiwas}) center center / cover no-repeat`
+  },
+  "Guru Nanak Dev Ji": {
+    gurmukhi: "#000000",
+    "punjabi": "#302E2C",
+    "english": "#413F3E",
+    "background": `url(${guruNanakDevJi}) center center / cover no-repeat`
   }
 };
 

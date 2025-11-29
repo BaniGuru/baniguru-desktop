@@ -21,5 +21,5 @@ yarn install
 
 Run in dev environment
 ```
-yarn run tauri dev
+yarn tauri dev
 ```
