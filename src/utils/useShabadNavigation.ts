@@ -19,11 +19,18 @@ const useShabadNavigation = () => {
             return;
         }
 
+        if (ev.key == "Control") {
+            ev.preventDefault();
+            return;
+        }
+
         switch (ev.key) {
             case " ":
+            case "Meta":
+            case "Escape":
                 ev.preventDefault();
 
-                if (ev.ctrlKey) {
+                if (ev.ctrlKey && ev.key != "Meta") {
                     shabadContext.dispatch({
                         type: SHABAD_SET_HOME,
                         payload: {
@@ -70,6 +77,7 @@ const useShabadNavigation = () => {
                 break;
 
             case "ArrowUp":
+            case "PageUp":
             case "ArrowLeft":
                 ev.preventDefault();
 
@@ -120,6 +128,7 @@ const useShabadNavigation = () => {
 
             case "ArrowRight":
             case "ArrowDown":
+            case "PageDown":
                 ev.preventDefault();
 
                 const nextIndex = shabadContext.state.current + 1;

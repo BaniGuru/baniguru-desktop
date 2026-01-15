@@ -23,3 +23,8 @@ Run in dev environment
 ```
 yarn tauri dev
 ```
+
+Create executables
+```
+yarn tauri build
+```
