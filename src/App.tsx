@@ -122,6 +122,15 @@ function App() {
 
   useEffect(() => {
       const onESC = (ev: KeyboardEvent) => {
+        if (ev.ctrlKey) {
+          ev.preventDefault();
+        }
+
+        if (ev.key == "Control" || ev.key == "F5") {
+            ev.preventDefault();
+            return;
+        }
+
           switch (ev.key) {
               case "h":
               case "H":
