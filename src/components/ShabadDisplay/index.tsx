@@ -5,13 +5,18 @@ import { DB } from "../../utils/DB";
 import styled from "styled-components";
 import { Pankti } from "../../models/Pankti";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
-import { RECENT_SEARCH_UPDATE, RECENT_VISITED_UPDATE, SHABAD_UPDATE } from "../../state/ActionTypes";
+import { RECENT_SEARCH_UPDATE, RECENT_VISITED_UPDATE, SEARCH_SHABAD_PANKTI, SHABAD_UPDATE } from "../../state/ActionTypes";
 import { useSettings } from "../../state/providers/SettingContext";
 import { updateServerPankti } from "../../utils/TauriCommands";
 import FormatAndBreakText from "../../ui/FormatAndBreakText";
 import { AppContext, PAGE_SHABAD } from "../../state/providers/AppProvider";
 import { BANI_ACTION_UPDATE, BaniContext } from "../../state/providers/BaniProvider";
 import { useThemeColors } from "../../utils/useTheme";
+
+import WavesurferPlayer from '@wavesurfer/react';
+
+import soundfile from "../../assets/audio/ang_01.mp3";
+import WaveSurfer from "wavesurfer.js";
 
 interface PanelProps {
     startSpace: number;
@@ -79,6 +84,97 @@ const ShabadDisplay: React.FC = () => {
     const nextPanktiRef = useRef<HTMLDivElement>(null);
     const [nextPanktiFontSize, setNextPanktiFontSize] = useState(fontSizes["Next Pankti"]);
     const { palette } = useThemeColors();
+
+    const [wavesurfer, setWavesurfer] = useState<WaveSurfer|null>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+
+    const [pastTime, setPastTime] = useState(0);
+
+    const onReady = (ws: WaveSurfer) => {
+        fetchStartTime(ws);
+
+        setWavesurfer(ws);
+        setIsPlaying(false);
+    }
+
+    const fetchStartTime = async (ws: WaveSurfer) => {
+        const db = await DB.getSpeechInstance();
+        db.select(`
+            SELECT line_id, shabad_id, end_time
+            FROM audio_transcriptions
+            WHERE end_time in (
+                SELECT max(end_time)
+                FROM audio_transcriptions
+                WHERE audio_source_id = 1
+            ) and audio_source_id = 1
+        `).then(async (rows: any) => {
+            if (rows[0]) {
+                const endTime = rows[0]['end_time'];
+
+                ws.setTime(endTime);
+                setPastTime(endTime);
+
+                const db = await DB.getInstance();
+                db.select(`
+                    select * FROM lines
+                    WHERE id = '${rows[0]['line_id']}'
+                `).then((panktis: any) => {
+                    if (!panktis[0]) {
+                        return;
+                    }
+
+                    searchContext.dispatch({
+                        type: SEARCH_SHABAD_PANKTI,
+                        payload: { pankti: panktis[0] }
+                    });
+                });
+            }
+        });
+    }
+
+    const onPlayPause = async () => {
+        wavesurfer && wavesurfer.playPause();
+    }
+
+    const recordTranscription = async (seektime: number) => {
+        if (!wavesurfer?.isPlaying()) {
+            return;
+        }
+
+        const pankti = state.panktis[state.current];
+        const data = {
+            audio_source_id: 1,
+            transcription: pankti.gurmukhi,
+            start_time: pastTime,
+            end_time: seektime,
+            shabad_id: pankti.shabad_id,
+            line_id: pankti.id,
+        };
+
+        setPastTime(seektime);
+
+        const db = await DB.getSpeechInstance();
+        await db.execute(`
+            INSERT INTO audio_transcriptions (
+                audio_source_id,
+                transcription,
+                start_time,
+                end_time,
+                shabad_id,
+                line_id
+            ) VALUES (
+                ${data.audio_source_id},
+                '${data.transcription}',
+                ${data.start_time},
+                ${data.end_time},
+                '${data.shabad_id}',
+                '${data.line_id}'
+            )
+        `);
+
+        console.log(data);
+    };
 
     useEffect(() => {
         const sendDataToBackend = async () => {
@@ -194,6 +290,8 @@ const ShabadDisplay: React.FC = () => {
                 home: state.home,
             }
         });
+
+        recordTranscription(currentTime);
     }, [state.current, state.shabadId, state.baniId, state.home]);
 
     useEffect(() => {
@@ -283,6 +381,23 @@ const ShabadDisplay: React.FC = () => {
                     { Format.removeVishraams(nextPankti) }
                 </NextPanktiGurmukhi>
             }
+
+            <WavesurferPlayer
+                minPxPerSec={100}
+                height={100}
+                waveColor="violet"
+                url={soundfile}
+                onReady={onReady}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                onTimeupdate={(wavesurfer: WaveSurfer) => {
+                    setCurrentTime(wavesurfer.getCurrentTime())
+                }}
+            />
+
+            <button onClick={onPlayPause}>
+                {isPlaying ? 'Pause' : 'Play'}
+            </button>
         </Panel>
     );
 };

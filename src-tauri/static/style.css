@@ -1,6 +1,6 @@
 @font-face {
     font-family: 'GurbaniAkharThick';
-    src: url('/static/GurbaniAkharThick.ttf') format('truetype');
+    src: url('./GurbaniAkharThick.ttf') format('truetype');
 }
 
 html, body {
@@ -11,13 +11,46 @@ html, body {
     overflow: hidden;
 }
 
-.top-aligned-container {
+/* .top-aligned-container {
     display: inline-flex;
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
     text-align: center;
-    border-radius: 10px;
+} */
+
+.gurbani-banner {
+    position: relative;
+    padding: 18px 110px;         /* spacing inside bar */
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    text-align: center;
+    background: transparent;
+}
+
+/* Blue hex-shape bar */
+.gurbani-banner::before {
+    content: "";
+    position: absolute;
+    inset: 0;                    /* full width + height */
+    background: #0b3358;         /* same blue as design */
+    clip-path: polygon(
+        0 50%,      /* left middle */
+        6% 0,       /* top-left angle */
+        94% 0,      /* top-right angle */
+        100% 50%,   /* right middle */
+        94% 100%,   /* bottom-right angle */
+        6% 100%     /* bottom-left angle */
+    );
+    z-index: 0;
+}
+
+/* text sits above the blue bar */
+.gurbani-banner > * {
+    position: relative;
+    z-index: 1;
 }
 
 .gurmukhi-1 {

@@ -3,6 +3,8 @@ import Database from "@tauri-apps/plugin-sql";
 
 let instance: Database | void;
 
+let speechInstance: Database | void;
+
 let dbPath: String;
 
 const DB = {
@@ -19,6 +21,16 @@ const DB = {
         }
 
         return instance;
+    },
+
+    getSpeechInstance: async () => {
+        if (!speechInstance) {
+            const instancePath = dbPath.replace('bani.db', 'speech.db');
+            console.log(instancePath);
+            speechInstance = await Database.load("sqlite:" + instancePath);
+        }
+
+        return speechInstance;
     },
 
     addSchema: async (db: Database) => {

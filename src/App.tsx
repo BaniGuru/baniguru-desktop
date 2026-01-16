@@ -111,6 +111,7 @@ function App() {
 
           // trigger instance
           DB.getInstance();
+          DB.getSpeechInstance();
         }
       } catch (err) {
         console.error("Download error:", err);
