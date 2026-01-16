@@ -15,7 +15,7 @@ import { useThemeColors } from "../../utils/useTheme";
 
 import WavesurferPlayer from '@wavesurfer/react';
 
-import soundfile from "../../assets/audio/ang_01.mp3";
+import soundfile from "../../assets/audio/prof_satnam_singh_sethi.mp3";
 import WaveSurfer from "wavesurfer.js";
 
 interface PanelProps {
@@ -96,6 +96,7 @@ const ShabadDisplay: React.FC = () => {
 
         setWavesurfer(ws);
         setIsPlaying(false);
+        ws.setPlaybackRate(0.85);
     }
 
     const fetchStartTime = async (ws: WaveSurfer) => {
@@ -117,8 +118,13 @@ const ShabadDisplay: React.FC = () => {
 
                 const db = await DB.getInstance();
                 db.select(`
-                    select * FROM lines
-                    WHERE id = '${rows[0]['line_id']}'
+                    select * from lines
+                    where order_id > (
+                        select order_id FROM lines
+                        WHERE id = '${rows[0]['line_id']}'
+                    )
+                    order by order_id
+                    limit 1
                 `).then((panktis: any) => {
                     if (!panktis[0]) {
                         return;
@@ -142,7 +148,7 @@ const ShabadDisplay: React.FC = () => {
             return;
         }
 
-        const pankti = state.panktis[state.current];
+        const pankti = state.panktis[state.current-1];
         const data = {
             audio_source_id: 1,
             transcription: pankti.gurmukhi,
@@ -150,6 +156,7 @@ const ShabadDisplay: React.FC = () => {
             end_time: seektime,
             shabad_id: pankti.shabad_id,
             line_id: pankti.id,
+            ang: pankti.source_page
         };
 
         setPastTime(seektime);
@@ -162,14 +169,16 @@ const ShabadDisplay: React.FC = () => {
                 start_time,
                 end_time,
                 shabad_id,
-                line_id
+                line_id,
+                ang
             ) VALUES (
                 ${data.audio_source_id},
                 '${data.transcription}',
                 ${data.start_time},
                 ${data.end_time},
                 '${data.shabad_id}',
-                '${data.line_id}'
+                '${data.line_id}',
+                ${data.ang}
             )
         `);
 
@@ -320,13 +329,13 @@ const ShabadDisplay: React.FC = () => {
 
     return (
         <Panel
-            className="w-screen h-screen flex flex-col justify-between overflow-hidden"
+            className="w-screen flex flex-col justify-between overflow-hidden"
             startSpace={displaySpacing.startSpace}
             endSpace={displaySpacing.endSpace}
             leftSpace={displaySpacing.leftSpace}
             rightSpace={displaySpacing.rightSpace}
             // style={palette.background}
-            style={{backgroundColor: activeThemeName === "Bandi Chorh Diwas" ?  "rgb(200 200 200 / 80%)": "rgb(200 200 200 / 20%)"}}
+            style={{backgroundColor: activeThemeName === "Bandi Chorh Diwas" ?  "rgb(200 200 200 / 80%)": "rgb(200 200 200 / 20%); margin-bottom: 40px;"}}
         >
             <div className={`flex-1 flex flex-col items-start w-full ${activeThemeName === "Bandi Chorh Diwas" ? 'justify-between' : 'justify-start'}`}>
                 <div className="flex flex-row w-full justify-center">
@@ -382,8 +391,10 @@ const ShabadDisplay: React.FC = () => {
                 </NextPanktiGurmukhi>
             }
 
+            <div style={{width: '100%', height: '20px'}} />
             <WavesurferPlayer
-                minPxPerSec={100}
+                backend="MediaElement"
+                minPxPerSec={120}
                 height={100}
                 waveColor="violet"
                 url={soundfile}
@@ -398,6 +409,9 @@ const ShabadDisplay: React.FC = () => {
             <button onClick={onPlayPause}>
                 {isPlaying ? 'Pause' : 'Play'}
             </button>
+
+            <div>Ang: {state.panktis[current]?.source_page}</div>
+            <div>Time: {(currentTime / 60).toFixed(1)}</div>
         </Panel>
     );
 };

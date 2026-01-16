@@ -28,3 +28,9 @@ Create executables
 ```
 yarn tauri build
 ```
+
+
+convert audio into 10 mins chunks
+
+https://chunk-audio.netlify.app/
+

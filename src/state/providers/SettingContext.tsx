@@ -163,7 +163,7 @@ const getInitialSettings = () => {
 
       return {
         fontSizes: { ...defaultFontSizes, ...parsed.fontSizes },
-        visibility: {...(parsed.visibility ?? defaultVisibility), "Akhand Paath": false},
+        visibility: {...(parsed.visibility ?? defaultVisibility), "Akhand Paath": true},
         displaySpacing: { ...defaultDisplaySpacing, ...parsed.displaySpacing },
         panelSetting: { ...defaultPanelSetting, ...parsed.panelSetting },
         width: parsed.width ?? defaultWidth,

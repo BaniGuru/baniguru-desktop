@@ -116,7 +116,7 @@ async fn download_sqlite_file_with_channel<'a>(
 
 fn main() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_sql::Builder::new().build())
+        // .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_sql::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
             greet,
