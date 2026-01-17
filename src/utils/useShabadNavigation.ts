@@ -26,16 +26,15 @@ const useShabadNavigation = () => {
 
         switch (ev.key) {
             case " ":
-            case "Meta":
             case "Escape":
                 ev.preventDefault();
 
-                if (ev.ctrlKey && ev.key != "Meta") {
+                if (ev.ctrlKey) {
                     shabadContext.dispatch({
                         type: SHABAD_SET_HOME,
                         payload: {
                             home: shabadContext.state.current,
-                        },
+                       },
                     });
                     
                     break;
