@@ -62,7 +62,6 @@
             containerEl.style.backgroundColor = `${data.background_color}`;
             document.body.style.fontSize = data.font_size + 'px';
 
-            fitTextToOneLineWithEllipsis(gurmukhiEl, data.gurmukhi_font_size);
             fitTextToOneLineWithEllipsis(punjabiEl, data.punjabi_font_size);
             fitTextToOneLineWithEllipsis(englishEl, data.english_font_size);
         }
@@ -117,20 +116,7 @@
     element.style.overflow = 'hidden';    // Hide any overflowing text
     element.style.textOverflow = 'ellipsis'; // Add ellipsis if text overflows
     element.style.fontSize = fontSize + 'px';
-
-    // Reduce the font size until the text fits or the minimum size is reached
-    while (element.scrollWidth > parentWidth && fontSize > 16) {
-        fontSize -= 1;
-        element.style.fontSize = fontSize + 'px';
-        fontChange = true;
-    }
-
-    if (fontChange) {
-        parentElement.style.width = '100%';
-        element.style.width = '100%';
-        parentElement.style.paddingLeft = '0px';
-        parentElement.style.paddingRight = '0px';
-    }
+    element.style.width = '100%';
 }
 
     </script>

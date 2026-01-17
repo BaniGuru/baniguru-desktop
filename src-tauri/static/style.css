@@ -11,13 +11,17 @@ html, body {
     overflow: hidden;
 }
 
+body {
+    width: 100%;
+}
+
 .top-aligned-container {
     display: inline-flex;
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
     text-align: center;
-    border-radius: 10px;
+    width: 100%;
 }
 
 .gurmukhi-1 {
