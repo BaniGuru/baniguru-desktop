@@ -13,6 +13,7 @@ use serde_json::json;
 use include_dir::{include_dir, Dir};
 use mime_guess::from_path;
 use warp::hyper::{Response, Body};
+use warp::cors;
 
 static TEMPLATE_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/templates");
 static STATIC_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/static");
@@ -39,24 +40,49 @@ pub async fn start_web_server(app_handle: AppHandle) {
     let app_handle_clone_for_settings = app_handle.clone();
     let tera_clone = tera.clone();
 
-    let static_files = warp::path!("static" / String).and_then(|filename: String| async move {
+    let cors = warp::cors()
+    .allow_any_origin()
+    .allow_methods(vec!["GET", "POST", "OPTIONS"])
+    .allow_headers(vec!["Content-Type", "Range"]);
 
-    match STATIC_DIR.get_file(&filename) {
-        Some(file) => {
-                let mime = from_path(&filename).first_or_octet_stream();
-                let contents = file.contents();
-                Ok::<_, warp::Rejection>(
-                    Response::builder()
-                        .header("Content-Type", mime.to_string())
-                        .body(Body::from(contents.to_vec()))
-                        .unwrap(),
-                )
+    // let static_files = warp::path!("static" / String).and_then(|filename: String| async move {
+
+    // match STATIC_DIR.get_file(&filename) {
+    //     Some(file) => {
+    //             let mime = from_path(&filename).first_or_octet_stream();
+    //             let contents = file.contents();
+    //             Ok::<_, warp::Rejection>(
+    //                 Response::builder()
+    //                     .header("Content-Type", mime.to_string())
+    //                     .body(Body::from(contents.to_vec()))
+    //                     .unwrap(),
+    //             )
+    //         }
+    //         None => {
+    //             Err(warp::reject::not_found())
+    //         }
+    //     }
+    // });
+
+    let static_files = warp::path("static")
+        .and(warp::path::tail())
+        .and_then(|tail: warp::path::Tail| async move {
+            let path = tail.as_str();
+
+            match STATIC_DIR.get_file(path) {
+                Some(file) => {
+                    let mime = from_path(path).first_or_octet_stream();
+                    Ok::<_, warp::Rejection>(
+                        Response::builder()
+                            .header("Content-Type", mime.to_string())
+                            .header("Accept-Ranges", "bytes")
+                            .body(Body::from(file.contents()))
+                            .unwrap(),
+                    )
+                }
+                None => Err(warp::reject::not_found()),
             }
-            None => {
-                Err(warp::reject::not_found())
-            }
-        }
-    });
+        });
 
     // Render settings page
     let settings_page = warp::path("settings").and_then(move || {
@@ -188,7 +214,7 @@ pub async fn start_web_server(app_handle: AppHandle) {
         .or(api_custom_data)
         .or(static_files);
 
-    warp::serve(routes)
+    warp::serve(routes.with(cors))
         .run(([0, 0, 0, 0], 54321))
         .await;
 }

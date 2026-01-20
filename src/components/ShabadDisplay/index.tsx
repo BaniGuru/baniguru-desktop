@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { SearchContext } from "../../state/providers/SearchProvider";
 import Format from "../../utils/Format";
 import { DB } from "../../utils/DB";
@@ -15,8 +15,10 @@ import { useThemeColors } from "../../utils/useTheme";
 
 import WavesurferPlayer from '@wavesurfer/react';
 
-import soundfile from "../../assets/audio/prof_satnam_singh_sethi.mp3";
+// import soundfile from "../../assets/audio/prof_satnam_singh_sethi_sehaj_paath_parts/out000.mp3";
 import WaveSurfer from "wavesurfer.js";
+import { seekToNearestSilence } from "../../utils/wavesurferUtils";
+import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js'
 
 interface PanelProps {
     startSpace: number;
@@ -90,7 +92,21 @@ const ShabadDisplay: React.FC = () => {
     const [currentTime, setCurrentTime] = useState(0);
 
     const [pastTime, setPastTime] = useState(0);
+    const [audio, setAudio] = useState({
+        id: null,
+        part: null,
+        url: `http://localhost:54321/static/audio/sehaj_path_bhai_sarwan_singh_part1.mp3`,
+    });
 
+    const regionsPlugin = useMemo(
+        () => RegionsPlugin.create(),
+        []
+    );
+
+    const plugins = useMemo(() => {
+        return [regionsPlugin];
+    }, [regionsPlugin]);
+        
     const onReady = (ws: WaveSurfer) => {
         fetchStartTime(ws);
 
@@ -99,23 +115,41 @@ const ShabadDisplay: React.FC = () => {
         ws.setPlaybackRate(0.85);
     }
 
+     useEffect(() => {
+        console.log(audio);
+        if (audio.id && wavesurfer) {
+            // wavesurfer.load(audio.url);
+        }
+    }, [audio.id]);
+
     const fetchStartTime = async (ws: WaveSurfer) => {
         const db = await DB.getSpeechInstance();
+
+        const res: any = await db.select(`
+            SELECT * FROM audio_sources
+            WHERE status = 'Pending'    
+        `);
+
+        const fileName = res[0].file_name;
+        const sourceId = res[0].id;
+        const partId = res[0].current_part ?? null;
+
+        setAudio({
+            id: sourceId,
+            part: partId,
+            url: `http://localhost:54321/static/audio/${fileName}${partId}.mp3`,
+        });
+
         db.select(`
-            SELECT line_id, shabad_id, end_time
+            SELECT line_id, shabad_id, end_time, audio_source_part
             FROM audio_transcriptions
-            WHERE end_time in (
-                SELECT max(end_time)
+            WHERE id in (
+                SELECT max(id)
                 FROM audio_transcriptions
-                WHERE audio_source_id = 1
-            ) and audio_source_id = 1
+                WHERE audio_source_id = ${sourceId}
+            ) and audio_source_id = ${sourceId}
         `).then(async (rows: any) => {
             if (rows[0]) {
-                const endTime = rows[0]['end_time'];
-
-                ws.setTime(endTime);
-                setPastTime(endTime);
-
                 const db = await DB.getInstance();
                 db.select(`
                     select * from lines
@@ -137,18 +171,81 @@ const ShabadDisplay: React.FC = () => {
                 });
             }
         });
+
+        db.select(`
+            SELECT line_id, shabad_id, end_time, audio_source_part
+            FROM audio_transcriptions
+            WHERE end_time in (
+                SELECT max(end_time)
+                FROM audio_transcriptions
+                WHERE audio_source_id = ${sourceId}
+                and audio_source_part = ${partId}
+            ) and audio_source_id = ${sourceId}
+             and audio_source_part = ${partId}
+        `).then(async (rows: any) => {
+            if (rows[0]) {
+                const endTime = rows[0]['end_time'];
+                ws.setTime(endTime);
+                setPastTime(endTime);
+            }
+        });
     }
 
     const onPlayPause = async () => {
         wavesurfer && wavesurfer.playPause();
+    };
+
+    const setStart = async () => {
+        setPastTime(currentTime);
+    };
+
+    const setPrev = async () => {
+        const db = await DB.getSpeechInstance();
+        await db.execute(`
+            UPDATE audio_transcriptions
+            SET end_time = ${currentTime}
+            WHERE id IN (select max(id) FROM audio_transcriptions)
+        `);
+        setPastTime(currentTime);
+        drawRegion(currentTime);
     }
 
-    const recordTranscription = async (seektime: number) => {
-        if (!wavesurfer?.isPlaying()) {
+    const recordEnd = async () => {
+        recordTranscription(currentTime, true);
+    };
+
+    const drawRegion = (seektime: number) => {
+        const duration = 0.02;
+        regionsPlugin.addRegion({
+            start: seektime,
+            end: seektime + duration,
+            color: "rgba(62, 211, 234, 0.82)",
+            drag: true,
+            resize: true
+        });
+    };
+
+    const recordTranscription = async (seektime: number, forceRecord = false) => {
+        if (!wavesurfer?.isPlaying() && !forceRecord) {
             return;
         }
 
-        const pankti = state.panktis[state.current-1];
+        let pankti;
+        if (forceRecord) {
+            pankti = state.panktis[state.current];
+        } else {
+            pankti = (searchContext.state.previousSearchShabadPankti !== null && state.current === 0) ?
+                searchContext.state.previousSearchShabadPankti :
+                state.panktis[state.current-1];
+        }
+
+        if (!pankti?.gurmukhi) {
+            console.log('Error: gurmukhi missing - ', searchContext.state.previousSearchShabadPankti);
+            wavesurfer?.pause();
+            return;
+        }
+
+        drawRegion(seektime);
         const data = {
             audio_source_id: 1,
             transcription: pankti.gurmukhi,
@@ -165,6 +262,7 @@ const ShabadDisplay: React.FC = () => {
         await db.execute(`
             INSERT INTO audio_transcriptions (
                 audio_source_id,
+                audio_source_part,
                 transcription,
                 start_time,
                 end_time,
@@ -173,6 +271,7 @@ const ShabadDisplay: React.FC = () => {
                 ang
             ) VALUES (
                 ${data.audio_source_id},
+                ${audio.part},
                 '${data.transcription}',
                 ${data.start_time},
                 ${data.end_time},
@@ -183,6 +282,13 @@ const ShabadDisplay: React.FC = () => {
         `);
 
         console.log(data);
+
+        if (forceRecord) {
+            searchContext.dispatch({
+                type: SEARCH_SHABAD_PANKTI,
+                payload: { pankti: state.panktis[state.current+1] }
+            });
+        }
     };
 
     useEffect(() => {
@@ -300,7 +406,19 @@ const ShabadDisplay: React.FC = () => {
             }
         });
 
-        recordTranscription(currentTime);
+        const run = async () => {
+
+            if (wavesurfer?.isPlaying()) {
+                wavesurfer.pause();
+                const seekTime = seekToNearestSilence(wavesurfer);
+
+                if (seekTime !== undefined) {
+                    wavesurfer.play();
+                    recordTranscription(seekTime);
+                }
+            }
+        }
+        run();
     }, [state.current, state.shabadId, state.baniId, state.home]);
 
     useEffect(() => {
@@ -393,22 +511,38 @@ const ShabadDisplay: React.FC = () => {
 
             <div style={{width: '100%', height: '20px'}} />
             <WavesurferPlayer
-                backend="MediaElement"
+                // backend="MediaElement"
                 minPxPerSec={120}
-                height={100}
+                height={250}
                 waveColor="violet"
-                url={soundfile}
+                url={audio.url}
                 onReady={onReady}
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
                 onTimeupdate={(wavesurfer: WaveSurfer) => {
                     setCurrentTime(wavesurfer.getCurrentTime())
                 }}
+                plugins={plugins}
             />
 
-            <button onClick={onPlayPause}>
+            <div style={{textAlign: 'center'}}>
+                <button onClick={setPrev} style={{marginRight: '100px'}}>
+                    Redo Prev
+                </button>
+
+            <button onClick={onPlayPause} style={{marginRight: '100px'}}>
                 {isPlaying ? 'Pause' : 'Play'}
             </button>
+            <button onClick={setStart}>
+                Set Start {pastTime}
+            </button>
+
+            <button onClick={recordEnd} style={{marginLeft: '100px'}}>
+                Record End
+            </button>
+
+            <div style={{float: 'right'}}>{currentTime.toFixed(1)}</div>
+            </div>
 
             <div>Ang: {state.panktis[current]?.source_page}</div>
             <div>Time: {(currentTime / 60).toFixed(1)}</div>

@@ -13,6 +13,7 @@ export type RecentShabad = {
 
 type initSearchStateType = {
     searchTerm: string;
+    previousSearchShabadPankti: Pankti|null;
     searchShabadPankti: Pankti|null;
     recent: RecentShabad[];
 };
@@ -20,6 +21,7 @@ type initSearchStateType = {
 const initSearchState = {
     searchTerm: "",
     searchShabadPankti: null,
+    previousSearchShabadPankti: null,
     recent: [],
 };
 
@@ -36,6 +38,7 @@ const searchReducer = (state: initSearchStateType, action: any) => {
         case SEARCH_SHABAD_PANKTI: {
             return {
                 ...state,
+                previousSearchShabadPankti: action.payload?.lastPankti ? action.payload.lastPankti : state.searchShabadPankti,
                 searchShabadPankti: action.payload.pankti
             };
         }

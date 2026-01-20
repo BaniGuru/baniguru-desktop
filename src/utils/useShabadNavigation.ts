@@ -164,9 +164,11 @@ const useShabadNavigation = () => {
                             return;
                         }
 
+                        const lastPankti = shabadContext.state.panktis[shabadContext.state.panktis.length - 1];
+
                         searchContext.dispatch({
                             type: SEARCH_SHABAD_PANKTI,
-                            payload: { pankti: panktis[0] }
+                            payload: { pankti: panktis[0], lastPankti: lastPankti }
                         });
                     });
                 }
