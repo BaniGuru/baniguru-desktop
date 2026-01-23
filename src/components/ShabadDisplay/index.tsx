@@ -112,7 +112,7 @@ const ShabadDisplay: React.FC = () => {
 
         setWavesurfer(ws);
         setIsPlaying(false);
-        ws.setPlaybackRate(0.85);
+        ws.setPlaybackRate(0.95);
     }
 
      useEffect(() => {
@@ -219,7 +219,7 @@ const ShabadDisplay: React.FC = () => {
         regionsPlugin.addRegion({
             start: seektime,
             end: seektime + duration,
-            color: "rgba(62, 211, 234, 0.82)",
+            color: "rgba(255, 255, 255, 0.9)",
             drag: true,
             resize: true
         });
@@ -526,26 +526,26 @@ const ShabadDisplay: React.FC = () => {
             />
 
             <div style={{textAlign: 'center'}}>
-                <button onClick={setPrev} style={{marginRight: '100px'}}>
+                <button onClick={setPrev} style={{marginRight: '100px', color: 'white'}}>
                     Redo Prev
                 </button>
 
-            <button onClick={onPlayPause} style={{marginRight: '100px'}}>
+            <button onClick={onPlayPause} style={{marginRight: '100px', color: 'white'}}>
                 {isPlaying ? 'Pause' : 'Play'}
             </button>
-            <button onClick={setStart}>
+            <button onClick={setStart} style={{color: 'white'}}>
                 Set Start {pastTime}
             </button>
 
-            <button onClick={recordEnd} style={{marginLeft: '100px'}}>
+            <button onClick={recordEnd} style={{marginLeft: '100px', color: 'white'}}>
                 Record End
             </button>
 
-            <div style={{float: 'right'}}>{currentTime.toFixed(1)}</div>
+            <div style={{float: 'right', color: 'white'}}>{currentTime.toFixed(1)}</div>
             </div>
 
-            <div>Ang: {state.panktis[current]?.source_page}</div>
-            <div>Time: {(currentTime / 60).toFixed(1)}</div>
+            <div style={{color: 'white'}}>Ang: {state.panktis[current]?.source_page}</div>
+            <div style={{color: 'white'}}>Time: {(currentTime / 60).toFixed(1)}</div>
         </Panel>
     );
 };

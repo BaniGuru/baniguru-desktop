@@ -2,13 +2,13 @@ import { useRef, useState, CSSProperties, Fragment, useLayoutEffect } from "reac
 
 const vishraamStyles = {
   heavy: {
-    color: "#e56c00",
+    color: "#f09413",
   },
   medium: {
-    color: "#01579b",
+    color: "#eb9d2f",
   },
   light: {
-    color: "#01579b",
+    color: "#eb9d2f",
   },
 };
 
@@ -106,7 +106,7 @@ const FormatAndBreakText: React.FC<Props> = ({
   const getColorStyle = (word: string): CSSProperties => {
     if (word.endsWith(";")) return vishraamStyles.heavy;
     if (word.endsWith(".")) return vishraamStyles.medium;
-    if (word.endsWith(",")) return vishraamStyles.light;
+    // if (word.endsWith(",")) return vishraamStyles.light;
     return {};
   };
 
