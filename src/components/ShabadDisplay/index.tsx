@@ -281,9 +281,28 @@ const ShabadDisplay: React.FC = () => {
             )
         `);
 
-        console.log(data);
-
         if (forceRecord) {
+            const lineId = state.panktis[state.current].id;
+            const db = await DB.getInstance();
+            db.select(`
+                select * from lines
+                where order_id > (
+                    select order_id FROM lines
+                    WHERE id = '${lineId}'
+                )
+                order by order_id
+                limit 1
+            `).then((panktis: any) => {
+                if (!panktis[0]) {
+                    return;
+                }
+
+                searchContext.dispatch({
+                    type: SEARCH_SHABAD_PANKTI,
+                    payload: { pankti: panktis[0] }
+                });
+            });
+
             searchContext.dispatch({
                 type: SEARCH_SHABAD_PANKTI,
                 payload: { pankti: state.panktis[state.current+1] }
@@ -526,26 +545,27 @@ const ShabadDisplay: React.FC = () => {
             />
 
             <div style={{textAlign: 'center'}}>
+                <button onClick={setStart} style={{color: 'white', marginRight: '100px'}}>
+                    Set Start {pastTime}
+                </button>
                 <button onClick={setPrev} style={{marginRight: '100px', color: 'white'}}>
                     Redo Prev
                 </button>
 
-            <button onClick={onPlayPause} style={{marginRight: '100px', color: 'white'}}>
-                {isPlaying ? 'Pause' : 'Play'}
-            </button>
-            <button onClick={setStart} style={{color: 'white'}}>
-                Set Start {pastTime}
-            </button>
+                <button onClick={onPlayPause} style={{marginRight: '100px', color: 'white'}}>
+                    {isPlaying ? 'Pause' : 'Play'}
+                </button>
+            
+                <button onClick={recordEnd} style={{marginLeft: '100px', color: 'white'}}>
+                    Record End
+                </button>
 
-            <button onClick={recordEnd} style={{marginLeft: '100px', color: 'white'}}>
-                Record End
-            </button>
-
-            <div style={{float: 'right', color: 'white'}}>{currentTime.toFixed(1)}</div>
+                <div style={{float: 'right', color: 'white'}}>/ {((wavesurfer?.getDuration() ?? 0) / 60).toFixed(1)}</div>
+                <div style={{float: 'right', color: 'white'}}>{(currentTime / 60).toFixed(2)}&nbsp;</div>
             </div>
 
             <div style={{color: 'white'}}>Ang: {state.panktis[current]?.source_page}</div>
-            <div style={{color: 'white'}}>Time: {(currentTime / 60).toFixed(1)}</div>
+            <div style={{color: 'white'}}>Time: {currentTime.toFixed(1)}</div>
         </Panel>
     );
 };
