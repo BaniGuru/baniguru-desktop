@@ -8,7 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 src/assets/*.sqlite
-src/assets/audio
+src-tauri/static/audio
 node_modules
 dist
 dist-ssr
