@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { Pankti } from "../../models/Pankti";
 import Format from "../../utils/Format";
@@ -6,6 +6,7 @@ import styled from "styled-components";
 import { TiTick, TiTickOutline } from "react-icons/ti";
 import { TbHome } from "react-icons/tb";
 import { SHABAD_PANKTI, SHABAD_SET_HOME } from "../../state/ActionTypes";
+import SonioxSTTPunjabi from "./SonioxSTTPunjabi";
 
 type ListItemProps = {
     active: boolean;
@@ -102,6 +103,7 @@ const ShabadPanel: React.FC = () => {
     }, [state.current]);
 
     return (
+        <>
         <ul className="flex-1 overflow-y-auto" ref={listRef}>
             {state.panktis.map((pankti: Pankti, index: number) => (
                 <ListItem
@@ -124,6 +126,7 @@ const ShabadPanel: React.FC = () => {
                 </ListItem>
             ))}
         </ul>
+        </>
     );
 };
 

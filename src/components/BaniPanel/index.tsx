@@ -5,6 +5,7 @@ import { DB } from "../../utils/DB";
 import { Pankti } from "../../models/Pankti";
 import { SET_APP_PAGE, SHABAD_UPDATE } from "../../state/ActionTypes";
 import { BANI_ACTION_Add, BaniContext, BaniRecent } from "../../state/providers/BaniProvider";
+import { getGurmukhiWords } from "../ShabadDisplay";
 
 type Bani = {
   id: number;
@@ -20,6 +21,7 @@ export const BaniPanel = () => {
   const [banis, setBanis] = useState<Bani[]>([]);
   const [loadingBaniId, setLoadingBaniId] = useState<number | null>(null);
   const [loadingBanis, setLoadingBanis] = useState(false);
+  const [baniPart, setBaniPart] = useState(1);
 
   // Fetch all banis on mount
   useEffect(() => {
@@ -42,19 +44,23 @@ export const BaniPanel = () => {
     fetchBanis();
   }, []);
 
+  const formatBaniPanktis = (panktis: Pankti[]) => {
+    return panktis.map((pankti: Pankti) => { return {...pankti, ...getGurmukhiWords(pankti.gurmukhi_unicode)} });
+  };
+
   // Load bani lines when a bani is clicked
   const loadBaniLines = useCallback(
     async (baniId: number) => {
       setLoadingBaniId(baniId);
       const index = baniState.banis.findIndex((baniRecent: BaniRecent) => baniRecent.baniId === baniId)
+
       if (index >= 0) {
-        console.log('bani exists already');
         const bani = baniState.banis[index];
         shabadDispatch({
           type: SHABAD_UPDATE,
           payload: {
             baniId: baniId,
-            panktis: bani.panktis,
+            panktis: formatBaniPanktis(bani.panktis),
             current: bani.current,
             home: bani.home
           },
@@ -73,6 +79,15 @@ export const BaniPanel = () => {
       // }
 
       const db = await DB.getInstance();
+
+      // to do move this to speech side instead
+      let limit = -1;
+      let offset = 0;
+      if (baniId == 13) {
+        limit = Math.ceil(734 / 4);
+        offset = (baniPart - 1) * limit;
+      }
+
       const lines: any = await db.select(`
         SELECT
           lines.*,
@@ -93,6 +108,8 @@ export const BaniPanel = () => {
         )
         WHERE bani_id = ${baniId}
         ORDER BY line_group, order_id
+        limit ${limit}
+        offset ${offset}
       `);
 
       if (!lines || lines.length === 0) {
@@ -104,6 +121,7 @@ export const BaniPanel = () => {
         id: line.line_id,
         bani_id: line.bani_id,
         gurmukhi: line.gurmukhi,
+        gurmukhi_unicode: line.gurmukhi_unicode,
         punjabi_translation: line.punjabi_translation,
         english_translation: line.english_translation,
         visited: false,
@@ -124,7 +142,7 @@ export const BaniPanel = () => {
         type: SHABAD_UPDATE,
         payload: {
           baniId: baniId,
-          panktis,
+          panktis: formatBaniPanktis(panktis),
           current: 0,
         },
       });
