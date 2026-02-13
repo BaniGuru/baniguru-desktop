@@ -12,6 +12,8 @@ import FormatAndBreakText from "../../ui/FormatAndBreakText";
 import { AppContext, PAGE_SHABAD } from "../../state/providers/AppProvider";
 import { BANI_ACTION_UPDATE, BaniContext } from "../../state/providers/BaniProvider";
 import { useThemeColors } from "../../utils/useTheme";
+import SonioxSTTPunjabi from "../ShabadPanel/SonioxSTTPunjabi";
+import { cleanGurmukhiUnicode } from "../../utils/autoPilotHelpers";
 
 interface PanelProps {
     startSpace: number;
@@ -68,6 +70,25 @@ const English = styled.div<FontProps>`
     font-weight: 700;
 `;
 
+export const getGurmukhiWords = (gurmukhi_unicode: string) => {
+    let gurmukhi_words = cleanGurmukhiUnicode(gurmukhi_unicode, false).split(" ");
+
+    let vishraamIndex = -1;
+    gurmukhi_words = gurmukhi_words.map((word, index) => {
+        word = word.trim();
+        const searchIndex = word.indexOf(',');
+        if (searchIndex == (word.length - 1)) {
+            vishraamIndex = index + 1;
+        } else if (searchIndex !== -1) {
+            vishraamIndex = index;
+        }
+
+        return word.replaceAll(',', '').trim();
+    });
+
+    return {gurmukhi_words, vishraam_idx: vishraamIndex};
+}
+
 const ShabadDisplay: React.FC = () => {
     const searchContext = useContext(SearchContext);
     const baniContext = useContext(BaniContext);
@@ -78,6 +99,7 @@ const ShabadDisplay: React.FC = () => {
 
     const nextPanktiRef = useRef<HTMLDivElement>(null);
     const [nextPanktiFontSize, setNextPanktiFontSize] = useState(fontSizes["Next Pankti"]);
+    const [speechTerms, setSpeechTerms] = useState<string[]>([]);
     const { palette } = useThemeColors();
 
     useEffect(() => {
@@ -89,6 +111,16 @@ const ShabadDisplay: React.FC = () => {
 
         sendDataToBackend();
     }, [state.panktis, state.current]);
+
+    
+    const updateSpeechTokens = (panktis: any) => {
+        let tokens: string[] = [];
+        panktis.forEach((pankti: Pankti) => {
+            tokens.push(cleanGurmukhiUnicode(pankti.gurmukhi_unicode));
+        });
+
+        setSpeechTerms(tokens);
+    }
 
     useEffect(() => {
         const loadShabad = async () => {
@@ -123,9 +155,13 @@ const ShabadDisplay: React.FC = () => {
                     return;
                 }
 
+                panktis = panktis.map((pankti: Pankti) => { return {...pankti, ...getGurmukhiWords(pankti.gurmukhi_unicode)} });
+
                 const current = panktis.findIndex(
                     (pankti: Pankti) => pankti.id === searchPankti.id
                 );
+
+                updateSpeechTokens(panktis);
 
                 searchContext.dispatch({
                     type: RECENT_SEARCH_UPDATE,
@@ -151,6 +187,12 @@ const ShabadDisplay: React.FC = () => {
 
         loadShabad();
     }, [searchContext.state.searchShabadPankti]);
+
+    useEffect(() => {
+        if (state.baniId) {
+            updateSpeechTokens(state.panktis);
+        }
+    }, [state.baniId]);
 
     const nextPankti = state.panktis[current+1]?.gurmukhi;
 
@@ -269,6 +311,7 @@ const ShabadDisplay: React.FC = () => {
                     }
                 </div>
             </div>
+            <SonioxSTTPunjabi speechTerms={speechTerms} baniId={state.baniId} />
             {
                 visibility["Next Pankti"] &&
                 nextPankti &&
