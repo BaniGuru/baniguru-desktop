@@ -16,4 +16,6 @@ export type Pankti = {
     bani_id?: number;
     gurmukhi_words: string[];
     vishraam_idx: number,
+    reverse_gurmukhi_words: string[];
+    reverse_vishraam_idx: number,
 };

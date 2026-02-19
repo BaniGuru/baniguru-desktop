@@ -14,6 +14,7 @@ import { BANI_ACTION_UPDATE, BaniContext } from "../../state/providers/BaniProvi
 import { useThemeColors } from "../../utils/useTheme";
 import SonioxSTTPunjabi from "../ShabadPanel/SonioxSTTPunjabi";
 import { cleanGurmukhiUnicode } from "../../utils/autoPilotHelpers";
+import { formatPanktis, getShabadIds } from "../../utils/shabadUtil";
 
 interface PanelProps {
     startSpace: number;
@@ -69,25 +70,6 @@ const English = styled.div<FontProps>`
     font-family: "Noto Sans", sans-serif;
     font-weight: 700;
 `;
-
-export const getGurmukhiWords = (gurmukhi_unicode: string) => {
-    let gurmukhi_words = cleanGurmukhiUnicode(gurmukhi_unicode, false).split(" ");
-
-    let vishraamIndex = -1;
-    gurmukhi_words = gurmukhi_words.map((word, index) => {
-        word = word.trim();
-        const searchIndex = word.indexOf(',');
-        if (searchIndex == (word.length - 1)) {
-            vishraamIndex = index + 1;
-        } else if (searchIndex !== -1) {
-            vishraamIndex = index;
-        }
-
-        return word.replaceAll(',', '').trim();
-    });
-
-    return {gurmukhi_words, vishraam_idx: vishraamIndex};
-}
 
 const ShabadDisplay: React.FC = () => {
     const searchContext = useContext(SearchContext);
@@ -155,8 +137,6 @@ const ShabadDisplay: React.FC = () => {
                     return;
                 }
 
-                panktis = panktis.map((pankti: Pankti) => { return {...pankti, ...getGurmukhiWords(pankti.gurmukhi_unicode)} });
-
                 const current = panktis.findIndex(
                     (pankti: Pankti) => pankti.id === searchPankti.id
                 );
@@ -168,7 +148,8 @@ const ShabadDisplay: React.FC = () => {
                     payload: {
                         shabadId: searchPankti.shabad_id,
                         pankti: panktis[current],
-                        panktis: panktis,
+                        panktis: formatPanktis(panktis),
+                        shabadIds: getShabadIds(panktis),
                         home: current,
                         current: current
                     }
@@ -178,7 +159,8 @@ const ShabadDisplay: React.FC = () => {
                     type: SHABAD_UPDATE,
                     payload: {
                         shabadId: searchPankti.shabad_id,
-                        panktis: panktis,
+                        panktis: formatPanktis(panktis),
+                        shabadIds: getShabadIds(panktis),
                         current: current,
                     }
                 });

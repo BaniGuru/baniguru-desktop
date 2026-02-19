@@ -6,6 +6,7 @@ export type ShabadState = {
     baniId: number | null,
     shabadId: string,
     panktis: Pankti[],
+    shabadIds: string[],
     current: number;
     home: number;
 };
@@ -14,6 +15,7 @@ const initShabadState: ShabadState = {
     baniId: null,
     shabadId: '',
     panktis: [],
+    shabadIds: [],
     current: -1,
     home: -1,
 };
