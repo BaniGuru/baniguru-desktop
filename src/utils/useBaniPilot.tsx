@@ -22,34 +22,60 @@ export const useBaniPilot = () => {
     const [visitedIdxs, setVisistedIdxs] = useState<Number[]>([]);
 
     const findNextPanki = (scores: PanktiScore[], currentPankti: Pankti) => {
+        // allow current shabad and next pankti
+        scores = scores.filter(score => score.shabadId === currentPankti.shabad_id || score.panktiIdx === (state.current+1));
+
+        if (scores.length === 0) {
+            return [];
+        }
+
         // 1. prefer full match
         const fullMatches = scores.filter((score) => score.fullMatch);
         if (fullMatches.length === 1) {
             return fullMatches;
         }
 
-        // 2. prefer full start or full vishram
+        // 2. prefer full start or full vishram but with more than 2 words match
         const fullStartOrVishraam = scores.filter((score) => score.startFull || score.vishraamFull);
-        if (fullStartOrVishraam.length === 1) {
+        if (fullStartOrVishraam.length === 1 && scores[0].totalMatches > 2) {
             return fullStartOrVishraam;
         }
 
         // 3. prefer next possible (next pankti or next not visited or rahao)
-        const firstNotVisited = state.panktis.findIndex(
-            (p, index) => p.visited !== true && !visitedIdxs.includes(index) && p.type_id > 2
+        let notVisitedIdx = state.panktis.findIndex(
+            (p, index) => p.visited !== true && !visitedIdxs.includes(index)
         );
-        const rahaoPanktis: number[] = [];
-        state.panktis.forEach((p, index) => {
-            // allow rahao pankti of current shabad
-            if (p.type_id === 3 && p.shabad_id === currentPankti.shabad_id) {
-                rahaoPanktis.push(index);
+
+        let possiblePanktis = [state.current, notVisitedIdx];
+        if (notVisitedIdx !== -1 && state.panktis[notVisitedIdx].type_id === 2) {
+            notVisitedIdx = state.panktis.findIndex(
+                (p, index) => p.visited !== true && !visitedIdxs.includes(index) && index > notVisitedIdx
+            );
+            if (notVisitedIdx !== -1) {
+                possiblePanktis.push(notVisitedIdx);
             }
-        });
-        const possiblePanktis = [firstNotVisited, ...rahaoPanktis].filter(idx => idx != -1);
+        }
+        
+        // TODO: allow rahoa pankti if not bani navigation
+        // but need careful implementation to avoid noise
+        const rahaoPanktis: number[] = [];
+        // state.panktis.forEach((p, index) => {
+        //     // allow rahao pankti of current shabad
+        //     if (p.type_id === 3 && p.shabad_id === currentPankti.shabad_id) {
+        //         rahaoPanktis.push(index);
+        //     }
+        // });
+        possiblePanktis = [...possiblePanktis, ...rahaoPanktis].filter(idx => idx != -1);
 
         // possible next but continue match
         const possibleNext = scores.filter((score) => {
-            possiblePanktis.includes(score.panktiIdx) && score.continueMatch
+            possiblePanktis.includes(score.panktiIdx) && score.continueMatch &&
+            (
+                // allow single word for next pankti
+                score.panktiIdx === (state.current + 1) ||
+                // match more than two matches for non visited and rahao panktis
+                (score.panktiIdx !== state.current + 1 && score.totalMatches > 2)
+            )
         });
         if (possibleNext.length === 1) {
             return possibleNext;
@@ -91,6 +117,7 @@ export const useBaniPilot = () => {
 
         if (matchingScores.length > 1) {
             matchingScores = findNextPanki(matchingScores, state.panktis[state.current]);
+            console.log('current shabad: ', state.panktis[state.current].shabad_id);
             console.log('possible matches: ', JSON.stringify(matchingScores));
         }
 

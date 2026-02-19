@@ -5,7 +5,7 @@ import { DB } from "../../utils/DB";
 import { Pankti } from "../../models/Pankti";
 import { SET_APP_PAGE, SHABAD_UPDATE } from "../../state/ActionTypes";
 import { BANI_ACTION_Add, BaniContext, BaniRecent } from "../../state/providers/BaniProvider";
-import { getGurmukhiWords } from "../ShabadDisplay";
+import { formatPanktis, getShabadIds } from "../../utils/shabadUtil";
 
 type Bani = {
   id: number;
@@ -44,10 +44,6 @@ export const BaniPanel = () => {
     fetchBanis();
   }, []);
 
-  const formatBaniPanktis = (panktis: Pankti[]) => {
-    return panktis.map((pankti: Pankti) => { return {...pankti, ...getGurmukhiWords(pankti.gurmukhi_unicode)} });
-  };
-
   // Load bani lines when a bani is clicked
   const loadBaniLines = useCallback(
     async (baniId: number) => {
@@ -60,7 +56,8 @@ export const BaniPanel = () => {
           type: SHABAD_UPDATE,
           payload: {
             baniId: baniId,
-            panktis: formatBaniPanktis(bani.panktis),
+            panktis: formatPanktis(bani.panktis),
+            shabadIds: getShabadIds(bani.panktis),
             current: bani.current,
             home: bani.home
           },
@@ -142,7 +139,8 @@ export const BaniPanel = () => {
         type: SHABAD_UPDATE,
         payload: {
           baniId: baniId,
-          panktis: formatBaniPanktis(panktis),
+          panktis: formatPanktis(panktis),
+          shabadIds: getShabadIds(panktis),
           current: 0,
         },
       });

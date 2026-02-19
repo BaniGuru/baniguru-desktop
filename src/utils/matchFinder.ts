@@ -1,4 +1,3 @@
-import { get as levenshteinGet } from "fast-levenshtein";
 import { Pankti } from "../models/Pankti";
 
 export type PanktiScore = {
@@ -15,27 +14,11 @@ export type PanktiScore = {
     vishraamFull: boolean,
     fullMatch: boolean,
     panktiIdx: number;
+    shabadId: string;
+    panktiStartIdx: number;
+    panktiEndIdx: number;
     firstMatchIdx: number;
     lastMatchIdx: number;
-};
-
-const getDefaultScore = (): PanktiScore => {
-    return {
-        matches: [],
-        tokenIdxs: [],
-        wordIdxs: [],
-        totalMatches: 0,
-        panktiStarted: false,
-        vishraamStarted: false,
-        panktiFinished: false,
-        continueMatch: false,
-        startFull: false,
-        vishraamFull: false,
-        fullMatch: false,
-        panktiIdx: -1,
-        firstMatchIdx: -1,
-        lastMatchIdx: -1,
-    }
 };
 
 export const isMatching = (word: string, token: string): boolean => {
@@ -49,7 +32,7 @@ export const isMatching = (word: string, token: string): boolean => {
 
     if (
         token[token.length - 1] !== lastChar &&
-        (lastChar === 'ੁ' || lastChar === 'ਿ'  || lastChar === 'ਂ') &&
+        (lastChar === 'ੁ' || lastChar === 'ਿ' || lastChar === 'ਂ') &&
         wordWithoutLastMatra === token
     ) {
         return true;
@@ -58,45 +41,22 @@ export const isMatching = (word: string, token: string): boolean => {
     return false;
 };
 
-const pushScore = (
-    score: PanktiScore,
-    word: string,
-    tokenIndex: number,
-    wordIndex: number,
-    totalWords: number,
-    vishraam_idx: number,
-): PanktiScore => {
-    score.matches.push(word);
-    score.tokenIdxs.push(tokenIndex);
-    score.wordIdxs.push(wordIndex);
-
-    if (wordIndex === (totalWords - 1)) {
-        score.panktiStarted = true;
-
-        if (score.continueMatch && score.vishraamStarted) {
-            score.startFull = true;
-        }
-    }
-
-    if (wordIndex === vishraam_idx) {
-        score.vishraamStarted = true;
-    }
-
-    if (wordIndex === (totalWords - 1)) {
-        score.panktiFinished = true;
-
-        if (score.continueMatch && score.vishraamStarted) {
-            score.vishraamFull = true;
-        }
-    }
-
-    return score;
-};
-
 export const findLatestMatches = (scores: PanktiScore[]) => {
     if (!scores.length) return [];
 
-    const sorted = [...scores].sort((a, b) => a.firstMatchIdx - b.firstMatchIdx);
+    // todo: could use next possible panktis to remove matches less than 2 match (in future)
+    const sorted = [...scores].filter((score) => (score.totalMatches > 1 || score.firstMatchIdx !== 0))
+    .sort((a, b) => {
+        // Step 1: Ascending firstMatchIdx
+        if (a.firstMatchIdx !== b.firstMatchIdx) {
+            return a.firstMatchIdx - b.firstMatchIdx;
+        }
+
+        // Step 2: Descending lastMatchIdx
+        return b.lastMatchIdx - a.lastMatchIdx;
+    });
+
+    if (sorted.length === 0) return [];
 
     // Get the first pankti based on lastMatchIdx (due to reverse)
     const firstPanti = sorted[0];
@@ -113,150 +73,128 @@ export const findLatestMatches = (scores: PanktiScore[]) => {
     });
 };
 
-export const findMatches = (tokens: string[], panktis: Pankti[], current: number): PanktiScore[] => {
-    let scores: PanktiScore[] = [];
-    const currentPankti = panktis[current];
-    const NO_LAST_MATCH = -1;
+export const findBestScore = (
+    tokens: string[],
+    words: string[],
+    vishraam_idx: number
+): PanktiScore | null => {
 
-    // reserve tokens
-    const reverseTokens = [...tokens].reverse();
-    console.log('reverse tokens: ', JSON.stringify(reverseTokens));
+    let matches: PanktiScore[] = [];
 
-    for (let panktiIdx = 0; panktiIdx < panktis.length; panktiIdx++) {
-        let score = getDefaultScore();
-        let lastMatchIdx = -1;
-        let lastWordIdx = -1;
-        let prevMatchIdx = -1;
-        let sameMatchCouter = 0;
+    for (let i = 0; i < words.length; i++) {
+        for (let j = 0; j < tokens.length; j++) {
 
-        // reverse words
-        const pankti = panktis[panktiIdx];
-        const words = pankti.gurmukhi_words;
-        const totalWords = pankti.gurmukhi_words.length;
-        const vishraam_idx = pankti.vishraam_idx;
-        const reverse_vishraam_idx = totalWords - 1 - vishraam_idx; // 2 = 6 - 1 - 3
-        const reverseWords = [...words].reverse();
+            let k = 0;
 
-        // find match
-        let allowedLength = reverseWords.length;
-        outer:
-        for (let wordIndex = 0; wordIndex < allowedLength; wordIndex++) {
-            const word = reverseWords[wordIndex];
-
-            for (let tokenIndex = 0; tokenIndex < reverseTokens.length; tokenIndex++) {
-                const token = reverseTokens[tokenIndex];
-                let isMatch = isMatching(word, token);
-
-                // similar words (skip to next if wasn't previous there)
-                // test: mai sat sat sat mai sat sat sat sadha
-                // test: gobind gobind gobind sang
-                if (isMatch &&
-                    wordIndex < (totalWords - 1) && // not last one
-                    (tokenIndex + sameMatchCouter + 1) < reverseTokens.length &&
-                    (wordIndex + sameMatchCouter + 1) < totalWords &&
-                    reverseTokens[tokenIndex + sameMatchCouter + 1] === word[wordIndex + sameMatchCouter + 1] && // same word next
-                    (wordIndex + sameMatchCouter + 1) < prevMatchIdx // before already matched word
-                ) {
-                    sameMatchCouter++;
-                    continue outer;
-                }
-
-                // skip token until reach to same match token position
-                // since we are on last same word, keep decreasing words to add these to list
-                if (isMatch && sameMatchCouter > 0) {
-                    let serial = 0;
-                    while (sameMatchCouter > 0) {
-                        const sameWord = reverseWords[sameMatchCouter];
-                        const sameWordIdx = wordIndex - serial;
-                        const sameTokenIdx = tokenIndex + sameMatchCouter;
-                        score = pushScore(score, sameWord, sameTokenIdx, sameWordIdx, totalWords, reverse_vishraam_idx);
-                        sameMatchCouter--;
-                        serial++;
-                        continue;
-                    }
-
-                    // do not process tokens anymore
-                    break;
-                }
-
-                // first match
-                if (isMatch && lastMatchIdx === NO_LAST_MATCH) {
-                    lastMatchIdx = tokenIndex;
-                    lastWordIdx = wordIndex;
-                    console.log(
-                        'lastMatchIdx: ', lastMatchIdx,
-                        ' lastWordIdx: ', lastWordIdx,
-                        ' reverse_vishraam_idx: ', reverse_vishraam_idx,
-                        ' totalWords: ', totalWords,
-                        ' vishraam_idx: ', vishraam_idx,
-                        'words: ', JSON.stringify(words)
-                    );
-                    prevMatchIdx = tokenIndex;
-                    score.continueMatch = true;
-                    score = pushScore(score, word, tokenIndex, wordIndex, totalWords, reverse_vishraam_idx);
-                    continue;
-                }
-
-                // skip previous matched indexes
-                if (score.tokenIdxs.includes(tokenIndex)) {
-                    continue;
-                }
-
-                // vishraam matches
-                if (isMatch && (tokenIndex - lastMatchIdx) === (wordIndex - lastWordIdx)) {
-                    score.continueMatch = (tokenIndex - prevMatchIdx) === 1;
-                    score = pushScore(score, word, tokenIndex, wordIndex, totalWords, reverse_vishraam_idx);
-                    prevMatchIdx = tokenIndex;
-                    continue;
-                }
-
-                if (isMatch && panktiIdx > reverse_vishraam_idx && (
-                    (tokenIndex - lastMatchIdx) === (wordIndex - lastWordIdx)
-                )) {
-                    score.continueMatch = (tokenIndex - prevMatchIdx) === 1;
-                    score = pushScore(score, word, tokenIndex, wordIndex, totalWords, reverse_vishraam_idx);
-                    prevMatchIdx = tokenIndex;
-                    continue;
-                }
-                // TODO: manage 1 gap with is similar word pattern
+            while (
+                i + k < words.length &&
+                j + k < tokens.length &&
+                isMatching(words[i + k], tokens[j + k])
+            ) {
+                k++;
             }
 
-            // // reset sameMatchCouter if next word is not same as current word
-            // // keep resetting for same words after match completed
-            // if (sameMatchCouter > 1) {
-            //     allowedLength--;
-            // }
-            // if (sameMatchCouter > 0) {
-            //     wordIndex--;
-            //     sameMatchCouter--;
-            // }
+            if (k > 0) {
+                const tokensIndexes = Array.from({ length: k }, (_, idx) => j + idx);
+                const wordIdxs = Array.from({ length: k }, (_, idx) => i + idx);
+                const matchedWords = tokens.slice(j, j + k);
+
+                const vishraamStarted = wordIdxs[0] < vishraam_idx;
+                const panktiFinished = wordIdxs[0] === 0;
+                const panktiStarted =
+                    wordIdxs[wordIdxs.length - 1] === words.length - 1;
+
+                const match: PanktiScore = {
+                    matches: matchedWords,
+                    tokenIdxs: tokensIndexes,
+                    wordIdxs,
+                    totalMatches: k,
+                    panktiStarted,
+                    vishraamStarted,
+                    panktiFinished,
+                    continueMatch: true,
+                    startFull: panktiStarted && wordIdxs[0] <= vishraam_idx,
+                    vishraamFull: vishraamStarted && panktiFinished,
+                    fullMatch: k === words.length,
+                    panktiIdx: -1,
+                    shabadId: '',
+                    panktiStartIdx: i,
+                    panktiEndIdx: wordIdxs[wordIdxs.length - 1],
+                    firstMatchIdx: j,
+                    lastMatchIdx: tokensIndexes[tokensIndexes.length - 1],
+                };
+
+                matches.push(match);
+
+                // console.log('i: ', i, ' j: ', j);
+                // console.log('score match: ', match);
+
+                break;
+            }
         }
-
-        score.totalMatches = score.matches.length;
-        if (score.totalMatches === 0) {
-            continue;
-        }
-
-        score.panktiIdx = panktiIdx;
-        if (score.matches.length === words.length) {
-            score.fullMatch = true;
-        }
-
-        score.firstMatchIdx = score.tokenIdxs.length > 0 ? Math.min(...score.tokenIdxs) : -1;
-        score.lastMatchIdx = score.tokenIdxs.length > 0 ? Math.max(...score.tokenIdxs) : -1;
-
-        console.log('reverse words: ', JSON.stringify(reverseWords));
-        console.log('score: ', JSON.stringify(score));
-        scores.push(score);
     }
 
-    scores = scores.filter((score) => {
-        return score.panktiStarted || score.vishraamStarted
-    })
+    const sortedMatches = matches.sort((a, b) => {
+        // Step 1: Ascending firstMatchIdx
+        if (a.firstMatchIdx !== b.firstMatchIdx) {
+            return a.firstMatchIdx - b.firstMatchIdx;
+        }
 
-    scores = findLatestMatches(scores);
+        // Step 2: Descending lastMatchIdx
+        if (b.lastMatchIdx != a.lastMatchIdx) {
+            return b.lastMatchIdx - a.lastMatchIdx;
+        }
 
-    console.log('final: ', JSON.stringify(scores));
+        // Step3: Descending panktiEndIdx
+        return b.panktiEndIdx - a.panktiEndIdx;
+    });
 
-    return scores;
+    // console.log('sorted:');
+    // console.log(sortedMatches);
+
+    if (sortedMatches.length > 0) {
+        return sortedMatches[0];
+    }
+
+    return null;
 };
+
+    export const findMatches = (tokens: string[], panktis: Pankti[], current: number): PanktiScore[] => {
+        let scores: PanktiScore[] = [];
+        const currentPankti = panktis[current];
+
+        // reserve tokens
+        const reverseTokens = [...tokens].reverse();
+        console.log('reverse tokens: ', JSON.stringify(reverseTokens));
+
+        for (let panktiIdx = 0; panktiIdx < panktis.length; panktiIdx++) {
+            const pankti = panktis[panktiIdx];
+            const reverse_vishraam_idx = pankti.reverse_vishraam_idx;
+            const reverseWords = pankti.reverse_gurmukhi_words;
+
+            const score = findBestScore(reverseTokens, reverseWords, reverse_vishraam_idx);
+            if (!score) {
+                continue;
+            }
+
+            score.panktiIdx = panktiIdx;
+            score.shabadId = panktis[current].shabad_id;
+
+            console.log();
+            console.log('reverse words: ', JSON.stringify(reverseWords), ' vishraam: ', reverse_vishraam_idx);
+            console.log('score: ', JSON.stringify(score));
+            scores.push(score);
+        }
+
+        scores = scores.filter((score) => {
+            return score.panktiStarted || score.vishraamStarted
+            // TODO: check if this required
+            // || score.panktiFinished
+        })
+
+        scores = findLatestMatches(scores);
+
+        console.log('final: ', JSON.stringify(scores));
+
+        return scores;
+    };
