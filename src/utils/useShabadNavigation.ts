@@ -20,7 +20,7 @@ const useShabadNavigation = () => {
         }
 
         if (ev.key == "Control") {
-            ev.preventDefault();
+        //     ev.preventDefault();
             return;
         }
 
