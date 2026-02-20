@@ -121,6 +121,7 @@ export const BaniPanel = () => {
         gurmukhi_unicode: line.gurmukhi_unicode,
         punjabi_translation: line.punjabi_translation,
         english_translation: line.english_translation,
+        shabad_id: line.shabad_id, 
         visited: false,
         home: false,
       }));
