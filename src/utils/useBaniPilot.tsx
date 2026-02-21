@@ -13,6 +13,7 @@ const GURBANI_PANKTI = 4;
 export const useBaniPilot = () => {
 
     const { state, dispatch } = useContext(ShabadContext);
+    const [speech, setSpeech] = useState<{tokens: string[], finalised: boolean}>({tokens: [], finalised: false});
     const [tokens, setTokens] = useState<string[]>([]);
     const processingRef = useRef(false);
     const [status, setStatus] = useState('Not Started');
@@ -21,88 +22,39 @@ export const useBaniPilot = () => {
     const [panktiMatchIdx, setPanktiMatchIdx] = useState(0);
     const [visitedIdxs, setVisistedIdxs] = useState<Number[]>([]);
 
-    const findNextPanki = (scores: PanktiScore[], currentPankti: Pankti, singleShabad: boolean) => {
-        const continuousPantiIdxs: number[] = [state.current, state.current+1];
-
-        // allow current shabad and next pankti
-        scores = scores.filter(
-            score => score.shabadId === currentPankti.shabad_id ||
-                continuousPantiIdxs.includes(score.panktiIdx)
-        );
-
-        if (scores.length === 0) {
-            return [];
-        }
-
+    const findNextPanki = (scores: PanktiScore[], currentPankti: Pankti, singleShabad: boolean, allowedShabadIds: string[], allowedPanktiIds: number[]) => {
         // 1. prefer full match (avoid less than two words unless continuous pankti)
         const fullMatches = scores.filter((score) => score.fullMatch);
         if (fullMatches.length === 1 &&
             (
                 fullMatches[0].totalMatches > 2 ||
-                continuousPantiIdxs.includes(fullMatches[0].panktiIdx)
+                allowedPanktiIds.includes(fullMatches[0].panktiIdx)
             )
         ) {
             return fullMatches;
         }
 
+        
+        if (singleShabad) {
+            scores = scores.filter(score => allowedPanktiIds.includes(score.panktiIdx));
+        } else {
+            scores = scores.filter(score => allowedPanktiIds.includes(score.panktiIdx) && allowedShabadIds.includes(score.shabadId));
+        }
+
+        if (scores.length === 0) {
+            return [];
+        }
+
         // 2. prefer full start or full vishram but atleast 2 words match
         //    or mathes with current pankti ending or starting but atleast 1 match
-        const fullStartOrVishraam = scores.filter((score) => score.startFull || score.vishraamFull);
-        if (fullStartOrVishraam.length === 1 &&
+        const StartOrVishraamFull = scores.filter((score) => score.startFull || score.vishraamFull || score.panktiStarted);
+        if (StartOrVishraamFull.length === 1 &&
             (
-                (
-                    scores[0].totalMatches > 1 &&
-                    (scores[0].panktiStarted || scores[0].panktiFinished) &&
-                    continuousPantiIdxs.includes(scores[0].panktiIdx)
-                ) ||
-                (
-                    // for single shabad, allow more than one word match
-                    scores[0].totalMatches > 2 && singleShabad
-                ) ||
-                (
-                    // for bani view, only allow to current shabad
-                    scores[0].totalMatches > 2 && !singleShabad && scores[0].shabadId === currentPankti.shabad_id
-                )
+                scores[0].totalMatches > 1 &&
+                (scores[0].panktiStarted || scores[0].vishraamStarted)
             )
         ) {
-            return fullStartOrVishraam;
-        }
-
-        // 3. continuous pankti or next not visited but with pankti or rahao type
-        let notVisitedIdx = state.panktis.findIndex(
-            (p, index) => p.visited !== true &&
-                !visitedIdxs.includes(index) &&
-                state.panktis[index].type_id > 2
-        );
-
-        let rahaoPanktis: number[] = [];
-        if (singleShabad) {
-            rahaoPanktis = state.panktis.filter((pankti) =>
-                pankti.type_id === RAHAO_PANKTI
-            ).map((_, index) => index);
-        }
-
-        let possiblePanktis = [...continuousPantiIdxs, notVisitedIdx, ...rahaoPanktis].filter(idx => idx != -1);
-
-        // possible next but continue match and should be starting with next possible pankti word
-        const possibleNext = scores.filter((score) => {
-            possiblePanktis.includes(score.panktiIdx) &&
-            score.continueMatch &&
-            score.panktiStarted &&
-            (
-                (
-                    // allow single word for continuous pankti
-                    continuousPantiIdxs.includes(score.panktiIdx) && score.totalMatches > 1
-                ) ||
-                (
-                    // match more than two matches for non visited and rahao panktis
-                    score.panktiIdx !== state.current + 1 &&
-                    score.totalMatches > 2
-                )
-            )
-        });
-        if (possibleNext.length === 1) {
-            return possibleNext;
+            return StartOrVishraamFull;
         }
 
         return scores;
@@ -122,29 +74,44 @@ export const useBaniPilot = () => {
 
         const start = performance.now();
 
-        let lastCheckIdx1 = lastCheckIndex;
-        let checkTokens = tokens.slice(lastCheckIndex);
-        let panktiTokens = tokens.slice(lastPanktiCheckIdx);
-        console.log('checkTokens: ', checkTokens);
-        console.log('panktiTokens: ', panktiTokens);
+        // TODO: only skip if last not final yet
+        const partialSkip = speech.finalised ? 0 : 1;
 
-        // wait for two tokens atleast
-        if (lastPanktiCheckIdx === lastCheckIdx1 && panktiTokens.length < 2) {
-            endProcessing(start);
-            return;
-        }
+        let checkTokens = speech.tokens.slice(lastCheckIndex, partialSkip > 0 ? -partialSkip : speech.tokens.length);
+        let panktiTokens = speech.tokens.slice(lastPanktiCheckIdx, partialSkip > 0 ? -partialSkip : speech.tokens.length);
+
+        // wait for one token
+        console.log(`
+┌─────────────────────────────────────────────────────────────
+│ panktiTokens : ${panktiTokens.join(' ')} partialSkip:${partialSkip}
+│ checkTokens : ${checkTokens.join(' ')} Without Skip: ${speech.tokens.slice(lastCheckIndex).join(' ')}
+| lastMatchIdx:${lastCheckIndex} | lastPanktiCheckIdx:${lastPanktiCheckIdx}
+└─────────────────────────────────────────────────────────────
+`);
 
         if (checkTokens.length === 0) {
             endProcessing(start);
             return;
         }
 
+        let allowedShabadIds = [state.panktis[state.current].shabad_id];
+        let allowedPanktiIds = [state.current];
+        const singleShabad = state.shabadIds.length <= 1;
+        if (!singleShabad) {
+            let i = state.current+1;
+            while (i < (state.panktis.length - 1) && state.panktis[i].type_id <= 2) {
+                allowedShabadIds.push(state.panktis[i].shabad_id);
+                allowedPanktiIds.push(i);
+                i++;
+            }
+            allowedPanktiIds.push(i);
+        }
+
         let matchingScores = findMatches(panktiTokens, checkTokens, state.panktis, state.current);
 
         if (matchingScores.length > 1) {
             setLastPanktiCheckIdx(lastCheckIndex);
-            const singleShabad = state.shabadIds.length === 1;
-            matchingScores = findNextPanki(matchingScores, state.panktis[state.current], singleShabad);
+            matchingScores = findNextPanki(matchingScores, state.panktis[state.current], singleShabad, allowedShabadIds, allowedPanktiIds);
         }
 
         let matchingPanktiIndex = -1;
@@ -152,7 +119,9 @@ export const useBaniPilot = () => {
             matchingPanktiIndex = matchingScores[0].panktiIdx;
 
             if (! visitedIdxs.includes(matchingPanktiIndex)) {
-                setVisistedIdxs([...visitedIdxs, matchingPanktiIndex].sort());
+                setVisistedIdxs(prev =>
+                    [...prev, matchingPanktiIndex].sort()
+                );
             }
 
                     matchingScores.forEach((s, i) => {
@@ -162,12 +131,15 @@ export const useBaniPilot = () => {
             const output =
 `
 ┌─────────────────────────────────────────────────────────────
-│ matches   : ${s.matches.join(', ')}
-│ words     : ${s.words.join(', ')}
-│ tokenIdxs : ${s.tokenIdxs.join(', ')} │ wordIdxs : ${s.wordIdxs.join(', ')}
+│ panktiTokens : ${panktiTokens.join(' ')}
+│ checkTokens : ${checkTokens.join(' ')}
+│ matches     : ${s.matches.join(' ')}
+│ words       : ${s.words.join(' ')}
+│ tokenIdxs   : ${s.tokenIdxs.join(', ')} │ wordIdxs : ${s.wordIdxs.join(', ')}
 ├─────────────────────────────────────────────────────────────
-│ startFull:${green(s.startFull)} │ vishraamFull:${green(s.vishraamFull)} │ fullMatch:${green(s.fullMatch)}
+│ startFull:${green(s.startFull)} │ vishraamFull:${green(s.vishraamFull)} │ fullMatch:${green(s.fullMatch)} │ panktiStarted:${green(s.panktiStarted)} │ vishraamStarted:${green(s.vishraamStarted)} │ panktiFinished:${green(s.panktiFinished)} │ totalMatches:${s.totalMatches} │ total Words:${s.words.length}
 │ panktiIdx:${s.panktiIdx} │ shabadId:${s.shabadId} │ panktiStartIdx:${s.panktiStartIdx} │ panktiEndIdx:${s.panktiEndIdx} │ firstMatchIdx:${s.firstMatchIdx} │ lastMatchIdx:${s.lastMatchIdx}
+│ lastCheckIndex:${lastCheckIndex} | lastPanktiCheckIdx:${lastPanktiCheckIdx} | allowedPanktiIds: ${allowedPanktiIds.join(', ')}
 └─────────────────────────────────────────────────────────────`;
 
             console.log(output);
@@ -176,7 +148,14 @@ export const useBaniPilot = () => {
         }
 
         if (matchingPanktiIndex === state.current) {
+            console.log('current pankti matching, tokens: ', speech.tokens.join(' '), ' pankti: ', state.panktis[state.current].gurmukhi_unicode);
             // setLastPanktiCheckIdx(lastCheckIndex+matchingScores[0].totalMatches);
+            if (matchingScores[0].fullMatch || matchingScores[0].panktiFinished) {
+                const newLastCheckIdx = lastCheckIndex + matchingScores[0].lastMatchIdx + 1;
+                setLastPanktiCheckIdx(newLastCheckIdx);
+                setLastCheckIndex(newLastCheckIdx);
+            }
+
             endProcessing(start);
             return;
         } else if (matchingPanktiIndex > 0) {
@@ -184,13 +163,21 @@ export const useBaniPilot = () => {
             // if (matchingScores[0].fullMatch || matchingScores[0].vishraamFull
             //     || (matchingScores[0].vishraamStarted && matchingScores[0].panktiFinished)
             // ) {
-            //     const lastMatchIdx = tokens.length - (matchingScores[0].lastMatchIdx + 1);
+            //     const lastMatchIdx = speech.tokens.length - (matchingScores[0].lastMatchIdx + 1);
             //     setLastCheckIndex(lastMatchIdx);
             // }
 
-            const lastMatchIdx = tokens.length - (matchingScores[0].lastMatchIdx + 1);
-            setLastPanktiCheckIdx(tokens.length - (matchingScores[0].lastMatchIdx + 1));
-            setLastCheckIndex(lastMatchIdx);
+            const newLastCheckIdx = lastCheckIndex + (checkTokens.length - 1 - matchingScores[0].lastMatchIdx);
+            setLastPanktiCheckIdx(newLastCheckIdx);
+            setLastCheckIndex(newLastCheckIdx);
+
+            console.log(`
+
+┌─────────────────────────────────────────────────────────────
+| newLastCheckIdx:${newLastCheckIdx} newPanktiCheckIdx:${newLastCheckIdx}
+└─────────────────────────────────────────────────────────────
+
+            `);
 
             dispatch({
                 type: SHABAD_PANKTI,
@@ -200,10 +187,24 @@ export const useBaniPilot = () => {
             });
             endProcessing(start);
             return;
+        } else {
+            console.log(`
+┌─────────────────────────────────────────────────────────────
+| Multiple Matches: ${matchingScores.length}
+| Match Panktis: ${matchingScores.map(matchingScore => matchingScore.words.join(' ')).join('| ')}
+│ panktiTokens : ${panktiTokens.join(' ')}
+│ checkTokens : ${checkTokens.join(' ')} Without Skip: ${speech.tokens.slice(lastCheckIndex).join(' ')}
+| lastMatchIdx:${lastCheckIndex} | lastPanktiCheckIdx:${lastPanktiCheckIdx}
+| Details: ${JSON.stringify(matchingScores)}
+└─────────────────────────────────────────────────────────────
+`);
         }
 
         endProcessing(start);
-    }, [tokens, dispatch]);
+    }, [
+        speech,
+        state,
+    ]);
 
     // local only
     // useEffect(() => {
@@ -247,6 +248,7 @@ export const useBaniPilot = () => {
     return {
         tokens,
         setTokens,
+        setSpeech,
         status,
     };
 };

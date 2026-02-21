@@ -113,48 +113,6 @@ export function matraClean(word: string) {
     return word;
 }
 
-const gurmukhiOrdinal: Record<string, string> = {
-  '੧': 'ਪਹਿਲਾ',
-  '੨': 'ਦੂਜਾ',
-  '੩': 'ਤੀਜਾ',
-  '੪': 'ਚੌਥਾ',
-  '੫': 'ਪੰਜਵਾ',
-  '੬': 'ਛੇਵਾ',
-  '੭': 'ਸੱਤਵਾ',
-  '੮': 'ਅੱਠਵਾ',
-  '੯': 'ਨੌਵਾ',
-  '੧੦': 'ਦਸਵੀ'
-};
-
-function convertMahala(text: string) {
-    return text.replace(/੧੦|[੧੨੩੪੫੬੭੮੯]/g, (digit) => {
-        return gurmukhiOrdinal[digit] || digit;
-    }).replaceAll('ਮਃ', 'ਮਹਲਾ');
-//   return text.replace(/ਮਹਲਾ\s([੧੨੩੪੫੬੭੮੯੧੦])/g, (match, digit) => {
-//     const ordinal = gurmukhiOrdinal[digit];
-//     return ordinal ? `ਮਹਲਾ ${ordinal}` : match;
-//   });
-}
-
-export const cleanGurmukhiUnicode = (gurmukhi: string, vishraamReplace = true) => {
-    gurmukhi = gurmukhi.normalize("NFC");
-    gurmukhi = gurmukhi.replaceAll('ੴ', 'ਇਕਓਨਕਾਰ');
-    gurmukhi = gurmukhi.replaceAll('ਰਹਾੳੁ', '');
-    gurmukhi = gurmukhi.replaceAll('ਅਾ', 'ਆ').replaceAll('ੲੇ', 'ਏ').replaceAll('ੳੁ', 'ਉ').replaceAll('ੲੀ', 'ਈ');
-    gurmukhi = convertMahala(gurmukhi);
-    gurmukhi = gurmukhi.replaceAll("॥", '');
-
-    if (vishraamReplace) {
-        gurmukhi = gurmukhi.replaceAll(',', '')
-    }
-    
-    gurmukhi = gurmukhi.trim();
-
-    console.log(gurmukhi);
-
-    return gurmukhi;
-};
-
 
 function wordsEqual(a: string, b: string): boolean {
     // const normalizedA = a.normalize("NFC");
