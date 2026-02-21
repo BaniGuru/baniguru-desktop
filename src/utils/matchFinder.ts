@@ -108,8 +108,7 @@ export const findBestScore = (
                 j + k < tokens.length &&
                 (
                     isMatching(words[i + k], tokens[j + k]) ||
-                    (isPartial && get(words[i + k], tokens[j + k]) <= 2) ||
-                    (!isPartial && get(words[i + k], tokens[j + k]) <= 1)
+                    get(words[i + k], tokens[j + k]) <= 1
                 )
             ) {
                 k++;

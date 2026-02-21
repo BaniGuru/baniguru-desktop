@@ -14,13 +14,29 @@ export const useBaniPilot = () => {
 
     const { state, dispatch } = useContext(ShabadContext);
     const [speech, setSpeech] = useState<{tokens: string[], finalised: boolean}>({tokens: [], finalised: false});
-    const [tokens, setTokens] = useState<string[]>([]);
     const processingRef = useRef(false);
     const [status, setStatus] = useState('Not Started');
     const [lastCheckIndex, setLastCheckIndex] = useState(0);
     const [lastPanktiCheckIdx, setLastPanktiCheckIdx] = useState(0);
     const [panktiMatchIdx, setPanktiMatchIdx] = useState(0);
     const [visitedIdxs, setVisistedIdxs] = useState<Number[]>([]);
+    const [panktiFinished, setPanktiFinished] = useState<boolean>(false);
+    const [baniId, setBaniId] = useState(null);
+    const [shabadId, setShabadId] = useState('');
+
+    useEffect(() => {
+        if (!state.baniId) {
+            setBaniId(null);
+            setShabadId(state.shabadId);
+        } else {
+            setBaniId(baniId);
+            setShabadId('');
+        }
+
+        setLastCheckIndex(0);
+        setLastPanktiCheckIdx(0);
+        setVisistedIdxs([]);
+    }, [state.baniId, state.shabadId]);
 
     const findNextPanki = (scores: PanktiScore[], currentPankti: Pankti, singleShabad: boolean, allowedShabadIds: string[], allowedPanktiIds: number[]) => {
         // 1. prefer full match (avoid less than two words unless continuous pankti)
@@ -50,7 +66,7 @@ export const useBaniPilot = () => {
         const StartOrVishraamFull = scores.filter((score) => score.startFull || score.vishraamFull || score.panktiStarted);
         if (StartOrVishraamFull.length === 1 &&
             (
-                scores[0].totalMatches > 1 &&
+                scores[0].totalMatches > 0 &&
                 (scores[0].panktiStarted || scores[0].vishraamStarted)
             )
         ) {
@@ -73,9 +89,30 @@ export const useBaniPilot = () => {
         if (processingRef.current) return;
 
         const start = performance.now();
+        const singleShabad = new Set(state.shabadIds).size <= 1;
+        let allowedShabadIds = [state.panktis[state.current].shabad_id];
+        let allowedPanktiIds = [state.current];
 
         // TODO: only skip if last not final yet
         const partialSkip = speech.finalised ? 0 : 1;
+
+        // auto next
+        if (speech.finalised && singleShabad && panktiFinished && state.home === state.current) {
+            for (let index = 0; index < state.panktis.length; index++) {
+                let pankti = state.panktis[index];
+                if (!visitedIdxs.includes(index) && (pankti.type_id === 3 || index === state.home)) {
+                    dispatch({
+                        type: SHABAD_PANKTI,
+                        payload: {
+                            current: index,
+                        }
+                    });
+                    allowedPanktiIds.push(index);
+                    break;
+                }
+            }
+            
+        }
 
         let checkTokens = speech.tokens.slice(lastCheckIndex, partialSkip > 0 ? -partialSkip : speech.tokens.length);
         let panktiTokens = speech.tokens.slice(lastPanktiCheckIdx, partialSkip > 0 ? -partialSkip : speech.tokens.length);
@@ -94,9 +131,6 @@ export const useBaniPilot = () => {
             return;
         }
 
-        let allowedShabadIds = [state.panktis[state.current].shabad_id];
-        let allowedPanktiIds = [state.current];
-        const singleShabad = state.shabadIds.length <= 1;
         if (!singleShabad) {
             let i = state.current+1;
             while (i < (state.panktis.length - 1) && state.panktis[i].type_id <= 2) {
@@ -105,6 +139,18 @@ export const useBaniPilot = () => {
                 i++;
             }
             allowedPanktiIds.push(i);
+            allowedShabadIds.push(state.panktis[i].shabad_id);
+        } else {
+            allowedPanktiIds.push(state.home);
+            for (let index = 0; index < state.panktis.length; index++) {
+                let pankti = state.panktis[index];
+                if (pankti.type_id === 3 || index === state.home) {
+                    allowedPanktiIds.push(index);
+                } else if (!visitedIdxs.includes(index) && pankti.type_id > 2) {
+                    allowedPanktiIds.push(index);
+                    break;
+                }
+            }
         }
 
         let matchingScores = findMatches(panktiTokens, checkTokens, state.panktis, state.current);
@@ -139,7 +185,7 @@ export const useBaniPilot = () => {
 ├─────────────────────────────────────────────────────────────
 │ startFull:${green(s.startFull)} │ vishraamFull:${green(s.vishraamFull)} │ fullMatch:${green(s.fullMatch)} │ panktiStarted:${green(s.panktiStarted)} │ vishraamStarted:${green(s.vishraamStarted)} │ panktiFinished:${green(s.panktiFinished)} │ totalMatches:${s.totalMatches} │ total Words:${s.words.length}
 │ panktiIdx:${s.panktiIdx} │ shabadId:${s.shabadId} │ panktiStartIdx:${s.panktiStartIdx} │ panktiEndIdx:${s.panktiEndIdx} │ firstMatchIdx:${s.firstMatchIdx} │ lastMatchIdx:${s.lastMatchIdx}
-│ lastCheckIndex:${lastCheckIndex} | lastPanktiCheckIdx:${lastPanktiCheckIdx} | allowedPanktiIds: ${allowedPanktiIds.join(', ')}
+│ lastCheckIndex:${lastCheckIndex} | lastPanktiCheckIdx:${lastPanktiCheckIdx} | allowedPanktiIds: ${allowedPanktiIds.join(', ')} | allowedShabadIds: ${allowedShabadIds.join(', ')}
 └─────────────────────────────────────────────────────────────`;
 
             console.log(output);
@@ -154,6 +200,7 @@ export const useBaniPilot = () => {
                 const newLastCheckIdx = lastCheckIndex + matchingScores[0].lastMatchIdx + 1;
                 setLastPanktiCheckIdx(newLastCheckIdx);
                 setLastCheckIndex(newLastCheckIdx);
+                setPanktiFinished(true);
             }
 
             endProcessing(start);
@@ -170,6 +217,7 @@ export const useBaniPilot = () => {
             const newLastCheckIdx = lastCheckIndex + (checkTokens.length - 1 - matchingScores[0].lastMatchIdx);
             setLastPanktiCheckIdx(newLastCheckIdx);
             setLastCheckIndex(newLastCheckIdx);
+            setPanktiFinished(false);
 
             console.log(`
 
@@ -246,8 +294,6 @@ export const useBaniPilot = () => {
     // }, [state.baniId]);
 
     return {
-        tokens,
-        setTokens,
         setSpeech,
         status,
     };
