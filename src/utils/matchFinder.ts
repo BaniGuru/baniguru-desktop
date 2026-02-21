@@ -57,11 +57,11 @@ export const isMatching = (word: string, token: string): boolean => {
     return false;
 };
 
-export const findLatestMatches = (scores: PanktiScore[]) => {
+export const findLatestMatches = (scores: PanktiScore[], reverseTokens: string[]) => {
     if (!scores.length) return [];
 
     // todo: could use next possible panktis to remove matches less than 2 match (in future)
-    const sorted = [...scores].filter((score) => (score.totalMatches > 1 || score.firstMatchIdx !== 0))
+    const sorted = [...scores].filter((score) => (score.totalMatches > 0))
     .sort((a, b) => {
         // Step 1: Ascending firstMatchIdx
         if (a.firstMatchIdx !== b.firstMatchIdx) {
@@ -100,7 +100,7 @@ export const findBestScore = (
 
     for (let i = 0; i < words.length; i++) {
         for (let j = 0; j < tokens.length; j++) {
-
+            
             let k = 0;
 
             while (
@@ -108,7 +108,8 @@ export const findBestScore = (
                 j + k < tokens.length &&
                 (
                     isMatching(words[i + k], tokens[j + k]) ||
-                    (isPartial && get(words[i + k], tokens[j + k]) <= 2)
+                    (isPartial && get(words[i + k], tokens[j + k]) <= 2) ||
+                    (!isPartial && get(words[i + k], tokens[j + k]) <= 1)
                 )
             ) {
                 k++;
@@ -200,18 +201,22 @@ export const findBestPanktiScore = (reverseTokens: string[], pankti: Pankti, pan
         let scores: PanktiScore[] = [];
 
         // check current pankti when pankti tokens are not same
+         const reverseTokens = [...tokens].reverse();
         if (panktiTokens.length !== tokens.length) {
-            const score = findBestPanktiScore(tokens, panktis[current], current, panktis[current].shabad_id, true);
-            if (score && score.totalMatches < panktis[current].gurmukhi_words.length && score.continueMatch) {
+            const score = findBestPanktiScore(reverseTokens, panktis[current], current, panktis[current].shabad_id, true);
+            if (score &&
+                score.panktiStarted &&
+                score.totalMatches < panktis[current].gurmukhi_words.length &&
+                score.continueMatch
+            ) {
                 scores.push(score);
                 return scores;
             }
         }
 
         // reserve tokens
-        const reverseTokens = [...tokens].reverse();
-        console.log(`token: ${reverseTokens.join(' ')}\n`);
-
+       
+        
         for (let panktiIdx = 0; panktiIdx < panktis.length; panktiIdx++) {
             const pankti = panktis[panktiIdx];
             const score = findBestPanktiScore(reverseTokens, pankti, panktiIdx, panktis[panktiIdx].shabad_id);
@@ -228,10 +233,10 @@ export const findBestPanktiScore = (reverseTokens: string[], pankti: Pankti, pan
         scores = scores.filter((score) => {
             return score.panktiStarted || score.vishraamStarted
             // TODO: check if this required
-            // || score.panktiFinished
+            || score.panktiFinished
         })
 
-        scores = findLatestMatches(scores);
+        scores = findLatestMatches(scores, reverseTokens);
 
         return scores;
     };

@@ -13,8 +13,7 @@ import { AppContext, PAGE_SHABAD } from "../../state/providers/AppProvider";
 import { BANI_ACTION_UPDATE, BaniContext } from "../../state/providers/BaniProvider";
 import { useThemeColors } from "../../utils/useTheme";
 import SonioxSTTPunjabi from "../ShabadPanel/SonioxSTTPunjabi";
-import { cleanGurmukhiUnicode } from "../../utils/autoPilotHelpers";
-import { formatPanktis, getShabadIds } from "../../utils/shabadUtil";
+import { cleanGurmukhiUnicode, formatPanktis, getShabadIds } from "../../utils/shabadUtil";
 
 interface PanelProps {
     startSpace: number;
