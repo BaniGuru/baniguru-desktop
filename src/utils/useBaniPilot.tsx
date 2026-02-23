@@ -6,6 +6,9 @@ import { stat } from "fs";
 import {get} from 'fast-levenshtein';
 import { findMatches, PanktiScore } from "./matchFinder";
 import { Pankti } from "../models/Pankti";
+import { AppContext } from "../state/providers/AppProvider";
+import { useShabadSearch } from "./useShabadSearch";
+import { DB } from "./DB";
 
 const RAHAO_PANKTI   = 3;
 const GURBANI_PANKTI = 4;
@@ -13,7 +16,8 @@ const GURBANI_PANKTI = 4;
 export const useBaniPilot = () => {
 
     const { state, dispatch } = useContext(ShabadContext);
-    const [speech, setSpeech] = useState<{tokens: string[], finalised: boolean}>({tokens: [], finalised: false});
+    const appContext = useContext(AppContext);
+    const [speech, setSpeech] = useState<{tokens: string[], rawTokens: Token[], finalised: boolean, endedAt: number}>({tokens: [], rawTokens: [], finalised: false, endedAt: 0});
     const processingRef = useRef(false);
     const [status, setStatus] = useState('Not Started');
     const [lastCheckIndex, setLastCheckIndex] = useState(0);
@@ -24,7 +28,80 @@ export const useBaniPilot = () => {
     const [baniId, setBaniId] = useState(null);
     const [shabadId, setShabadId] = useState('');
 
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastValueRef = useRef(speech.endedAt);
+
+    const shabadSearch = useShabadSearch(speech.rawTokens, speech.tokens, appContext.dbPath);
+
+    const autoNext = () => {
+        if (!panktiFinished || state.shabadIds.length > 1) {
+            console.log(panktiFinished, speech.finalised, state.shabadIds.length);
+            return;
+        }
+
+        const rahaoPanktiGroup = state.panktis
+          .find((pankti) => pankti.type_id === RAHAO_PANKTI)?.group || 0;
+        
+        let pankti = state.panktis[state.current];
+        const nextPankti = state.panktis[state.current + 1];
+        console.log('next pankti: ', nextPankti);
+
+        if (nextPankti && nextPankti.group !== pankti.group && pankti.group !== rahaoPanktiGroup) {
+            dispatch({
+                type: SHABAD_PANKTI,
+                payload: {
+                    current: state.home,
+                }
+            });
+
+            return;
+        }
+
+        for (let index = 0; index < state.panktis.length; index++) {
+            const checkPankti = state.panktis[index]
+            if (pankti.group === rahaoPanktiGroup) {
+                if (!visitedIdxs.includes(index) && checkPankti.group !== rahaoPanktiGroup) {
+                    dispatch({
+                        type: SHABAD_PANKTI,
+                        payload: {
+                            current: index,
+                        }
+                    });
+
+                    return;
+                }
+            }
+        }
+    }
+
     useEffect(() => {
+        // Clear the previous timer if it exists
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+        }
+
+        // Set a new timer to check the value after 1 second
+        timerRef.current = setTimeout(() => {
+            if (speech.endedAt === lastValueRef.current) {
+                console.log('auto next');
+                autoNext();
+            }
+        }, (5 * 1000));  // seconds * 1000ms
+
+        lastValueRef.current = speech.endedAt;
+
+        return () => {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+            }
+        };
+    }, [speech.endedAt])
+
+    const isShabadDisplay = appContext.state.page === 'shabad' || state.panktis.length > 0;
+
+    useEffect(() => {
+        if (!isShabadDisplay) return;
+
         if (!state.baniId) {
             setBaniId(null);
             setShabadId(state.shabadId);
@@ -36,7 +113,7 @@ export const useBaniPilot = () => {
         setLastCheckIndex(0);
         setLastPanktiCheckIdx(0);
         setVisistedIdxs([]);
-    }, [state.baniId, state.shabadId]);
+    }, [state.baniId, state.shabadId, appContext.state.show_panel]);
 
     const findNextPanki = (scores: PanktiScore[], currentPankti: Pankti, singleShabad: boolean, allowedShabadIds: string[], allowedPanktiIds: number[]) => {
         // 1. prefer full match (avoid less than two words unless continuous pankti)
@@ -63,11 +140,23 @@ export const useBaniPilot = () => {
 
         // 2. prefer full start or full vishram but atleast 2 words match
         //    or mathes with current pankti ending or starting but atleast 1 match
-        const StartOrVishraamFull = scores.filter((score) => score.startFull || score.vishraamFull || score.panktiStarted);
+        const StartOrVishraamFull = scores.filter((score) => score.startFull || score.vishraamFull);
         if (StartOrVishraamFull.length === 1 &&
             (
                 scores[0].totalMatches > 0 &&
                 (scores[0].panktiStarted || scores[0].vishraamStarted)
+            )
+        ) {
+            return StartOrVishraamFull;
+        }
+
+        const startedPanktis = scores.filter((score) => score.panktiStarted);
+        if (startedPanktis.length === 1 &&
+            (
+                scores[0].totalMatches > 0 &&
+                (scores[0].panktiStarted || scores[0].vishraamStarted) &&
+                // allow visited one to match full start or vishraam
+                ! visitedIdxs.includes(scores[0].panktiIdx)
             )
         ) {
             return StartOrVishraamFull;
@@ -88,31 +177,27 @@ export const useBaniPilot = () => {
     useEffect(() => {
         if (processingRef.current) return;
 
+        const searchShabadSync = async () => {
+            if (!appContext.dbPath) {
+                return;
+            }
+
+            shabadSearch.search().then(() => console.log('searched'));
+        };
+
         const start = performance.now();
+        if (!isShabadDisplay) {
+            searchShabadSync();
+            endProcessing(start);
+            return;
+        }
+
         const singleShabad = new Set(state.shabadIds).size <= 1;
-        let allowedShabadIds = [state.panktis[state.current].shabad_id];
+        let allowedShabadIds = [state.panktis[state.current]?.shabad_id ?? -1];
         let allowedPanktiIds = [state.current];
 
         // TODO: only skip if last not final yet
         const partialSkip = speech.finalised ? 0 : 1;
-
-        // auto next
-        if (speech.finalised && singleShabad && panktiFinished && state.home === state.current) {
-            for (let index = 0; index < state.panktis.length; index++) {
-                let pankti = state.panktis[index];
-                if (!visitedIdxs.includes(index) && (pankti.type_id === 3 || index === state.home)) {
-                    dispatch({
-                        type: SHABAD_PANKTI,
-                        payload: {
-                            current: index,
-                        }
-                    });
-                    allowedPanktiIds.push(index);
-                    break;
-                }
-            }
-            
-        }
 
         let checkTokens = speech.tokens.slice(lastCheckIndex, partialSkip > 0 ? -partialSkip : speech.tokens.length);
         let panktiTokens = speech.tokens.slice(lastPanktiCheckIdx, partialSkip > 0 ? -partialSkip : speech.tokens.length);
@@ -252,6 +337,7 @@ export const useBaniPilot = () => {
     }, [
         speech,
         state,
+        appContext.dbPath
     ]);
 
     // local only

@@ -3,7 +3,7 @@ import Database from "@tauri-apps/plugin-sql";
 
 let instance: Database | void;
 
-let dbPath: String;
+let dbPath: string;
 
 const DB = {
     schemaExists: false,
@@ -13,9 +13,13 @@ const DB = {
     },
 
     getInstance: async () => {
+        if (!dbPath) {
+            throw new Error('Database path is not set.');
+        }
+
         if (!instance) {
             instance = await Database.load("sqlite:" + dbPath);
-            await DB.addSchema(instance);            
+            // await DB.addSchema(instance);            
         }
 
         return instance;

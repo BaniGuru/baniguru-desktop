@@ -41,21 +41,28 @@ const appReducer = (state: AppState, action: any) => {
 const AppContext = createContext<{
     state: AppState;
     dispatch: React.Dispatch<any>,
-    dbPath: String,
+    dbPath: string,
     setDbPath: React.Dispatch<any>,
+    terms: string[],
+    setTerms: React.Dispatch<any>,
 }>({
     state: initAppState,
     dispatch: () => null,
     dbPath: "",
     setDbPath: () => null,
+    terms: [],
+    setTerms: () => null,
 });
 
 const AppProvider: React.FC<{ children: React.ReactNode}> = ({ children }) => {
     const [state, dispatch] = useReducer(appReducer, initAppState);
     const [dbPath, setDbPath] = useState("");
+    const [terms, setTerms] = useState([]);
 
     return (
         <AppContext.Provider value={{
+            terms,
+            setTerms,
             state,
             dispatch,
             dbPath, 

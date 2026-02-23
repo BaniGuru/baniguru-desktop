@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   SonioxClient,
   type ErrorStatus,
@@ -7,6 +7,7 @@ import {
   type TranslationConfig,
 } from "@soniox/speech-to-text-web";
 import { cleanTokens } from "../../utils/autoPilotHelpers";
+import { AppContext } from "../../state/providers/AppProvider";
 
 interface UseSonioxClientOptions {
   apiKey: string | (() => Promise<string>);
@@ -30,6 +31,9 @@ export default function useSonioxClient({
 }: UseSonioxClientOptions) {
   const sonioxClient = useRef<SonioxClient | null>(null);
 
+  
+  const {terms} = useContext(AppContext);
+
   if (sonioxClient.current == null) {
     sonioxClient.current = new SonioxClient({
       apiKey: apiKey,
@@ -40,6 +44,50 @@ export default function useSonioxClient({
   const [finalTokens, setFinalTokens] = useState<Token[]>([]);
   const [nonFinalTokens, setNonFinalTokens] = useState<Token[]>([]);
   const [error, setError] = useState<TranscriptionError | null>(null);
+  const prevTermsRef: any = useRef();
+
+  useEffect(() => {
+    const handleTranscription = async () => {
+      if (terms.length <= 0) return;
+
+      // Don't run if terms are the same as previous
+      if (JSON.stringify(terms) === JSON.stringify(prevTermsRef.current)) {
+        return;
+      }
+
+      sonioxClient.current?.cancel();
+      await startTranscription(terms);
+      prevTermsRef.current = terms;
+    };
+
+    handleTranscription();
+  }, [terms]);
+
+  const searchTerms = [
+    "ਬੈਰਾਗ",
+    "ਚਾਉ",
+    "ਮਨ",
+    "ਦਰਸਨ",
+    "ਪ੍ਰਾਨ",
+    "ਰਹਿਰਾਸ",
+    "ਘਰ",
+    "ਖੰਡਨ",
+    "ਡੰਡਉਤ",
+    "ਜਪਹੁ",
+    "ਗੁਰਮੁਖ",
+    "ਕਾਲਤ੍ਰ",
+    "ਡਰਣਾ",
+    "ਤੇਲ",
+    "ਸੰਗਤ",
+    "ਬਿਰਥਾ",
+    "ਛੁਟੀਐ",
+    "ਪੜੈਗੀ",
+    "ਤੂ",
+    "ਪੇਈਅੜੈ",
+    "ਸੇਵਿ",
+    "ਸਾਹੁਰੜੈ",
+    "ਕੰਤੁ",
+  ]
 
   const startTranscription = useCallback(async (terms: string[]) => {
     setFinalTokens([]);
@@ -58,7 +106,10 @@ export default function useSonioxClient({
       enableEndpointDetection: true,
       translation: translationConfig || undefined,
       context: {
-        terms: terms
+        general: [{
+          key: "topic", value: "sikh gurbani kirtan"
+        }],
+        terms: terms.length < 1 ? searchTerms : terms
       },
 
       onFinished: onFinished,

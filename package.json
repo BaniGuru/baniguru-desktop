@@ -2,7 +2,8 @@
   "name": "gurbani-explore",
   "private": true,
   "version": "0.0.2",
-  "type": "module",
+  "type1": "module",
+  "module": "CommonJS",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

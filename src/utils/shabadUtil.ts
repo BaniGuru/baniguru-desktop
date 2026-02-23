@@ -103,7 +103,23 @@ export const getGurmukhiWords = (gurmukhi_unicode: string) => {
 }
 
 export const formatPanktis = (panktis: Pankti[]) => {
-    return panktis.map((pankti: Pankti) => { return {...pankti, ...getGurmukhiWords(pankti.gurmukhi_unicode)} });
+    let group = 1;
+    const result = [];
+    for (let i = 0; i < panktis.length; i++) {
+        const pankti = panktis[i];
+
+        result.push({
+            ...pankti,
+            group: group,
+            ...getGurmukhiWords(pankti.gurmukhi_unicode),
+        });
+
+        if (pankti.type_id > 2 && (pankti.gurmukhi.match(/\]/g) || []).length > 1) {
+            group++;
+        }
+    }
+
+    return result;
 };
 
 export const getShabadIds = (panktis: Pankti[]): string[] => {
