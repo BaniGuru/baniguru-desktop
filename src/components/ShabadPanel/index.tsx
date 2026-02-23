@@ -6,7 +6,6 @@ import styled from "styled-components";
 import { TiTick, TiTickOutline } from "react-icons/ti";
 import { TbHome } from "react-icons/tb";
 import { SHABAD_PANKTI, SHABAD_SET_HOME } from "../../state/ActionTypes";
-import SonioxSTTPunjabi from "./SonioxSTTPunjabi";
 
 type ListItemProps = {
     active: boolean;

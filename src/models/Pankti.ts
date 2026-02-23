@@ -18,4 +18,5 @@ export type Pankti = {
     vishraam_idx: number,
     reverse_gurmukhi_words: string[];
     reverse_vishraam_idx: number,
+    group: number;
 };

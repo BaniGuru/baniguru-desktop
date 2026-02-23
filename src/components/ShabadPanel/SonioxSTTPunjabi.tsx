@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import useSonioxClient from "./useSonioxClient";
 import { useBaniPilot } from "../../utils/useBaniPilot";
 import { cleanTokens } from "../../utils/autoPilotHelpers";
+import { AppContext } from "../../state/providers/AppProvider";
 
 const API_KEY = "";
 
@@ -26,14 +27,20 @@ const SonioxSTTPunjabi: React.FC<SonioxSTTPunjabiProps> = ({speechTerms, baniId}
     onFinished: () => console.log("Transcription finished"),
   });
 
-  const {setTokens, status} = useBaniPilot();
+  const {setSpeech, status} = useBaniPilot();
 
   useEffect(() => {
-    setTokens(cleanTokens([
-      ...finalTokens,
-      ...nonFinalTokens,
-    ]));
-  }, [nonFinalTokens, finalTokens, setTokens, cleanTokens]);
+    const rawTokens = [...finalTokens, ...nonFinalTokens];
+
+    setSpeech({
+      tokens: cleanTokens(rawTokens),
+      rawTokens,
+      finalised: nonFinalTokens.length <= 0,
+      endedAt: nonFinalTokens.length <= 0 
+        ? (finalTokens.length > 0 ? finalTokens[finalTokens.length - 1]?.end_ms ?? 0 : 0) 
+        : (nonFinalTokens[nonFinalTokens.length - 1].end_ms ?? 0),
+    });
+  }, [nonFinalTokens, finalTokens, setSpeech, cleanTokens]);
 
   return (
     <div style={{ padding: 20, fontFamily: "sans-serif" }}>
@@ -42,7 +49,7 @@ const SonioxSTTPunjabi: React.FC<SonioxSTTPunjabiProps> = ({speechTerms, baniId}
         Auto Pilot:
         <button
           onClick={() => startTranscription(speechTerms)}
-          disabled={state !== "Init"}
+          disabled={state === "Running"}
           style={{ marginRight: 10, marginLeft: 10, background: '#ccc', borderRadius: '5', border: '1px solid black', padding: "0 10px 0 10px" }}
         >
           Start

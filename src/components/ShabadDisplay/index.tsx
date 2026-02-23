@@ -12,7 +12,6 @@ import FormatAndBreakText from "../../ui/FormatAndBreakText";
 import { AppContext, PAGE_SHABAD } from "../../state/providers/AppProvider";
 import { BANI_ACTION_UPDATE, BaniContext } from "../../state/providers/BaniProvider";
 import { useThemeColors } from "../../utils/useTheme";
-import SonioxSTTPunjabi from "../ShabadPanel/SonioxSTTPunjabi";
 import { cleanGurmukhiUnicode, formatPanktis, getShabadIds } from "../../utils/shabadUtil";
 
 interface PanelProps {
@@ -74,13 +73,12 @@ const ShabadDisplay: React.FC = () => {
     const searchContext = useContext(SearchContext);
     const baniContext = useContext(BaniContext);
     const {state, dispatch } = useContext(ShabadContext);
-    const {state: appState} = useContext(AppContext);
+    const {state: appState, setTerms} = useContext(AppContext);
     const { fontSizes, displaySpacing, activeThemeName, visibility } = useSettings();
     const current = state.current;
 
     const nextPanktiRef = useRef<HTMLDivElement>(null);
     const [nextPanktiFontSize, setNextPanktiFontSize] = useState(fontSizes["Next Pankti"]);
-    const [speechTerms, setSpeechTerms] = useState<string[]>([]);
     const { palette } = useThemeColors();
 
     useEffect(() => {
@@ -100,7 +98,7 @@ const ShabadDisplay: React.FC = () => {
             tokens.push(cleanGurmukhiUnicode(pankti.gurmukhi_unicode));
         });
 
-        setSpeechTerms(tokens);
+        setTerms(tokens);
     }
 
     useEffect(() => {
@@ -292,7 +290,6 @@ const ShabadDisplay: React.FC = () => {
                     }
                 </div>
             </div>
-            <SonioxSTTPunjabi speechTerms={speechTerms} baniId={state.baniId} />
             {
                 visibility["Next Pankti"] &&
                 nextPankti &&
