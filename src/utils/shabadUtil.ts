@@ -102,7 +102,7 @@ export const getGurmukhiWords = (gurmukhi_unicode: string) => {
     return {gurmukhi_words, vishraam_idx: vishraam_idx, reverse_gurmukhi_words, reverse_vishraam_idx};
 }
 
-export const formatPanktis = (panktis: Pankti[]) => {
+export const formatPanktis = (panktis: any) => {
     let group = 1;
     const result = [];
     for (let i = 0; i < panktis.length; i++) {
@@ -111,7 +111,8 @@ export const formatPanktis = (panktis: Pankti[]) => {
         result.push({
             ...pankti,
             group: group,
-            ...getGurmukhiWords(pankti.gurmukhi_unicode),
+            gurmukhi_words: JSON.parse(pankti.gurmukhi_words),
+            gurmukhi_rwords: JSON.parse(pankti.gurmukhi_rwords),
         });
 
         if (pankti.type_id > 2 && (pankti.gurmukhi.match(/\]/g) || []).length > 1) {

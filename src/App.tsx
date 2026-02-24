@@ -11,15 +11,15 @@ import TabIcons from "./ui/TabIcons";
 import { SettingPanel } from "./components/SettingPanel";
 import { RecentPanel } from "./components/RecentPanel";
 import BaniPanel from "./components/BaniPanel";
-import { FaTimes, FaWindowMaximize, FaWindowMinimize } from "react-icons/fa";
+import { FaPlayCircle, FaStopCircle, FaTimes, FaWindowMaximize, FaWindowMinimize } from "react-icons/fa";
 import { SET_APP_PAGE, TOGGLE_PANEL } from "./state/ActionTypes";
 import useShabadNavigation from "./utils/useShabadNavigation";
 import styled from "styled-components";
 import { appVersion, useSettings } from "./state/providers/SettingContext";
 import { closeWindow, minimizeWindow, useAutoHideCursor } from "./utils/useAutoHideCursor";
 import { useThemeColors } from "./utils/useTheme";
-import SonioxSTTPunjabi from "./components/ShabadPanel/SonioxSTTPunjabi";
 import { ShabadContext } from "./state/providers/ShabadProvider";
+import useSpeech from "./components/SoundSearch/useSpeech";
 
 
 type DownloadEvent =
@@ -57,6 +57,8 @@ function App() {
   const contentLengthRef = useRef<number>(0);
   const downloadedRef = useRef<number>(0);
   const downloadingRef = useRef<boolean>(false);
+
+  const speech = useSpeech();
 
   useEffect(() => {
     appRef.current++;
@@ -185,7 +187,6 @@ function App() {
     <AppPanel className="w-full h-full"
       style={ { background: palette.background, cursor: mouseVisible ? "default" : "none" }}
     >
-      <SonioxSTTPunjabi speechTerms={[]} baniId='' />
           {mouseVisible && showTitleBar && (
             <div
               id="header"
@@ -210,7 +211,36 @@ function App() {
               height={panelSetting.panelHeight}
               fontSize={panelSetting.panelFontSize}
             >
-              <div className="flex-none h-8 bg-gray-200 flex items-center justify-end">
+              <div className="flex-none h-8 bg-gray-200 flex items-center justify-between">
+                <div className="flex" style={{ width: '90%' }}>
+
+                  <div className="ml-2 flex-shrink-0 p-2">
+                    {speech.started ? (
+                      <button
+                        onClick={() => speech.setStarted(false)}
+                      >
+                      <FaStopCircle
+                        className="text-red-700"
+                        title="Stop Bani Pilot"
+                      />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => speech.setStarted(true)}
+                      >
+                      <FaPlayCircle
+                        title="Start Bani Pilot"
+                      />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="ml-4 flex-1 overflow-hidden mt-3 text-gray-600 text-sm">
+                    {speech.nonFinalTokens.map((token) => token.text).join('')}
+                    &nbsp;
+                  </div>
+
+                </div>
                 <FaWindowMinimize
                   className="text-gray-600 cursor-pointer mb-3 mr-4"
                   onClick={togglePanel}

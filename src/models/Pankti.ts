@@ -14,9 +14,10 @@ export type Pankti = {
     punjabi_translation: string;
     english_translation: string;
     bani_id?: number;
-    gurmukhi_words: string[];
-    vishraam_idx: number,
-    reverse_gurmukhi_words: string[];
-    reverse_vishraam_idx: number,
+    gurmukhi_speech: string,
+    vishraam_idx: number | null,
+    vishraam_ridx: number | null,
+    gurmukhi_words: string[],
+    gurmukhi_rwords: string[],
     group: number;
 };
