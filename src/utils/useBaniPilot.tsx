@@ -9,6 +9,7 @@ import { Pankti } from "../models/Pankti";
 import { AppContext } from "../state/providers/AppProvider";
 import { useShabadSearch } from "./useShabadSearch";
 import { DB } from "./DB";
+import useMeilisearch from "./useMeilisearch";
 
 const RAHAO_PANKTI   = 3;
 const GURBANI_PANKTI = 4;
@@ -31,7 +32,8 @@ export const useBaniPilot = () => {
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastValueRef = useRef(speech.endedAt);
 
-    const shabadSearch = useShabadSearch(speech.rawTokens, speech.tokens, appContext.dbPath);
+    const shabadSearch = useShabadSearch(appContext.dbPath);
+    const { isLoading } = useMeilisearch('panktis');
 
     const autoNext = () => {
         if (!panktiFinished || state.shabadIds.length > 1) {
@@ -182,7 +184,7 @@ export const useBaniPilot = () => {
                 return;
             }
 
-            shabadSearch.search().then(() => console.log('searched'));
+            shabadSearch.search(speech.rawTokens, speech.tokens).then(() => console.log('searched'));
         };
 
         const start = performance.now();
@@ -279,7 +281,6 @@ export const useBaniPilot = () => {
         }
 
         if (matchingPanktiIndex === state.current) {
-            console.log('current pankti matching, tokens: ', speech.tokens.join(' '), ' pankti: ', state.panktis[state.current].gurmukhi_unicode);
             // setLastPanktiCheckIdx(lastCheckIndex+matchingScores[0].totalMatches);
             if (matchingScores[0].fullMatch || matchingScores[0].panktiFinished) {
                 const newLastCheckIdx = lastCheckIndex + matchingScores[0].lastMatchIdx + 1;
@@ -337,7 +338,8 @@ export const useBaniPilot = () => {
     }, [
         speech,
         state,
-        appContext.dbPath
+        appContext.dbPath,
+        isLoading
     ]);
 
     // local only

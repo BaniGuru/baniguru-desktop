@@ -116,9 +116,15 @@ const ShabadDisplay: React.FC = () => {
             instance.select(`
                 SELECT
                     lines.*,
+                    panktis.gurmukhi_speech,
+                    panktis.vishraam_idx,
+                    panktis.vishraam_ridx,
+                    panktis.gurmukhi_words,
+                    panktis.gurmukhi_rwords,
                     punjabi.translation as punjabi_translation,
                     english.translation as english_translation
                 FROM lines
+                INNER JOIN panktis ON lines.id = panktis.id
                 INNER JOIN shabads ON lines.shabad_id = shabads.id
                 LEFT JOIN translations AS punjabi ON lines.id = punjabi.line_id AND (
                     (shabads.source_id = 1 AND punjabi.translation_source_id = 6) OR
@@ -128,7 +134,7 @@ const ShabadDisplay: React.FC = () => {
                     (shabads.source_id = 1 AND english.translation_source_id = 1) OR
                     (shabads.source_id != 1 AND english.translation_source_id IN (7, 9, 10, 12, 14, 16, 18, 20, 22))
                 )
-                WHERE shabad_id = '${searchPankti.shabad_id}'
+                WHERE lines.shabad_id = '${searchPankti.shabad_id}'
             `).then((panktis: any) => {
                 if (! panktis) {
                     return;

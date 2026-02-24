@@ -46,47 +46,27 @@ export default function useSonioxClient({
   const [error, setError] = useState<TranscriptionError | null>(null);
   const prevTermsRef: any = useRef();
 
-  useEffect(() => {
-    const handleTranscription = async () => {
-      if (terms.length <= 0) return;
+  // useEffect(() => {
+  //   const handleTranscription = async () => {
+  //     if (terms.length <= 0) return;
 
-      // Don't run if terms are the same as previous
-      if (JSON.stringify(terms) === JSON.stringify(prevTermsRef.current)) {
-        return;
-      }
+  //     // Don't run if terms are the same as previous
+  //     if (JSON.stringify(terms) === JSON.stringify(prevTermsRef.current)) {
+  //       return;
+  //     }
 
-      sonioxClient.current?.cancel();
-      await startTranscription(terms);
-      prevTermsRef.current = terms;
-    };
+  //     sonioxClient.current?.cancel();
+  //     await startTranscription(terms);
+  //     prevTermsRef.current = terms;
+  //   };
 
-    handleTranscription();
-  }, [terms]);
+  //   handleTranscription();
+  // }, [terms]);
 
   const searchTerms = [
     "ਬੈਰਾਗ",
     "ਚਾਉ",
-    "ਮਨ",
-    "ਦਰਸਨ",
-    "ਪ੍ਰਾਨ",
-    "ਰਹਿਰਾਸ",
-    "ਘਰ",
-    "ਖੰਡਨ",
-    "ਡੰਡਉਤ",
-    "ਜਪਹੁ",
-    "ਗੁਰਮੁਖ",
-    "ਕਾਲਤ੍ਰ",
-    "ਡਰਣਾ",
-    "ਤੇਲ",
-    "ਸੰਗਤ",
-    "ਬਿਰਥਾ",
-    "ਛੁਟੀਐ",
-    "ਪੜੈਗੀ",
-    "ਤੂ",
-    "ਪੇਈਅੜੈ",
-    "ਸੇਵਿ",
-    "ਸਾਹੁਰੜੈ",
-    "ਕੰਤੁ",
+    
   ]
 
   const startTranscription = useCallback(async (terms: string[]) => {
