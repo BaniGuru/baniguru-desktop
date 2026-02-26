@@ -23,6 +23,9 @@ export type PanktiScore = {
     lastMatchIdx: number;
 };
 
+const RAHAOH_PANKTI_TYPE_ID = 3;
+const SHABAD_PANKTI_TYPE_ID = 4;
+
 export const getLatestPanktiPart = (token: string) => {
     if (token.trim() === '') {
         return [];
@@ -61,8 +64,12 @@ const getAllowedNextPanktiIdxs = (panktis: Pankti[], homeIdx: number, currentIdx
 
     // Step 1: Find first valid unvisited pankti
     const firstUnvisitedIndex = panktis.findIndex(
-        p => !p.visited && p.type_id > 2
+        p => !p.visited && p.type_id > 2 && p.gurmukhi_words.length > 1
     );
+
+    if (firstUnvisitedIndex === -1) {
+        return [currentIdx];
+    }
 
     if (firstUnvisitedIndex !== -1) {
         const targetGroup = panktis[firstUnvisitedIndex].group;
@@ -78,13 +85,26 @@ const getAllowedNextPanktiIdxs = (panktis: Pankti[], homeIdx: number, currentIdx
         });
     }
 
-    let nextPanktiIdxs = unvisitedPanktis;
+    let nextPanktiIdxs = [unvisitedPanktis[0], currentIdx];
     if (!rahaoShabad) {
         if (currentIdx === homeIdx) {
             nextPanktiIdxs = [unvisitedPanktis[0], currentIdx];
         } else {
             nextPanktiIdxs = [unvisitedPanktis[0], currentIdx, homeIdx];
         }
+    } else {
+        if (panktis[currentIdx].type_id === RAHAOH_PANKTI_TYPE_ID) {
+            return [unvisitedPanktis[0], currentIdx];
+        }
+
+        // still in same group
+        const firstGroup = panktis[firstUnvisitedIndex].group;
+        if (firstGroup === panktis[currentIdx].group) {
+            return [...unvisitedPanktis, currentIdx];
+        }
+
+        // end of current group
+        return [currentIdx, homeIdx];
     }
 
     return nextPanktiIdxs;
@@ -96,6 +116,7 @@ export const findMatchingPankti = (panktis: Pankti[], tokens: string[], homeIdx:
     }
 
     const nextPanktiIdxs = getAllowedNextPanktiIdxs(panktis, homeIdx, currentIdx);
+    console.log('next panktis: ', nextPanktiIdxs);
     let matchScores: PanktiScore[] = getPanktiScores(panktis, tokens);
 
     matchScores = matchScores.filter(matchScore => matchScore.panktiStarted || matchScore.vishraamStarted);
@@ -121,8 +142,11 @@ export const findMatchingPankti = (panktis: Pankti[], tokens: string[], homeIdx:
         return fullStartOrVishraam;
     }
 
-    // allow next possible panktis
-    matchScores = matchScores.filter((panktiScore, index) => nextPanktiIdxs.includes(panktiScore.panktiIdx));
+    // allow next possible panktis only non visited
+    matchScores = matchScores.filter((panktiScore, index) => nextPanktiIdxs.includes(panktiScore.panktiIdx) &&
+        (   (panktiScore.panktiStarted && !panktis[panktiScore.panktiIdx].visited) ||
+            panktiScore.panktiIdx === currentIdx)
+    );
     if (matchScores.length === 1) {
         return matchScores;
     }
@@ -208,7 +232,7 @@ export const getPanktiScore = (pankti: Pankti, tokens: string[]) => {
                 const wordIdxs = Array.from({ length: k }, (_, idx) => i + idx);
                 const matchedWords = tokens.slice(j, j + k);
 
-                const vishraamStarted = wordIdxs[0] < vishraam_idx;
+                const vishraamStarted = wordIdxs.includes(vishraam_idx - 1);
                 const panktiFinished = wordIdxs[0] === 0;
                 const panktiStarted =
                     wordIdxs[wordIdxs.length - 1] === words.length - 1;

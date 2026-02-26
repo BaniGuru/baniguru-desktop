@@ -33,6 +33,8 @@ const SearchPanel: FunctionComponent = () => {
     const listContainerRef = useRef<HTMLUListElement | null>(null);
     appRef.current++;
 
+    const searchRequestId = useRef(0);
+
     const handleSearchShortcuts = (event: React.KeyboardEvent<HTMLInputElement>) => {
         const blockedKeys: Record<string, string> = {
                 "R": "r",
@@ -92,7 +94,7 @@ const SearchPanel: FunctionComponent = () => {
         }
     };
 
-    const searchByFirstLetters = async (value: string) => {
+    const searchByFirstLetters = async (value: string, requestId: number) => {
         const db = await DB.getInstance();
         db.select(`
             SELECT
@@ -111,6 +113,9 @@ const SearchPanel: FunctionComponent = () => {
             ORDER BY shabads.source_id, rank
             LIMIT 100
         `).then((res: any) => {
+            // Ignore if not latest search request
+            if (requestId !== searchRequestId.current) return;
+
             if (!res) {
                 return;
             }
@@ -126,7 +131,7 @@ const SearchPanel: FunctionComponent = () => {
         });
     }
 
-    const searchByWords = async (value: string) => {
+    const searchByWords = async (value: string, requestId: number) => {
         const searchValue = value.trim();
         const db = await DB.getInstance();
         db.select(`
@@ -149,6 +154,9 @@ const SearchPanel: FunctionComponent = () => {
             ORDER BY rank, shabads.source_id
             LIMIT 100
         `).then((res: any) => {
+            // Ignore if not latest search request
+            if (requestId !== searchRequestId.current) return;
+
             if (!res) {
                 return;
             }
@@ -171,10 +179,12 @@ const SearchPanel: FunctionComponent = () => {
             return;
         }
 
+        const currentRequestId = ++searchRequestId.current;
+
         if (value.includes(' ')) {
-            searchByWords(value);
+            searchByWords(value, currentRequestId);
         } else {
-            searchByFirstLetters(value);
+            searchByFirstLetters(value, currentRequestId);
         }
 
         dispatch({
