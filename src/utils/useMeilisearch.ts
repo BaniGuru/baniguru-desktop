@@ -26,22 +26,6 @@ export const createPhoneticKey = (text: string) => {
     .toUpperCase();
 };
 
-const gurmukhiToTranslitMap: Record<string, string> = {
-  'ੳ': 'u', 'ਅ': 'a', 'ੲ': 'i',
-  'ਕ': 'k', 'ਖ': 'kh', 'ਗ': 'g', 'ਘ': 'gh',
-  'ਚ': 'ch', 'ਛ': 'chh', 'ਜ': 'j', 'ਝ': 'jh',
-  'ਟ': 't', 'ਠ': 'th', 'ਡ': 'd', 'ਢ': 'dh',
-  'ਤ': 't', 'ਥ': 'th', 'ਦ': 'd', 'ਧ': 'dh',
-  'ਪ': 'p', 'ਫ': 'ph', 'ਬ': 'b', 'ਭ': 'bh',
-  'ਮ': 'm', 'ਨ': 'n',
-  'ਸ': 's', 'ਸ਼': 's', 'ਹ': 'h',
-  'ਲ': 'l', 'ਰ': 'r',
-  'ਵ': 'v', 'ੜ': 'r'
-};
-
-const transliterateQuery = (word: string) =>
-  word.split('').map(c => gurmukhiToTranslitMap[c] || '').join('');
-
 // -------------------------
 // Meilisearch client
 // -------------------------

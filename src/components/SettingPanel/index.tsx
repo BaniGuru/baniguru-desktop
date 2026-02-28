@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ShabadTheme } from "../../ui/ShabadTheme";
 import { LangType, useSettings } from "../../state/providers/SettingContext";
+import { DB } from "../../utils/DB";
 
 const languages = ["ਗੁਰਮੁਖੀ", "ਪੰਜਾਬੀ", "English", "Next Pankti"];
 
@@ -73,6 +74,10 @@ export const SettingPanel = () => {
       <div className="text-lg ml-4 flex">
         <div className="mr-2">Settings: </div>
         <div>http://{ip}:54321/settings</div>
+      </div>
+      <div className="text-lg ml-4 flex">
+        <div className="mr-2">Database: </div>
+        <div>{DB.getDbPath()}</div>
       </div>
     </div>
   );

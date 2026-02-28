@@ -57,7 +57,7 @@ export const isMatching = (word: string, token: string): boolean => {
     return false;
 };
 
-export const findLatestMatches = (scores: PanktiScore[], reverseTokens: string[]) => {
+export const findLatestMatches = (scores: PanktiScore[], _reverseTokens: string[]) => {
     if (!scores.length) return [];
 
     // todo: could use next possible panktis to remove matches less than 2 match (in future)
@@ -93,7 +93,7 @@ export const findBestScore = (
     tokens: string[],
     words: string[],
     vishraam_idx: number,
-    isPartial: boolean = false,
+    _isPartial: boolean = false,
 ): PanktiScore | null => {
 
     let matches: PanktiScore[] = [];
@@ -181,8 +181,8 @@ export const findBestScore = (
 };
 
 export const findBestPanktiScore = (reverseTokens: string[], pankti: Pankti, panktiIdx: number, shabadId: string, isPartial = false) => {
-    const reverse_vishraam_idx = pankti.reverse_vishraam_idx;
-    const reverseWords = pankti.reverse_gurmukhi_words;
+    const reverse_vishraam_idx = pankti.vishraam_ridx ?? -1;
+    const reverseWords = pankti.gurmukhi_rwords;
 
     const score = findBestScore(reverseTokens, reverseWords, reverse_vishraam_idx, isPartial);
 
@@ -239,7 +239,3 @@ export const findBestPanktiScore = (reverseTokens: string[], pankti: Pankti, pan
 
         return scores;
     };
-
-export const isMatchingPankti = (tokens: string[], pankti: Pankti) => {
-
-}

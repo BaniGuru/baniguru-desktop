@@ -9,6 +9,7 @@ export type AppState = {
 
 export const PAGE_SEARCH = "search";
 export const PAGE_SHABAD = "shabad";
+export const PAGE_BANI = "bani";
 
 const initAppState: AppState = {
     page: "search",

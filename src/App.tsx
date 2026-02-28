@@ -18,7 +18,6 @@ import styled from "styled-components";
 import { appVersion, useSettings } from "./state/providers/SettingContext";
 import { closeWindow, minimizeWindow, useAutoHideCursor } from "./utils/useAutoHideCursor";
 import { useThemeColors } from "./utils/useTheme";
-import { ShabadContext } from "./state/providers/ShabadProvider";
 import useSpeech from "./components/SoundSearch/useSpeech";
 
 
@@ -47,7 +46,6 @@ const TabPanel = styled.div<TabPanelProps>`
 
 function App() {
   const appContext: {state: AppState, setDbPath: any, dispatch: any} = useContext(AppContext);
-  const shabadContext = useContext(ShabadContext);
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const appRef = useRef<number>(0);

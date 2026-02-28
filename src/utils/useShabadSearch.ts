@@ -1,13 +1,12 @@
 import { Token } from "@soniox/speech-to-text-web";
 import { useContext, useRef, useState } from "react";
 import { DB } from "./DB";
-import { findBestScore, findMatches } from "./matchFinder";
-import { cleanGurmukhiUnicode, formatPanktis } from "./shabadUtil";
-import { Pankti } from "../models/Pankti";
+import { findMatches } from "./matchFinder";
+import { formatPanktis } from "./shabadUtil";
+// import { Pankti } from "../models/Pankti";
 import { AppContext } from "../state/providers/AppProvider";
 import { SearchContext } from "../state/providers/SearchProvider";
 import { SEARCH_SHABAD_PANKTI, SET_APP_PAGE } from "../state/ActionTypes";
-import { path } from "@tauri-apps/api";
 import useMeilisearch from "./useMeilisearch";
 
 export const useShabadSearch = (dbPath: string) => {
@@ -15,9 +14,9 @@ export const useShabadSearch = (dbPath: string) => {
     const appContext = useContext(AppContext);
     const searchContext = useContext(SearchContext);
     const [termUpdated, setTermUpdated] = useState(false);
-    const [lastCheckIndex, setLastCheckIndex] = useState(0);
+    // const [setLastCheckIndex] = useState(0);
 
-    const { isLoading, error, results, searchPankti } = useMeilisearch('panktis');
+    const { isLoading, results, searchPankti } = useMeilisearch('panktis');
 
 //     navigator.mediaDevices.enumerateDevices()
 //   .then(devices => {
@@ -100,7 +99,7 @@ export const useShabadSearch = (dbPath: string) => {
                 appContext.setTerms(panktiTokens);
             }
 
-            setLastCheckIndex(speechText.length);
+            // setLastCheckIndex(speechText.length);
             searchingRef.current = false;
             return;
         }
@@ -156,64 +155,64 @@ export const useShabadSearch = (dbPath: string) => {
         searchingRef.current = false;
     }
 
-    function gurmukhiWithoutMatra(text: string) {
-        // Allowed Gurmukhi letters + space
-        const allowedLetters = new Set([
-            "ੳ", "ੲ", "ਅ", "ਉ", "ਏ", "ਐ", "ਓ", // base vowels
-            "ਸ", "ਹ",
-            "ਕ", "ਖ", "ਗ", "ਘ", "ਞ",
-            "ਚ", "ਛ", "ਜ", "ਝ", "ਙ",
-            "ਤ", "ਥ", "ਦ", "ਧ", "ਨ",
-            "ਟ", "ਠ", "ਡ", "ਢ", "ਣ",
-            "ਪ", "ਫ", "ਬ", "ਭ", "ਮ",
-            "ਯ", "ਰ", "ਲ", "ਵ", "ੜ",
-            "ਖ਼", "ਲ਼", "ਸ਼", "ਫ਼", "ਗ਼", "ਜ਼",
-            " " // allow spaces
-        ]);
+    // function gurmukhiWithoutMatra(text: string) {
+    //     // Allowed Gurmukhi letters + space
+    //     const allowedLetters = new Set([
+    //         "ੳ", "ੲ", "ਅ", "ਉ", "ਏ", "ਐ", "ਓ", // base vowels
+    //         "ਸ", "ਹ",
+    //         "ਕ", "ਖ", "ਗ", "ਘ", "ਞ",
+    //         "ਚ", "ਛ", "ਜ", "ਝ", "ਙ",
+    //         "ਤ", "ਥ", "ਦ", "ਧ", "ਨ",
+    //         "ਟ", "ਠ", "ਡ", "ਢ", "ਣ",
+    //         "ਪ", "ਫ", "ਬ", "ਭ", "ਮ",
+    //         "ਯ", "ਰ", "ਲ", "ਵ", "ੜ",
+    //         "ਖ਼", "ਲ਼", "ਸ਼", "ਫ਼", "ਗ਼", "ਜ਼",
+    //         " " // allow spaces
+    //     ]);
 
-        // Map vowels with matras to their base letters
-        const matraToBase = {
-            "ਆ": "ਅ",
-            "ਇ": "ੲ",
-            "ਈ": "ੲ",
-            "ਉ": "ੳ",
-            "ਊ": "ੳ",
-            "ਏ": "ੲ",
-            "ਐ": "ਅ",
-            "ਓ": "ਓ",
-            "ਔ": "ਅ"
-        };
+    //     // Map vowels with matras to their base letters
+    //     const matraToBase = {
+    //         "ਆ": "ਅ",
+    //         "ਇ": "ੲ",
+    //         "ਈ": "ੲ",
+    //         "ਉ": "ੳ",
+    //         "ਊ": "ੳ",
+    //         "ਏ": "ੲ",
+    //         "ਐ": "ਅ",
+    //         "ਓ": "ਓ",
+    //         "ਔ": "ਅ"
+    //     };
 
-        // Remove 'ਰਹਾਉ'
-        text = text.replace(/ਰਹਾਉ/g, "");
+    //     // Remove 'ਰਹਾਉ'
+    //     text = text.replace(/ਰਹਾਉ/g, "");
 
-        // Remove peri reph ("੍ਰ")
-        text = text.replace(/੍ਰ/g, "");
+    //     // Remove peri reph ("੍ਰ")
+    //     text = text.replace(/੍ਰ/g, "");
 
-        // Replace matras with base letters
-        for (const [matra, base] of Object.entries(matraToBase)) {
-            const regex = new RegExp(matra, "g");
-            text = text.replace(regex, base);
-        }
+    //     // Replace matras with base letters
+    //     for (const [matra, base] of Object.entries(matraToBase)) {
+    //         const regex = new RegExp(matra, "g");
+    //         text = text.replace(regex, base);
+    //     }
 
-        // Keep only allowed letters + spaces
-        let cleaned = "";
-        for (const char of text) {
-            if (allowedLetters.has(char)) {
-            cleaned += char;
-            }
-        }
+    //     // Keep only allowed letters + spaces
+    //     let cleaned = "";
+    //     for (const char of text) {
+    //         if (allowedLetters.has(char)) {
+    //         cleaned += char;
+    //         }
+    //     }
 
-        // Normalize spaces (trim and replace multiple spaces with single)
-        cleaned = cleaned.split(/\s+/).join(" ").trim();
+    //     // Normalize spaces (trim and replace multiple spaces with single)
+    //     cleaned = cleaned.split(/\s+/).join(" ").trim();
 
-        return cleaned;
-    }
+    //     return cleaned;
+    // }
 
-    function removeGurmukhiVowelsAndMarks(text: string): string {
-        // remove nukta, halant, matras, Sihaari, Tippi, Bindi
-        return text.replace(/[\u0A3C\u0A3E-\u0A4C\u0A3F\u0A41-\u0A42\u0A4D\u0A70\u0A02]/g, '');
-    }
+    // function removeGurmukhiVowelsAndMarks(text: string): string {
+    //     // remove nukta, halant, matras, Sihaari, Tippi, Bindi
+    //     return text.replace(/[\u0A3C\u0A3E-\u0A4C\u0A3F\u0A41-\u0A42\u0A4D\u0A70\u0A02]/g, '');
+    // }
 
     function buildSql(speechPanktis: string[]): string {
         const escapeSql = (s: string) => s.replace(/'/g, "''");
@@ -250,51 +249,51 @@ export const useShabadSearch = (dbPath: string) => {
             return [];
         }
 
-        const panktis: Pankti[] = res.map((line: any) => ({
-            first_letter: '',
-            gurmukhi: line.gurmukhi,
-            gurmukhi_unicode: line.gurmukhi_unicode,
-            id: line.id,
-            order_id: line.order_id,
-            pronuciation: '',
-            shabad_id: line.shabad_id,
-            source_line: line.source_line,
-            source_page: line.source_page,
-            type_id: line.type_id,
-            vishraam_first_letters: line.vishraam_first_letters,
-            visited: false,
-            punjabi_translation: '',
-            english_translation: '',
-            bani_id: undefined,
-            gurmukhi_words: [],
-            vishraam_idx: 0,
-            reverse_gurmukhi_words: [],
-            reverse_vishraam_idx: 0,
-            group: 1
-        }));
+        // const panktis: Pankti[] = res.map((line: any) => ({
+        //     first_letter: '',
+        //     gurmukhi: line.gurmukhi,
+        //     gurmukhi_unicode: line.gurmukhi_unicode,
+        //     id: line.id,
+        //     order_id: line.order_id,
+        //     pronuciation: '',
+        //     shabad_id: line.shabad_id,
+        //     source_line: line.source_line,
+        //     source_page: line.source_page,
+        //     type_id: line.type_id,
+        //     vishraam_first_letters: line.vishraam_first_letters,
+        //     visited: false,
+        //     punjabi_translation: '',
+        //     english_translation: '',
+        //     bani_id: undefined,
+        //     gurmukhi_words: [],
+        //     vishraam_idx: 0,
+        //     reverse_gurmukhi_words: [],
+        //     reverse_vishraam_idx: 0,
+        //     group: 1
+        // }));
 
-        return formatPanktis(panktis);
+        return formatPanktis([]);
     }
 
-    function getSearchWords(text: string): string[] {
-        const parts = text.replaceAll('।', '').trim().split(",").map(p => p.trim());
-        const words: string[] = [];
+    // function getSearchWords(text: string): string[] {
+    //     const parts = text.replaceAll('।', '').trim().split(",").map(p => p.trim());
+    //     const words: string[] = [];
 
-        for (const part of parts) {
-            if (part.trim() !== '' && !words.includes(part.trim())) {
-                words.push(part.trim());
-            }
-        }
+    //     for (const part of parts) {
+    //         if (part.trim() !== '' && !words.includes(part.trim())) {
+    //             words.push(part.trim());
+    //         }
+    //     }
 
-        return words;
-    }
+    //     return words;
+    // }
 
-    const getMainShabadLines = (lines: string[]) => {
-        return lines
-        .slice(-3)
-            .map(line => getSearchWords(line))
-            .filter(words => words.length > 0);
-    };
+    // const getMainShabadLines = (lines: string[]) => {
+    //     return lines
+    //     .slice(-3)
+    //         .map(line => getSearchWords(line))
+    //         .filter(words => words.length > 0);
+    // };
 
     return {
         search,

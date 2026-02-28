@@ -5,9 +5,9 @@ import { Pankti } from "../../models/Pankti";
 import { findMatchingPankti, getLatestPanktiPart } from "./SpeechHelper";
 import { SHABAD_PANKTI } from "../../state/ActionTypes";
 
-const useShabadPilot = (speechTokens: string[], status: RecorderState, startTranscription: (panktis: string[]) => any) => {
+const useShabadPilot = (speechTokens: string[], status: RecorderState, startTranscription: any) => {
 
-    const [lastCheckIndex, setLastCheckIndex] = useState(0);
+    const [lastCheckIndex] = useState(0);
     const [active, setActive] = useState(false);
     const shabadContext = useContext(ShabadContext);
 
@@ -20,13 +20,13 @@ const useShabadPilot = (speechTokens: string[], status: RecorderState, startTran
     useEffect(() => {
         if (!active) return;
 
-        if (status === 'Init') {
+        if (status === 'Init' || status === 'Finished') {
             startTranscription(getTerms());
         }
 
         navigatePankti();
 
-    }, [active, speechTokens]);
+    }, [active, speechTokens, shabadContext.state.shabadId, status]);
 
     const navigatePankti = () => {
         const tokens = speechTokens.slice(lastCheckIndex);

@@ -2,17 +2,13 @@ import { Token } from "@soniox/speech-to-text-web";
 import { useContext, useEffect, useRef, useState } from "react";
 import { ShabadContext } from "../state/providers/ShabadProvider";
 import { SHABAD_PANKTI } from "../state/ActionTypes";
-import { stat } from "fs";
-import {get} from 'fast-levenshtein';
 import { findMatches, PanktiScore } from "./matchFinder";
 import { Pankti } from "../models/Pankti";
 import { AppContext } from "../state/providers/AppProvider";
 import { useShabadSearch } from "./useShabadSearch";
-import { DB } from "./DB";
 import useMeilisearch from "./useMeilisearch";
 
 const RAHAO_PANKTI   = 3;
-const GURBANI_PANKTI = 4;
 
 export const useBaniPilot = () => {
 
@@ -20,14 +16,13 @@ export const useBaniPilot = () => {
     const appContext = useContext(AppContext);
     const [speech, setSpeech] = useState<{tokens: string[], rawTokens: Token[], finalised: boolean, endedAt: number}>({tokens: [], rawTokens: [], finalised: false, endedAt: 0});
     const processingRef = useRef(false);
-    const [status, setStatus] = useState('Not Started');
+    const [status] = useState('Not Started');
     const [lastCheckIndex, setLastCheckIndex] = useState(0);
     const [lastPanktiCheckIdx, setLastPanktiCheckIdx] = useState(0);
-    const [panktiMatchIdx, setPanktiMatchIdx] = useState(0);
     const [visitedIdxs, setVisistedIdxs] = useState<Number[]>([]);
     const [panktiFinished, setPanktiFinished] = useState<boolean>(false);
     const [baniId, setBaniId] = useState(null);
-    const [shabadId, setShabadId] = useState('');
+    // const [setShabadId] = useState('');
 
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastValueRef = useRef(speech.endedAt);
@@ -106,10 +101,10 @@ export const useBaniPilot = () => {
 
         if (!state.baniId) {
             setBaniId(null);
-            setShabadId(state.shabadId);
+            // setShabadId(state.shabadId);
         } else {
             setBaniId(baniId);
-            setShabadId('');
+            // setShabadId('');
         }
 
         setLastCheckIndex(0);
@@ -117,7 +112,7 @@ export const useBaniPilot = () => {
         setVisistedIdxs([]);
     }, [state.baniId, state.shabadId, appContext.state.show_panel]);
 
-    const findNextPanki = (scores: PanktiScore[], currentPankti: Pankti, singleShabad: boolean, allowedShabadIds: string[], allowedPanktiIds: number[]) => {
+    const findNextPanki = (scores: PanktiScore[], _currentPankti: Pankti, singleShabad: boolean, allowedShabadIds: string[], allowedPanktiIds: number[]) => {
         // 1. prefer full match (avoid less than two words unless continuous pankti)
         const fullMatches = scores.filter((score) => score.fullMatch);
         if (fullMatches.length === 1 &&
@@ -257,7 +252,7 @@ export const useBaniPilot = () => {
                 );
             }
 
-                    matchingScores.forEach((s, i) => {
+                    matchingScores.forEach((s) => {
             const green = (v: boolean) =>
                 v ? '\x1b[32mtrue\x1b[0m' : '\x1b[31mfalse\x1b[0m';
 

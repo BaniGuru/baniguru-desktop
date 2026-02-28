@@ -24,7 +24,7 @@ export type PanktiScore = {
 };
 
 const RAHAOH_PANKTI_TYPE_ID = 3;
-const SHABAD_PANKTI_TYPE_ID = 4;
+// const SHABAD_PANKTI_TYPE_ID = 4;
 
 export const getLatestPanktiPart = (token: string) => {
     if (token.trim() === '') {
@@ -143,9 +143,74 @@ export const findMatchingPankti = (panktis: Pankti[], tokens: string[], homeIdx:
     }
 
     // allow next possible panktis only non visited
-    matchScores = matchScores.filter((panktiScore, index) => nextPanktiIdxs.includes(panktiScore.panktiIdx) &&
+    matchScores = matchScores.filter((panktiScore) => nextPanktiIdxs.includes(panktiScore.panktiIdx) &&
         (   (panktiScore.panktiStarted && !panktis[panktiScore.panktiIdx].visited) ||
             panktiScore.panktiIdx === currentIdx)
+    );
+    if (matchScores.length === 1) {
+        return matchScores;
+    }
+
+    return [];
+};
+
+export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], currentIdx: number, panktiFinished: boolean) => {
+    if (tokens.length < 1) {
+        return [];
+    }
+
+    let nextPanktiIdxs = [currentIdx];
+
+    if (panktis.length > (currentIdx+1) && panktiFinished) {
+        nextPanktiIdxs.push(currentIdx+1);
+    }
+
+    if (panktiFinished && panktis.length > (currentIdx+2) && panktis[currentIdx+1].type_id <= 2) {
+        nextPanktiIdxs.push(currentIdx+2);
+    }
+
+    console.log('next panktis: ', nextPanktiIdxs);
+    let matchScores: PanktiScore[] = getPanktiScores(panktis, tokens);
+
+    matchScores = matchScores.filter(matchScore => matchScore.panktiStarted || matchScore.vishraamStarted);
+
+    if (matchScores.length === 0) {
+        return [];
+    }
+
+    console.log('scores: ', matchScores);
+
+    // filter towards last match
+    matchScores = findMatchTowardEnd(matchScores)
+    if (matchScores.length === 0) {
+        return [];
+    }
+
+    // filter full matched ones
+    const fullMatchScores = matchScores.filter(matchScore => matchScore.fullMatch &&
+        (
+            (matchScore.totalMatches > 1 && panktis[matchScore.panktiIdx].type_id > 2) ||
+            nextPanktiIdxs.includes(matchScore.panktiIdx)
+        )
+    );
+    if (fullMatchScores.length === 1) {
+        return fullMatchScores;
+    }
+
+    // filter full start or vishraam
+    const fullStartOrVishraam = matchScores.filter(matchScore => (matchScore.startFull || matchScore.vishraamFull) &&
+        (
+            nextPanktiIdxs.includes(matchScore.panktiIdx)
+        )
+    );
+    if (fullStartOrVishraam.length === 1) {
+        return fullStartOrVishraam;
+    }
+
+    // allow next possible panktis only non visited
+    matchScores = matchScores.filter((panktiScore) => nextPanktiIdxs.includes(panktiScore.panktiIdx) &&
+        (panktiScore.panktiStarted && !panktis[panktiScore.panktiIdx].visited) &&
+        (panktis[panktiScore.panktiIdx-1]?.visited || panktiScore.panktiIdx === currentIdx)
     );
     if (matchScores.length === 1) {
         return matchScores;
