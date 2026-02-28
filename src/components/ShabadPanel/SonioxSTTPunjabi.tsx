@@ -1,8 +1,8 @@
-import { useContext, useEffect, useState } from "react";
+import { useEffect } from "react";
 import useSonioxClient from "./useSonioxClient";
 import { useBaniPilot } from "../../utils/useBaniPilot";
 import { cleanTokens } from "../../utils/autoPilotHelpers";
-import { AppContext } from "../../state/providers/AppProvider";
+// import { AppContext } from "../../state/providers/AppProvider";
 
 const API_KEY = "";
 
@@ -12,7 +12,7 @@ interface SonioxSTTPunjabiProps {
   baniId: any;
 }
 
-const SonioxSTTPunjabi: React.FC<SonioxSTTPunjabiProps> = ({speechTerms, baniId}) => {
+const SonioxSTTPunjabi: React.FC<SonioxSTTPunjabiProps> = ({speechTerms}) => {
   const {
     startTranscription,
     stopTranscription,
@@ -67,11 +67,11 @@ const SonioxSTTPunjabi: React.FC<SonioxSTTPunjabiProps> = ({speechTerms, baniId}
       </div>
 
       {state !== 'Init' &&
-      <div style={{ marginBottom: 10 }}>
-        <p style={{ background: "#f3f3f3", padding: 10 }}>
+        <div style={{ marginBottom: 10 }}>
+          <p style={{ background: "#f3f3f3", padding: 10 }}>
             Partial Tokens: {nonFinalTokens.map((t) => t.text).join("")}
-        </p>
-      </div>
+          </p>
+        </div>
       }
 
       {error && (

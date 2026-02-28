@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   SonioxClient,
   type ErrorStatus,
@@ -6,8 +6,7 @@ import {
   type Token,
   type TranslationConfig,
 } from "@soniox/speech-to-text-web";
-import { cleanTokens } from "../../utils/autoPilotHelpers";
-import { AppContext } from "../../state/providers/AppProvider";
+// import { AppContext } from "../../state/providers/AppProvider";
 
 interface UseSonioxClientOptions {
   apiKey: string | (() => Promise<string>);
@@ -31,9 +30,6 @@ export default function useSonioxClient({
 }: UseSonioxClientOptions) {
   const sonioxClient = useRef<SonioxClient | null>(null);
 
-  
-  const {terms} = useContext(AppContext);
-
   if (sonioxClient.current == null) {
     sonioxClient.current = new SonioxClient({
       apiKey: apiKey,
@@ -44,7 +40,7 @@ export default function useSonioxClient({
   const [finalTokens, setFinalTokens] = useState<Token[]>([]);
   const [nonFinalTokens, setNonFinalTokens] = useState<Token[]>([]);
   const [error, setError] = useState<TranscriptionError | null>(null);
-  const prevTermsRef: any = useRef();
+  // const prevTermsRef: any = useRef();
 
   // useEffect(() => {
   //   const handleTranscription = async () => {
@@ -113,14 +109,14 @@ export default function useSonioxClient({
         const newFinalTokens: Token[] = [];
         const newNonFinalTokens: Token[] = [];
 
-        let nonFinalText = "";
+        // let nonFinalText = "";
 
         for (const token of result.tokens) {
           if (token.is_final) {
             newFinalTokens.push(token);
           } else {
             newNonFinalTokens.push(token);
-            nonFinalText += token.text;
+            // nonFinalText += token.text;
           }
         }
 

@@ -1,6 +1,5 @@
 import { Token } from "@soniox/speech-to-text-web";
 import { Pankti } from "../models/Pankti";
-import { get } from "fast-levenshtein";
 
 const RAHAOH_PANKTI_TYPE_ID = 3;
 const SHABAD_PANKTI_TYPE_ID = 4;
@@ -91,10 +90,6 @@ const filterLatestPanktis = (panktiScores: PanktiScore[]): PanktiScore[] => {
 };
 
 export function matraClean(word: string) {
-    if (gurmukhiOrdinal[word]) {
-        return gurmukhiOrdinal[word]
-    };
-
     if (word === 'ੴ') {
         return 'ਇਕਓਨਕਾਰ';
     }
@@ -201,7 +196,7 @@ export const getPanktiScores = (tokens: string[], panktis: Pankti[], currentPank
                     scoreData.vishraam = true;
                 }
 
-                if (wordIndex < pankti.vishraam_idx) {
+                if (wordIndex < (pankti.vishraam_idx ?? -1)) {
                     totalStartMatches++;
                 } else {
                     totalVishraamMatches++;
@@ -235,7 +230,7 @@ export const getPanktiScores = (tokens: string[], panktis: Pankti[], currentPank
         }
 
         // satgr hoye dyal, ta sharda pooriye
-        if (totalVishraamMatches === (pankti.gurmukhi_words.length - pankti.vishraam_idx)) {
+        if (totalVishraamMatches === (pankti.gurmukhi_words.length - (pankti.vishraam_idx ?? -1))) {
             scoreData.vishraamFull = true;
         } else {
             scoreData.vishraamFull = false;

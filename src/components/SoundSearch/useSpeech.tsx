@@ -1,7 +1,9 @@
 import { ErrorStatus, RecorderState, SonioxClient, Token } from "@soniox/speech-to-text-web";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import useShabadPilot from "./useShabadPilot";
-import { AppContext, PAGE_SEARCH, PAGE_SHABAD } from "../../state/providers/AppProvider";
+import { AppContext, PAGE_BANI, PAGE_SEARCH, PAGE_SHABAD } from "../../state/providers/AppProvider";
+import { ShabadContext } from "../../state/providers/ShabadProvider";
+import useBaniPilot from "./useBaniPilot";
 
 const API_KEY = "";
 
@@ -49,7 +51,8 @@ const useSpeech = () => {
   };
 
   const startTranscription = useCallback(async (panktis: string[]) => {
-    if (status !== 'Init') {
+    // console.log('start: ', panktis);setStatus('Running');return;
+    if (status === 'Running') {
       console.log('Alert: Already started.');
       return;
     }
@@ -116,9 +119,11 @@ const useSpeech = () => {
   }, []);
 
   const appContext = useContext(AppContext);
+  const shabadContext = useContext(ShabadContext);
 
   // const testSpeechTokens = ['ਧੰਨੁ ਧੰਨੁ ਰਾਮਦਾਸ ਗੁਰੁ, ਧੰਨੁ ਧੰਨੁ ਰਾਮਦਾਸ ਗੁਰੁ, ਜਿਨਿ ਸਿਰਿਆ ਤਿਨੈ ਸਵਾਰਿਆ'];
   const shabadPilot = useShabadPilot(speechTokens, status, startTranscription);
+  const baniPilot = useBaniPilot(speechTokens, status, startTranscription, stopTranscription);
 
   useEffect(() => {
     if (!started && status !== 'Init') {
@@ -126,7 +131,27 @@ const useSpeech = () => {
       setStatus('Init');
     }
 
-    shabadPilot.setActive(appContext.state.page === PAGE_SHABAD && started);
+    if (started && appContext.state.page === PAGE_SEARCH && status !== 'Init') {
+      stopTranscription();
+      setStatus('Init');
+    }
+
+    if (started && appContext.state.page === PAGE_BANI && status !== 'Init') {
+      stopTranscription();
+      setStatus('Init');
+    }
+
+    shabadPilot.setActive(
+      appContext.state.page === PAGE_SHABAD &&
+      started &&
+      (shabadContext.state.baniId === null)
+    );
+
+    baniPilot.setActive(
+      appContext.state.page === PAGE_SHABAD &&
+      started &&
+      (shabadContext.state.baniId !== null)
+    );
   }, [appContext.state.page, started]);
 
   useEffect(() => {
@@ -178,9 +203,6 @@ const useSpeech = () => {
   return {
     started,
     setStarted,
-    // startTranscription,
-    // stopTranscription,
-    // setTerms,
     speechTokens,
     status,
     terms,

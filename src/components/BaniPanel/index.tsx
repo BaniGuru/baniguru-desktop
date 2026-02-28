@@ -21,7 +21,6 @@ export const BaniPanel = () => {
   const [banis, setBanis] = useState<Bani[]>([]);
   const [loadingBaniId, setLoadingBaniId] = useState<number | null>(null);
   const [loadingBanis, setLoadingBanis] = useState(false);
-  const [baniPart, setBaniPart] = useState(1);
 
   // Fetch all banis on mount
   useEffect(() => {
@@ -77,36 +76,32 @@ export const BaniPanel = () => {
 
       const db = await DB.getInstance();
 
-      // to do move this to speech side instead
-      let limit = -1;
-      let offset = 0;
-      if (baniId == 13) {
-        limit = Math.ceil(734 / 4);
-        offset = (baniPart - 1) * limit;
-      }
-
       const lines: any = await db.select(`
         SELECT
           lines.*,
+          panktis.gurmukhi_speech,
+          panktis.vishraam_idx,
+          panktis.vishraam_ridx,
+          panktis.gurmukhi_words,
+          panktis.gurmukhi_rwords,
           bani_lines.line_id,
           bani_lines.bani_id,
+          bani_lines.line_group,
           punjabi.translation as punjabi_translation,
           english.translation as english_translation
         FROM bani_lines
-        INNER JOIN lines ON lines.id = bani_lines.line_id
-        INNER JOIN shabads ON lines.shabad_id = shabads.id
+        INNER JOIN panktis ON panktis.id = bani_lines.line_id
+        INNER JOIN lines ON lines.id = panktis.id
         LEFT JOIN translations AS punjabi ON lines.id = punjabi.line_id AND (
-            (shabads.source_id = 1 AND punjabi.translation_source_id = 6) OR
-            (shabads.source_id != 1 AND punjabi.translation_source_id IN (8, 11, 13, 15, 17, 19, 21))
+            (panktis.source_id = 1 AND punjabi.translation_source_id = 6) OR
+            (panktis.source_id != 1 AND punjabi.translation_source_id IN (8, 11, 13, 15, 17, 19, 21))
         )
         LEFT JOIN translations AS english ON lines.id = english.line_id AND (
-            (shabads.source_id = 1 AND english.translation_source_id = 1) OR
-            (shabads.source_id != 1 AND english.translation_source_id IN (7, 9, 10, 12, 14, 16, 18, 20, 22))
+            (panktis.source_id = 1 AND english.translation_source_id = 1) OR
+            (panktis.source_id != 1 AND english.translation_source_id IN (7, 9, 10, 12, 14, 16, 18, 20, 22))
         )
         WHERE bani_id = ${baniId}
-        ORDER BY line_group, order_id
-        limit ${limit}
-        offset ${offset}
+        ORDER BY bani_lines.line_group, lines.order_id
       `);
 
       if (!lines || lines.length === 0) {
@@ -116,12 +111,19 @@ export const BaniPanel = () => {
 
       const panktis: Pankti[] = lines.map((line: any) => ({
         id: line.line_id,
+        type_id: line.type_id,
         bani_id: line.bani_id,
+        line_group: line.line_group,
         gurmukhi: line.gurmukhi,
         gurmukhi_unicode: line.gurmukhi_unicode,
         punjabi_translation: line.punjabi_translation,
         english_translation: line.english_translation,
         shabad_id: line.shabad_id, 
+        gurmukhi_speech: line.gurmukhi_speech,
+        vishraam_idx: line.vishraam_idx,
+        vishraam_ridx: line.vishraam_ridx,
+        gurmukhi_words: line.gurmukhi_words,
+        gurmukhi_rwords: line.gurmukhi_rwords,
         visited: false,
         home: false,
       }));

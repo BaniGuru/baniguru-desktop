@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef } from "react";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { Pankti } from "../../models/Pankti";
 import Format from "../../utils/Format";

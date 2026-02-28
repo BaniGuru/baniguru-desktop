@@ -12,7 +12,7 @@ import FormatAndBreakText from "../../ui/FormatAndBreakText";
 import { AppContext, PAGE_SHABAD } from "../../state/providers/AppProvider";
 import { BANI_ACTION_UPDATE, BaniContext } from "../../state/providers/BaniProvider";
 import { useThemeColors } from "../../utils/useTheme";
-import { cleanGurmukhiUnicode, formatPanktis, getShabadIds } from "../../utils/shabadUtil";
+import { formatPanktis, getShabadIds } from "../../utils/shabadUtil";
 
 interface PanelProps {
     startSpace: number;
@@ -73,7 +73,7 @@ const ShabadDisplay: React.FC = () => {
     const searchContext = useContext(SearchContext);
     const baniContext = useContext(BaniContext);
     const {state, dispatch } = useContext(ShabadContext);
-    const {state: appState, setTerms} = useContext(AppContext);
+    const {state: appState} = useContext(AppContext);
     const { fontSizes, displaySpacing, activeThemeName, visibility } = useSettings();
     const current = state.current;
 
@@ -90,16 +90,6 @@ const ShabadDisplay: React.FC = () => {
 
         sendDataToBackend();
     }, [state.panktis, state.current]);
-
-    
-    const updateSpeechTokens = (panktis: any) => {
-        let tokens: string[] = [];
-        panktis.forEach((pankti: Pankti) => {
-            tokens.push(cleanGurmukhiUnicode(pankti.gurmukhi_unicode));
-        });
-
-        setTerms(tokens);
-    }
 
     useEffect(() => {
         const loadShabad = async () => {
@@ -122,7 +112,8 @@ const ShabadDisplay: React.FC = () => {
                     panktis.gurmukhi_words,
                     panktis.gurmukhi_rwords,
                     punjabi.translation as punjabi_translation,
-                    english.translation as english_translation
+                    english.translation as english_translation,
+                    -1 as line_group
                 FROM lines
                 INNER JOIN panktis ON lines.id = panktis.id
                 INNER JOIN shabads ON lines.shabad_id = shabads.id
@@ -143,8 +134,6 @@ const ShabadDisplay: React.FC = () => {
                 const current = panktis.findIndex(
                     (pankti: Pankti) => pankti.id === searchPankti.id
                 );
-
-                updateSpeechTokens(panktis);
 
                 searchContext.dispatch({
                     type: RECENT_SEARCH_UPDATE,
@@ -172,12 +161,6 @@ const ShabadDisplay: React.FC = () => {
 
         loadShabad();
     }, [searchContext.state.searchShabadPankti]);
-
-    useEffect(() => {
-        if (state.baniId) {
-            updateSpeechTokens(state.panktis);
-        }
-    }, [state.baniId]);
 
     const nextPankti = state.panktis[current+1]?.gurmukhi;
 

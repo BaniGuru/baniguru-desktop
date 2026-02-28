@@ -8,6 +8,10 @@ let dbPath: string;
 const DB = {
     schemaExists: false,
 
+    getDbPath: () => {
+        return dbPath;
+    },
+
     setDbPath: (path: string) => {
         dbPath = path;
     },
