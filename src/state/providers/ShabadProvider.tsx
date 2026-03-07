@@ -1,6 +1,6 @@
 import { createContext, useReducer } from "react";
 import { Pankti } from "../../models/Pankti";
-import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_PANKTI, SHABAD_PANKTI_NO_VISITED, SHABAD_PREV, SHABAD_SET_HOME, SHABAD_UPDATE } from "../ActionTypes";
+import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_PANKTI, SHABAD_PANKTI_MARK_VISITED, SHABAD_PANKTI_NO_VISITED, SHABAD_PREV, SHABAD_SET_HOME, SHABAD_UPDATE } from "../ActionTypes";
 
 export type ShabadState = {
     baniId: number | null,
@@ -93,6 +93,15 @@ const shabadReducer = (state: ShabadState, action: any) => {
                 return {
                     ...state,
                     current: payload.current,
+                };
+            }
+            break;
+
+        case SHABAD_PANKTI_MARK_VISITED:
+            if (payload?.current >= 0 && payload.current < state.panktis.length) {
+                return {
+                    ...state,
+                    panktis: markVisited(state.panktis, payload.current)
                 };
             }
             break;

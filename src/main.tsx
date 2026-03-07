@@ -9,6 +9,9 @@ import { ShabadProvider } from "./state/providers/ShabadProvider";
 import { SettingProvider } from "./state/providers/SettingContext";
 import { BaniProvider } from "./state/providers/BaniProvider";
 
+import * as Sentry from "@sentry/react";
+
+
 createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <AppProvider>

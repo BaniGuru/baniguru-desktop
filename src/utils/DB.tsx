@@ -23,7 +23,6 @@ const DB = {
 
         if (!instance) {
             instance = await Database.load("sqlite:" + dbPath);
-            // await DB.addSchema(instance);            
         }
 
         return instance;
