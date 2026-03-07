@@ -1,4 +1,3 @@
-import { get } from "fast-levenshtein";
 import { Pankti } from "../../models/Pankti";
 
 export type PanktiScore = {
@@ -11,6 +10,7 @@ export type PanktiScore = {
     vishraamStarted: boolean;
     panktiFinished: boolean,
     continueMatch: boolean,
+    startingWordMatch: boolean,
 
     startFull: boolean,
     vishraamFull: boolean,
@@ -23,7 +23,7 @@ export type PanktiScore = {
     lastMatchIdx: number;
 };
 
-const RAHAOH_PANKTI_TYPE_ID = 3;
+// const RAHAOH_PANKTI_TYPE_ID = 3;
 // const SHABAD_PANKTI_TYPE_ID = 4;
 
 export const getLatestPanktiPart = (token: string) => {
@@ -57,9 +57,9 @@ export const getLatestPanktiPart = (token: string) => {
     });
 };
 
-const getAllowedNextPanktiIdxs = (panktis: Pankti[], homeIdx: number, currentIdx: number) => {
+export const getAllowedNextPanktiIdxs = (panktis: Pankti[], homeIdx: number, currentIdx: number) => {
     const groups = [...new Set(panktis.map(pankti => pankti.group))];
-    const rahaoShabad = groups.length > 1;
+    const groupShabad = groups.length > 1;
     let unvisitedPanktis: number[] = [];
 
     // Step 1: Find first valid unvisited pankti
@@ -68,7 +68,16 @@ const getAllowedNextPanktiIdxs = (panktis: Pankti[], homeIdx: number, currentIdx
     );
 
     if (firstUnvisitedIndex === -1) {
-        return [currentIdx];
+        // all finished, allow within home group
+        if (groupShabad) {
+            return [
+                ...panktis.filter(pankti => panktis[homeIdx].group === pankti.group && pankti.type_id > 2 && pankti.gurmukhi_words.length > 1)
+                .map((_, index) => index),
+                currentIdx
+            ];
+        }
+
+        return [currentIdx, homeIdx, currentIdx - 1];
     }
 
     if (firstUnvisitedIndex !== -1) {
@@ -78,33 +87,62 @@ const getAllowedNextPanktiIdxs = (panktis: Pankti[], homeIdx: number, currentIdx
             if (
             !pankti.visited &&
             pankti.type_id > 2 &&
+            index !== homeIdx &&
             pankti.group === targetGroup
             ) {
-            unvisitedPanktis.push(index);
+                unvisitedPanktis.push(index);
             }
         });
     }
 
     let nextPanktiIdxs = [unvisitedPanktis[0], currentIdx];
-    if (!rahaoShabad) {
+
+    if (!groupShabad) {
         if (currentIdx === homeIdx) {
-            nextPanktiIdxs = [unvisitedPanktis[0], currentIdx];
+            nextPanktiIdxs = [unvisitedPanktis[0], currentIdx, currentIdx+1];
         } else {
             nextPanktiIdxs = [unvisitedPanktis[0], currentIdx, homeIdx];
+            if (currentIdx > 0) {
+                nextPanktiIdxs.push(currentIdx-1);
+            }
         }
     } else {
-        if (panktis[currentIdx].type_id === RAHAOH_PANKTI_TYPE_ID) {
-            return [unvisitedPanktis[0], currentIdx];
+        const currentGroup = panktis[currentIdx].group;
+        const homeGroup = panktis[homeIdx].group;
+        const currentGroupIdxs = panktis
+            .map((pankti, idx) => ({ pankti, idx }))
+            .filter(
+                ({ pankti }) =>
+                panktis[currentIdx].group === pankti.group &&
+                pankti.type_id > 2 &&
+                pankti.gurmukhi_words.length > 2
+            )
+            .map(({ idx }) => idx);
+
+        const currentPanktiGroupIdx = currentGroupIdxs.find((idx) => idx === currentIdx) ?? -1;
+        const prevIdx = (currentPanktiGroupIdx === -1 || currentPanktiGroupIdx === currentGroupIdxs[0])
+            ? -1 : (currentPanktiGroupIdx - 1);
+        const nextIdx = (
+            currentPanktiGroupIdx === -1 || (currentPanktiGroupIdx == currentGroupIdxs[currentGroupIdxs.length-1])
+        ) ? -1 :currentPanktiGroupIdx + 1;
+
+        // long group, keep within group
+        if (currentGroupIdxs.length > 3) {
+            const groupUnvisitedIndex = panktis.findIndex(
+                p => !p.visited && p.type_id > 2 && p.gurmukhi_words.length > 1 && p.group === currentGroup
+            );
+            if (groupUnvisitedIndex === -1) {
+                return [currentIdx, homeIdx];
+            }
+
+            return [groupUnvisitedIndex, currentIdx, homeIdx];
         }
 
-        // still in same group
-        const firstGroup = panktis[firstUnvisitedIndex].group;
-        if (firstGroup === panktis[currentIdx].group) {
-            return [...unvisitedPanktis, currentIdx];
+        if (currentGroup === homeGroup && currentGroupIdxs.length > 0) {
+            return [unvisitedPanktis[0], ...currentGroupIdxs];
         }
 
-        // end of current group
-        return [currentIdx, homeIdx];
+        return [currentIdx, prevIdx, nextIdx, homeIdx].filter(index => index >= 0);
     }
 
     return nextPanktiIdxs;
@@ -116,16 +154,12 @@ export const findMatchingPankti = (panktis: Pankti[], tokens: string[], homeIdx:
     }
 
     const nextPanktiIdxs = getAllowedNextPanktiIdxs(panktis, homeIdx, currentIdx);
-    console.log('next panktis: ', nextPanktiIdxs);
+    // console.log('next panktis: ', nextPanktiIdxs);
     let matchScores: PanktiScore[] = getPanktiScores(panktis, tokens);
-
-    matchScores = matchScores.filter(matchScore => matchScore.panktiStarted || matchScore.vishraamStarted);
 
     if (matchScores.length === 0) {
         return [];
     }
-
-    console.log('scores: ', matchScores);
 
     // filter towards last match
     matchScores = findMatchTowardEnd(matchScores)
@@ -143,8 +177,11 @@ export const findMatchingPankti = (panktis: Pankti[], tokens: string[], homeIdx:
     }
 
     // allow next possible panktis only non visited
-    matchScores = matchScores.filter((panktiScore) => nextPanktiIdxs.includes(panktiScore.panktiIdx) &&
-        (   (panktiScore.panktiStarted && !panktis[panktiScore.panktiIdx].visited) ||
+    matchScores = matchScores.filter((panktiScore) => nextPanktiIdxs.includes(panktiScore.panktiIdx)
+        && (panktiScore.panktiStarted ||
+            (panktiScore.vishraamStarted
+                // && panktiScore.panktiIdx === homeIdx
+            ) ||
             panktiScore.panktiIdx === currentIdx)
     );
     if (matchScores.length === 1) {
@@ -154,25 +191,15 @@ export const findMatchingPankti = (panktis: Pankti[], tokens: string[], homeIdx:
     return [];
 };
 
-export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], currentIdx: number, panktiFinished: boolean) => {
+export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], currentIdx: number) => {
     if (tokens.length < 1) {
         return [];
     }
 
-    let nextPanktiIdxs = [currentIdx];
+    let nextPanktiIdxs = [currentIdx-1, currentIdx, currentIdx+1];
 
-    if (panktis.length > (currentIdx+1) && panktiFinished) {
-        nextPanktiIdxs.push(currentIdx+1);
-    }
-
-    if (panktiFinished && panktis.length > (currentIdx+2) && panktis[currentIdx+1].type_id <= 2) {
-        nextPanktiIdxs.push(currentIdx+2);
-    }
-
-    console.log('next panktis: ', nextPanktiIdxs);
+    // console.log('next panktis: ', nextPanktiIdxs);
     let matchScores: PanktiScore[] = getPanktiScores(panktis, tokens);
-
-    matchScores = matchScores.filter(matchScore => matchScore.panktiStarted || matchScore.vishraamStarted);
 
     if (matchScores.length === 0) {
         return [];
@@ -198,8 +225,10 @@ export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], curr
     }
 
     // filter full start or vishraam
-    const fullStartOrVishraam = matchScores.filter(matchScore => (matchScore.startFull || matchScore.vishraamFull) &&
+    const fullStartOrVishraam = matchScores.filter(matchScore => (matchScore.startFull || matchScore.vishraamFull)
+        &&
         (
+            matchScore.totalMatches > 1 ||
             nextPanktiIdxs.includes(matchScore.panktiIdx)
         )
     );
@@ -208,9 +237,8 @@ export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], curr
     }
 
     // allow next possible panktis only non visited
-    matchScores = matchScores.filter((panktiScore) => nextPanktiIdxs.includes(panktiScore.panktiIdx) &&
-        (panktiScore.panktiStarted && !panktis[panktiScore.panktiIdx].visited) &&
-        (panktis[panktiScore.panktiIdx-1]?.visited || panktiScore.panktiIdx === currentIdx)
+    matchScores = matchScores.filter(
+        (panktiScore) => nextPanktiIdxs.includes(panktiScore.panktiIdx)
     );
     if (matchScores.length === 1) {
         return matchScores;
@@ -220,6 +248,7 @@ export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], curr
 };
 
 const findMatchTowardEnd = (scores: PanktiScore[]) => {
+    // most matches with ending match
     const sorted = [...scores].sort((a, b) => {
         // Step 1: Ascending firstMatchIdx
         if (a.firstMatchIdx !== b.firstMatchIdx) {
@@ -240,8 +269,8 @@ const findMatchTowardEnd = (scores: PanktiScore[]) => {
         const pStart = p.firstMatchIdx;
         const pEnd = p.lastMatchIdx;
 
-        // note: can skip pankti if it's within start end range
-        return (pStart <= latestEnd && pEnd >= latestStart)
+        // pankti starting before or equal lastone but ending last
+        return (pStart <= latestStart && pEnd == latestEnd)
     });
 }
 
@@ -250,7 +279,6 @@ const getPanktiScores = (panktis: Pankti[], tokens: string[]) => {
 
     const matches = [];
     for (let i = 0; i < panktis.length; i++) {
-        // console.log(panktis[i].gurmukhi_speech);
         const matchScore = getPanktiScore(panktis[i], rTokens);
 
         if (matchScore == null) continue;
@@ -264,6 +292,84 @@ const getPanktiScores = (panktis: Pankti[], tokens: string[]) => {
     return matches;
 }
 
+const isMatching = (word: string, token: string): boolean => {
+    if (!word || !token) return false;
+
+    if (word === token) return true;
+
+    if (token === 'ਇਕਓੰਕਾਰ' && word === 'ਇਕਓਅੰਕਾਰਿ') {
+        return true;
+    }
+
+    // allow last ੁ missing
+    const lastChar = word.slice(-1);
+    const lastTwoChars = word.slice(-2);
+    const tokenLastChar = token[token.length - 1];
+    const wordWithoutLastOne = word.slice(0, -1);
+    const wordWithoutLastTwo = word.slice(0, -2);
+    const tokenWithoutOne = token.slice(0, -1);
+
+    // word with quiet similar matra match e.g. ੇ or ੈ
+    if (tokenWithoutOne === wordWithoutLastOne && (
+        (['ੈ', 'ੇ'].includes(lastChar) && ['ੈ', 'ੇ'].includes(tokenLastChar)) ||
+        (['ੋ', 'ੌ', 'ੁ'].includes(lastChar) && ['ੋ', 'ੌ', 'ੁ'].includes(tokenLastChar))
+    )) {
+        return true;
+    }
+
+    if (
+        tokenLastChar !== lastChar &&
+        (   
+            lastChar === 'ੁ' ||
+            lastChar === 'ਿ' ||
+            lastChar === 'ਂ'  ||
+            lastChar === 'ਾ'
+        ) &&
+        wordWithoutLastOne === token
+    ) {
+        return true;
+    }
+
+    // haha or oora with onkar changed to hora or knora
+    if (['ੋ', 'ੌ'].includes(tokenLastChar) &&
+        (
+            (
+                (
+                    lastChar === 'ਉ' &&
+                    (
+                        lastTwoChars != 'ਾਉ' &&
+                        lastTwoChars != 'ਆਉ'
+                    )
+                ) &&
+                (
+                    wordWithoutLastOne === tokenWithoutOne
+                )
+            ) ||
+            (
+                lastTwoChars === 'ਹੁ' &&
+                wordWithoutLastTwo === tokenWithoutOne
+            )
+        )
+    ) {
+        return true;
+    }
+
+    if (word.replaceAll('੍', '') === token.replaceAll('੍', '')) {
+        return true;
+    }
+
+    // peri rara without last onkar
+    if (
+        word.replaceAll(/([ਕ-ਹ])੍ਰਿ/g, '$1ਿਰ')
+        .replaceAll('੍', '')
+        .replace(/ੁ$/, '') === token.replace(/ੁ$/, '')
+    ) {
+        return true;
+    }
+
+    return false;
+};
+
 export const getPanktiScore = (pankti: Pankti, tokens: string[]) => {
     let matches: PanktiScore[] = [];
     const words = pankti.gurmukhi_rwords;
@@ -273,26 +379,30 @@ export const getPanktiScore = (pankti: Pankti, tokens: string[]) => {
         for (let j = 0; j < tokens.length; j++) {
             
             let k = 0;
-            let startMatch = false;
+            let startingWordMatch = false;
 
             while (
                 i + k < words.length &&
                 j + k < tokens.length &&
                 (
-                    (words[i + k] === tokens[j + k]) ||
-                    (get(words[i + k], tokens[j + k]) <= 1 && tokens[j+k].length > 2 && words[i+k].length > 2) ||
-                    words[i+k].startsWith(tokens[j+k])
+                    isMatching(words[i + k], tokens[j + k]) ||
+                    (
+                        words[i+k].startsWith(tokens[j+k]) &&
+                        (i+k+1) < words.length &&
+                        (j+k+1) < tokens.length &&
+                        isMatching(words[i + k + 1], tokens[j + k + 1])
+                    )
                 )
             ) {
                 if (words[i + k] !== tokens[j + k] && words[i+k].startsWith(tokens[j+k])) {
-                    startMatch = true;
+                    startingWordMatch = true;
                 }
 
                 k++;
             }
 
-            // only allow start match if more than 1 matches
-            if ((k > 0 && !startMatch) || k > 1) {
+            // only allow start match if atleast one match
+            if ((k > 0 && !startingWordMatch) || k > 0) {
                 const tokensIndexes = Array.from({ length: k }, (_, idx) => j + idx);
                 const wordIdxs = Array.from({ length: k }, (_, idx) => i + idx);
                 const matchedWords = tokens.slice(j, j + k);
@@ -321,6 +431,7 @@ export const getPanktiScore = (pankti: Pankti, tokens: string[]) => {
                     panktiEndIdx: wordIdxs[wordIdxs.length - 1],
                     firstMatchIdx: j,
                     lastMatchIdx: tokensIndexes[tokensIndexes.length - 1],
+                    startingWordMatch,
                 };
 
                 matches.push(match);
@@ -357,3 +468,92 @@ export const getPanktiScore = (pankti: Pankti, tokens: string[]) => {
 
     return null;
 };
+
+export function unifySpeechText(text: string) {
+  const parts = text
+    .replaceAll("|", ",")
+    .replaceAll(";", ",")
+    .split(",")
+    .map(p => p.trim())
+    .filter(Boolean);
+
+  const words = (s: string) => s.split(/\s+/);
+
+  const isSubset = (small: string, big: string) => {
+    const s = words(small);
+    const b = words(big);
+
+    for (let i = 0; i <= b.length - s.length; i++) {
+      let match = true;
+
+      for (let j = 0; j < s.length; j++) {
+        const sw = s[j];
+        const bw = b[i + j];
+
+        if (j === s.length - 1) {
+          if (!bw.startsWith(sw)) {
+            match = false;
+            break;
+          }
+        } else {
+          if (bw !== sw) {
+            match = false;
+            break;
+          }
+        }
+      }
+
+      if (match) return true;
+    }
+
+    return false;
+  };
+
+  // track last occurrence
+  const lastIndex = new Map<string, number>();
+  parts.forEach((p, i) => lastIndex.set(p, i));
+
+  const unique = [...lastIndex.keys()];
+
+  const filtered = unique.filter(a => {
+    return !unique.some(
+      b => a !== b && isSubset(a, b) && words(b).length >= words(a).length
+    );
+  });
+
+  return filtered
+    .sort((a, b) => lastIndex.get(a)! - lastIndex.get(b)!)
+    .join(" ").replaceAll('  ', ' ');
+};
+
+function normalizeWithMap(text: string) {
+  const normalized = [];
+  const indexMap = [];
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+
+    // Ignore punctuation
+    if (/[^\p{L}\p{N}\s]/u.test(char)) continue;
+
+    normalized.push(char);
+    indexMap.push(i);
+  }
+
+  return {
+    cleanText: normalized.join(""),
+    indexMap
+  };
+}
+
+export function findIndexIgnoringPunctuation(text: string, searchText: string) {
+  const { cleanText, indexMap } = normalizeWithMap(text);
+
+  const cleanSearch = searchText.replace(/[^\p{L}\p{N}\s]/gu, "");
+
+  const pos = cleanText.indexOf(cleanSearch);
+
+  if (pos === -1) return -1;
+
+  return indexMap[pos]; // original string index
+}

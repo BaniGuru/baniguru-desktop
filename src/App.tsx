@@ -234,7 +234,7 @@ function App() {
                   </div>
 
                   <div className="ml-4 flex-1 overflow-hidden mt-3 text-gray-600 text-sm">
-                    {speech.nonFinalTokens.map((token) => token.text).join('')}
+                    {speech.nonFinalText}
                     &nbsp;
                   </div>
 

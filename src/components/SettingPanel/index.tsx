@@ -10,8 +10,23 @@ const languages = ["ਗੁਰਮੁਖੀ", "ਪੰਜਾਬੀ", "English", "Ne
 
 export const SettingPanel = () => {
   const [ip, setIP] = useState<string | null>(null);
-
+  const [mics, setMics] = useState<string[]>([]);
+  const {micName, setMicName} = useSettings();
+  
   const { visibility, setVisibility } = useSettings();
+
+  useEffect(() => {
+    const fetchMics = async () => {
+      try {
+        const availableMics: any = await invoke<{ name: string }[]>("list_mics");
+        setMics(availableMics);
+      } catch (error) {
+        console.error('Error fetching microphones:', error);
+      }
+    };
+
+    fetchMics();
+  }, []);
 
   useEffect(() => {
     invoke<string>('get_local_ip')
@@ -79,6 +94,14 @@ export const SettingPanel = () => {
         <div className="mr-2">Database: </div>
         <div>{DB.getDbPath()}</div>
       </div>
+      <select onChange={(e) => setMicName(e.target.value)} value={micName || ''}>
+        <option value='' disabled>Select a microphone</option>
+        {mics.map((mic, index) => (
+          <option key={index} value={mic}>
+            {mic}
+          </option>
+        ))}
+      </select>
     </div>
   );
 };

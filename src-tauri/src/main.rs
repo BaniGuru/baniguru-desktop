@@ -6,6 +6,7 @@
 mod commands;
 mod server;
 mod settings;
+mod soniox;
 
 use futures_util::StreamExt;
 use serde::Serialize;
@@ -16,6 +17,8 @@ use crate::commands::Pankti;
 use crate::commands::update_pankti;
 use tokio::sync::Mutex;
 use crate::server::start_web_server;
+use crate::commands::{start_soniox, stop_soniox, restart_soniox, StreamState};
+use crate::commands::list_mics;
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase", tag = "event", content = "data")]
@@ -122,7 +125,11 @@ fn main() {
             greet,
             download_sqlite_file_with_channel,
             update_pankti,
-            get_local_ip
+            get_local_ip,
+            start_soniox,
+            stop_soniox,
+            restart_soniox,
+            list_mics
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
@@ -142,6 +149,9 @@ fn main() {
 
             app.manage(Mutex::new(pankti));
             app.manage(config_path);
+            app.manage(StreamState {
+                stream: Mutex::new(None),
+            });
 
             // Spawn async task with cloned Arc<Mutex<Pankti>>
             tauri::async_runtime::spawn(async move {

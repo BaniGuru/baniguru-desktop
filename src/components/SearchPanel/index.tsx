@@ -182,9 +182,9 @@ const SearchPanel: FunctionComponent = () => {
         const currentRequestId = ++searchRequestId.current;
 
         if (value.includes(' ')) {
-            searchByWords(value, currentRequestId);
+            await searchByWords(value, currentRequestId);
         } else {
-            searchByFirstLetters(value, currentRequestId);
+            await searchByFirstLetters(value, currentRequestId);
         }
 
         dispatch({
@@ -248,7 +248,7 @@ const SearchPanel: FunctionComponent = () => {
                     </KeyboardButton>
                 </div>
             </div>
-            <SearchList listContainerRef={listContainerRef} panktis={panktis} current={focusIndex} displayShabad={displayShabad} />
+            <SearchList searchTerm={searchTerm ?? ""} listContainerRef={listContainerRef} panktis={panktis} current={focusIndex} displayShabad={displayShabad} />
         </>
     );
 };

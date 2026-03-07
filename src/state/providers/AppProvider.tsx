@@ -3,6 +3,7 @@ import { SET_APP_PAGE, TOGGLE_PANEL } from "../ActionTypes";
 
 export type AppState = {
     page: string;
+    prev_page: string;
     show_panel: boolean;
     // dbPath: string;
 };
@@ -13,6 +14,7 @@ export const PAGE_BANI = "bani";
 
 const initAppState: AppState = {
     page: "search",
+    prev_page: "",
     show_panel: true,
     // dbPath: "",
 };
@@ -22,6 +24,7 @@ const appReducer = (state: AppState, action: any) => {
         case SET_APP_PAGE:
             return {
                 ...state,
+                prev_page: state.page,
                 ...action.payload,
             };
         case TOGGLE_PANEL:

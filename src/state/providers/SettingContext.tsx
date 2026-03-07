@@ -58,6 +58,8 @@ type Settings = {
   setThemeMarginToDefault: (name?: string) => void;
 
   setVisibility: any;
+  setMicName: any;
+  micName: string|null;
 };
 
 /* =========================
@@ -171,6 +173,7 @@ const getInitialSettings = () => {
         version: parsed.version ?? "",
         themes: reconciledThemes,
         activeThemeName,
+        micName: parsed.micName ?? "",
       };
     }
   } catch (e) {
@@ -208,6 +211,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
   const [width, setWidth] = useState(initial.width);
   const [height, setHeight] = useState(initial.height);
   const [version, setVersion] = useState(initial.version);
+  const [micName, setMicName] = useState(initial.micName);
 
   // Themes
   const [themes, setThemes] = useState<Theme[]>(initial.themes);
@@ -233,9 +237,10 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
         panelSetting,
         themes,
         activeThemeName,
+        micName,
       })
     );
-  }, [fontSizes, visibility, displaySpacing, width, height, version, panelSetting, themes, activeThemeName]);
+  }, [fontSizes, visibility, displaySpacing, width, height, version, panelSetting, themes, activeThemeName, micName]);
 
   /* ----- Existing updaters ----- */
   const updateFontSize = (font: FontType, size: number) => {
@@ -362,6 +367,8 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
         isThemeMarginDefault,
         setThemeMarginToDefault,
         setVisibility,
+        setMicName,
+        micName
       }}
     >
       {children}
