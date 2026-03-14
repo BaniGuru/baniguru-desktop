@@ -1,6 +1,7 @@
-import { createContext, useReducer } from "react";
+import { useMemo, useReducer } from "react";
+import { createContext } from "use-context-selector";
 import { Pankti } from "../../models/Pankti";
-import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_PANKTI, SHABAD_PANKTI_MARK_VISITED, SHABAD_PANKTI_NO_VISITED, SHABAD_PREV, SHABAD_SET_HOME, SHABAD_UPDATE } from "../ActionTypes";
+import { SHABAD_AUTO_NEXT, SHABAD_HOME, SHABAD_PANKTI, SHABAD_PANKTI_MARK_VISITED, SHABAD_PANKTI_NO_VISITED, SHABAD_PREV, SHABAD_RESET, SHABAD_SET_HOME, SHABAD_UPDATE } from "../ActionTypes";
 
 export type ShabadState = {
     baniId: number | null,
@@ -33,6 +34,11 @@ const shabadReducer = (state: ShabadState, action: any) => {
     const payload = action?.payload;
 
     switch (action.type) {
+        case SHABAD_RESET:
+            return {
+                ...initShabadState,
+            };
+
         case SHABAD_AUTO_NEXT:
             if (payload.current < 0 ||
                 payload.current >= state.panktis.length
@@ -120,9 +126,10 @@ const ShabadContext = createContext<{
 
 const ShabadProvider: React.FC<{ children: React.ReactNode}> = ({ children }: any) => {
     const [state, dispatch] = useReducer(shabadReducer, initShabadState);
+    const value = useMemo(() => ({ state, dispatch }), [state]);
 
     return (
-        <ShabadContext.Provider value={{state, dispatch}}>
+        <ShabadContext.Provider value={value}>
             { children }
         </ShabadContext.Provider>
     );

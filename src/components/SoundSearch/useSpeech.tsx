@@ -7,6 +7,7 @@ import useBaniPilot from "./useBaniPilot";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useSettings } from "../../state/providers/SettingContext";
+import { useContext as useCtxSelector } from "use-context-selector";
 
 const API_KEY = "";
 
@@ -43,7 +44,7 @@ const useSpeech = () => {
       const { final, partial, end_ms } = event.payload;
 
       if (final) {
-        transcriptRef.current += final;
+        transcriptRef.current += final.replaceAll('<end>', '');
         setFinalText(transcriptRef.current);
       }
 
@@ -129,16 +130,43 @@ const useSpeech = () => {
       console.log('speech stopped')
   }, []);
 
+  const restartTranscript = useCallback(async (panktis: string[]) => {
+    try {
+      await invoke('restart_soniox', { micName: micName, apiKey: API_KEY, panktis });
+    } catch (error) {
+      setStarted(false);
+      setStatus('Init');
+      console.error('Error restarting Soniox:', error);
+      return;
+    }
+
+    transcriptRef.current = "";
+    setFinalText("");
+    setNonFinalText("");
+    setSpeechTokens([]);
+    setError(null);
+    setTerms(panktis);
+    setStatus('Running');
+    console.log('Restrated');
+  }, []);
+
   const appContext = useContext(AppContext);
-  const shabadContext = useContext(ShabadContext);
+  const shabadContext = useCtxSelector(ShabadContext);
 
   const shabadPilot = useShabadPilot(finalText, nonFinalText, status, startTranscription, silenceSeconds);
-  const baniPilot = useBaniPilot(speechTokens, status, startTranscription, stopTranscription);
+  const baniPilot = useBaniPilot(finalText, nonFinalText, status, startTranscription, restartTranscript);
+
+  const resetText = () => {
+    transcriptRef.current = "";
+    setFinalText("");
+    setNonFinalText("");
+  };
 
   useEffect(() => {
     if (!started && status !== 'Init') {
       stopTranscription();
       setStatus('Init');
+      resetText();
     }
 
     if (started && appContext.state.page === PAGE_SEARCH && status !== 'Init') {
@@ -157,11 +185,11 @@ const useSpeech = () => {
       (shabadContext.state.baniId === null)
     );
 
-    // baniPilot.setActive(
-    //   appContext.state.page === PAGE_SHABAD &&
-    //   started &&
-    //   (shabadContext.state.baniId !== null)
-    // );
+    baniPilot.setActive(
+      appContext.state.page === PAGE_SHABAD &&
+      started &&
+      (shabadContext.state.baniId !== null)
+    );
   }, [appContext.state.page, status, started, shabadPilot.setActive, baniPilot.setActive, shabadContext.state.baniId]);
 
   const updateLastTokenElapse = useCallback((finalText: string, nonFinalText: string) => {
@@ -171,7 +199,7 @@ const useSpeech = () => {
     // - AND it's a new final token
     if (
       finalText.length > 0 &&
-      nonFinalText.length === 0 &&
+      nonFinalText?.length === 0 &&
       lastTokenTime !== prevLastEndMsRef.current
     ) {
       setSilenceStart(Date.now());

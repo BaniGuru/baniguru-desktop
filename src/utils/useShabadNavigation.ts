@@ -7,9 +7,10 @@ import { Pankti } from "../models/Pankti";
 import { DB } from "./DB";
 import { SearchContext } from "../state/providers/SearchProvider";
 import { useSettings } from "../state/providers/SettingContext";
+import { useContext as useCtxSelector } from "use-context-selector";
 
 const useShabadNavigation = () => {
-    const shabadContext: {state: ShabadState, dispatch: any} = useContext(ShabadContext);
+    const shabadContext: {state: ShabadState, dispatch: any} = useCtxSelector(ShabadContext);
     const appContext: {dispatch: any, state: AppState} = useContext(AppContext);
     const searchContext: {dispatch: any} = useContext(SearchContext);
     const { visibility } = useSettings();

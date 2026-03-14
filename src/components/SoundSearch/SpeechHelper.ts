@@ -1,3 +1,4 @@
+import { get } from "fast-levenshtein";
 import { Pankti } from "../../models/Pankti";
 
 export type PanktiScore = {
@@ -178,11 +179,12 @@ export const findMatchingPankti = (panktis: Pankti[], tokens: string[], homeIdx:
 
     // allow next possible panktis only non visited
     matchScores = matchScores.filter((panktiScore) => nextPanktiIdxs.includes(panktiScore.panktiIdx)
-        && (panktiScore.panktiStarted ||
-            (panktiScore.vishraamStarted
-                // && panktiScore.panktiIdx === homeIdx
-            ) ||
-            panktiScore.panktiIdx === currentIdx)
+        && (
+            panktiScore.panktiStarted ||
+            (panktiScore.vishraamStarted && panktiScore.panktiIdx === homeIdx) ||
+            (panktiScore.panktiFinished && panktiScore.panktiIdx === homeIdx && panktiScore.totalMatches > 1) ||
+            panktiScore.panktiIdx === currentIdx
+        )
     );
     if (matchScores.length === 1) {
         return matchScores;
@@ -191,24 +193,27 @@ export const findMatchingPankti = (panktis: Pankti[], tokens: string[], homeIdx:
     return [];
 };
 
-export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], currentIdx: number) => {
+export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], currentIdx: number, prefixIdx: number) => {
     if (tokens.length < 1) {
         return [];
     }
 
-    let nextPanktiIdxs = [currentIdx-1, currentIdx, currentIdx+1];
+    let nextPanktiIdxs = [currentIdx, currentIdx+1];
 
-    // console.log('next panktis: ', nextPanktiIdxs);
-    let matchScores: PanktiScore[] = getPanktiScores(panktis, tokens);
+    let i = 1;
+    while (panktis[currentIdx+i]?.type_id <= 2 && i <= 5) {
+        nextPanktiIdxs.push(currentIdx+i);
+        i++;
+    }
+
+    let matchScores: PanktiScore[] = getPanktiScores(panktis, tokens, prefixIdx, true);
 
     if (matchScores.length === 0) {
         return [];
     }
 
-    console.log('scores: ', matchScores);
-
     // filter towards last match
-    matchScores = findMatchTowardEnd(matchScores)
+    matchScores = findMatchTowardEnd(matchScores);
     if (matchScores.length === 0) {
         return [];
     }
@@ -216,7 +221,7 @@ export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], curr
     // filter full matched ones
     const fullMatchScores = matchScores.filter(matchScore => matchScore.fullMatch &&
         (
-            (matchScore.totalMatches > 1 && panktis[matchScore.panktiIdx].type_id > 2) ||
+            (matchScore.totalMatches > 1 && panktis[matchScore.panktiIdx]?.type_id > 2) ||
             nextPanktiIdxs.includes(matchScore.panktiIdx)
         )
     );
@@ -238,7 +243,12 @@ export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], curr
 
     // allow next possible panktis only non visited
     matchScores = matchScores.filter(
-        (panktiScore) => nextPanktiIdxs.includes(panktiScore.panktiIdx)
+        (panktiScore) => (
+            nextPanktiIdxs.includes(panktiScore.panktiIdx)) &&
+            (
+                panktiScore.panktiStarted ||
+                panktiScore.panktiIdx === currentIdx
+            )
     );
     if (matchScores.length === 1) {
         return matchScores;
@@ -274,16 +284,16 @@ const findMatchTowardEnd = (scores: PanktiScore[]) => {
     });
 }
 
-const getPanktiScores = (panktis: Pankti[], tokens: string[]) => {
+const getPanktiScores = (panktis: Pankti[], tokens: string[], prefixIdx = 0, strictMatch: boolean = true) => {
     const rTokens = tokens.join(' ').split(' ').reverse();
 
     const matches = [];
     for (let i = 0; i < panktis.length; i++) {
-        const matchScore = getPanktiScore(panktis[i], rTokens);
+        const matchScore = getPanktiScore(panktis[i], rTokens, strictMatch);
 
         if (matchScore == null) continue;
 
-        matchScore.panktiIdx = i;
+        matchScore.panktiIdx = i + prefixIdx;
         matchScore.shabadId = panktis[i].shabad_id;
 
         matches.push(matchScore);
@@ -292,13 +302,19 @@ const getPanktiScores = (panktis: Pankti[], tokens: string[]) => {
     return matches;
 }
 
-const isMatching = (word: string, token: string): boolean => {
+const isMatching = (word: string, token: string, strictMatch: boolean): boolean => {
     if (!word || !token) return false;
 
     if (word === token) return true;
 
-    if (token === 'ਇਕਓੰਕਾਰ' && word === 'ਇਕਓਅੰਕਾਰਿ') {
+    if ((token === 'ਇਕਓੰਕਾਰ' && word === 'ਇਕਓਅੰਕਾਰਿ') ||
+        (token === 'ੴ' && word === 'ਇਕਓਅੰਕਾਰਿ')
+    ) {
         return true;
+    }
+
+    if (!strictMatch) {
+        return get(word, token) <= 1;
     }
 
     // allow last ੁ missing
@@ -370,7 +386,7 @@ const isMatching = (word: string, token: string): boolean => {
     return false;
 };
 
-export const getPanktiScore = (pankti: Pankti, tokens: string[]) => {
+export const getPanktiScore = (pankti: Pankti, tokens: string[], strictMatch: boolean) => {
     let matches: PanktiScore[] = [];
     const words = pankti.gurmukhi_rwords;
     const vishraam_idx = pankti.vishraam_ridx ? (pankti.vishraam_ridx - 1) : -1;
@@ -385,12 +401,12 @@ export const getPanktiScore = (pankti: Pankti, tokens: string[]) => {
                 i + k < words.length &&
                 j + k < tokens.length &&
                 (
-                    isMatching(words[i + k], tokens[j + k]) ||
+                    isMatching(words[i + k], tokens[j + k], strictMatch) ||
                     (
                         words[i+k].startsWith(tokens[j+k]) &&
                         (i+k+1) < words.length &&
                         (j+k+1) < tokens.length &&
-                        isMatching(words[i + k + 1], tokens[j + k + 1])
+                        isMatching(words[i + k + 1], tokens[j + k + 1], strictMatch)
                     )
                 )
             ) {

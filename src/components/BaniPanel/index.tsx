@@ -3,9 +3,10 @@ import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { AppContext } from "../../state/providers/AppProvider";
 import { DB } from "../../utils/DB";
 import { Pankti } from "../../models/Pankti";
-import { SET_APP_PAGE, SHABAD_UPDATE } from "../../state/ActionTypes";
+import { SET_APP_PAGE, SHABAD_RESET, SHABAD_UPDATE } from "../../state/ActionTypes";
 import { BANI_ACTION_Add, BaniContext, BaniRecent } from "../../state/providers/BaniProvider";
 import { formatPanktis, getShabadIds } from "../../utils/shabadUtil";
+import { useContext as useCtxSelector } from "use-context-selector";
 
 type Bani = {
   id: number;
@@ -14,7 +15,7 @@ type Bani = {
 };
 
 export const BaniPanel = () => {
-  const { state: shabadState, dispatch: shabadDispatch } = useContext(ShabadContext);
+  const { state: shabadState, dispatch: shabadDispatch } = useCtxSelector(ShabadContext);
   const { state: baniState, dispatch: baniDispatch} = useContext(BaniContext);
   const { dispatch: appDispatch } = useContext(AppContext);
 
@@ -51,12 +52,12 @@ export const BaniPanel = () => {
 
       if (index >= 0) {
         const bani = baniState.banis[index];
+        shabadDispatch({ type: SHABAD_RESET });
         shabadDispatch({
           type: SHABAD_UPDATE,
           payload: {
             baniId: baniId,
-            panktis: formatPanktis(bani.panktis),
-            shabadIds: getShabadIds(bani.panktis),
+            panktis: bani.panktis,
             current: bani.current,
             home: bani.home
           },
@@ -66,16 +67,7 @@ export const BaniPanel = () => {
         return;
       }
 
-      // Save current bani position before switching
-      // if (
-      //   shabadState.panktis.length > 0 &&
-      //   shabadState.panktis[0].bani_id != null
-      // ) {
-      //   saveBaniPosition(shabadState.panktis[0].bani_id, shabadState.current);
-      // }
-
       const db = await DB.getInstance();
-
       const lines: any = await db.select(`
         SELECT
           lines.*,
@@ -88,7 +80,12 @@ export const BaniPanel = () => {
           bani_lines.bani_id,
           bani_lines.line_group,
           punjabi.translation as punjabi_translation,
-          english.translation as english_translation
+          english.translation as english_translation,
+          bani_lines.show_group,
+          bani_lines.show_translation,
+          bani_lines.join_next,
+          bani_lines.speech_group,
+          bani_lines.auto_next
         FROM bani_lines
         INNER JOIN panktis ON panktis.id = bani_lines.line_id
         INNER JOIN lines ON lines.id = panktis.id
@@ -126,6 +123,11 @@ export const BaniPanel = () => {
         gurmukhi_rwords: line.gurmukhi_rwords,
         visited: false,
         home: false,
+        show_group: line.show_group,
+        speech_group: line.speech_group,
+        show_translation: line.show_translation === 1,
+        join_next: line.join_next === 1,
+        auto_next: line.auto_next === 1,
       }));
 
       baniDispatch({
@@ -138,6 +140,7 @@ export const BaniPanel = () => {
           }
       });
 
+      shabadDispatch({ type: SHABAD_RESET });
       shabadDispatch({
         type: SHABAD_UPDATE,
         payload: {

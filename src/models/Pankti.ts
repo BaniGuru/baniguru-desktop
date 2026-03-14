@@ -21,4 +21,9 @@ export type Pankti = {
     gurmukhi_words: string[],
     gurmukhi_rwords: string[],
     group: number;
+    show_group: number;
+    speech_group: number;
+    show_translation :boolean;
+    join_next: boolean;
+    auto_next: boolean;
 };

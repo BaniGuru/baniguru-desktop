@@ -10,6 +10,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@sentry/react": "^10.42.0",
     "@soniox/speech-to-text-web": "^1.4.0",
     "@tailwindcss/postcss": "^4.1.11",
     "@tauri-apps/api": "^2.7.0",
@@ -22,6 +23,7 @@
     "react-dom": "^18.2.0",
     "react-icons": "^4.7.1",
     "styled-components": "^5.3.6",
+    "use-context-selector": "^2.0.0",
     "ws": "^8.19.0"
   },
   "devDependencies": {

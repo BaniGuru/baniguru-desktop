@@ -1,9 +1,10 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pankti } from "../../models/Pankti";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { Token } from "@soniox/speech-to-text-web";
 import { SHABAD_PANKTI } from "../../state/ActionTypes";
 import {  getPanktiScores } from "../../utils/autoPilotHelpers";
+import { useContext as useCtxSelector } from "use-context-selector";
 
 const RAHAOH_PANKTI_TYPE_ID = 3;
 const SHABAD_PANKTI_TYPE_ID = 4;
@@ -13,7 +14,7 @@ const areAllTokenPresent = (tokens: string[], panktiTokens: string[]) => {
 };
 
 export const usePanktiMatch = ({speechTerms}: {speechTerms: string[]}) => {
-    const { state, dispatch } = useContext(ShabadContext);
+    const { state, dispatch } = useCtxSelector(ShabadContext);
     const [setTokens] = useState<Token[]>([]);
     const [msgTokens, setMsgTokens] = useState<any>([]);
     const [status, setStatus] = useState('Connecting...');
