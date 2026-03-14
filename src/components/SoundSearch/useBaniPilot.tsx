@@ -1,34 +1,32 @@
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { RecorderState } from "@soniox/speech-to-text-web";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { Pankti } from "../../models/Pankti";
-import { findBaniMatchingPankti, findIndexIgnoringPunctuation, getLatestPanktiPart, unifySpeechText } from "./SpeechHelper";
+import { findBaniMatchingPankti, unifySpeechText } from "./SpeechHelper";
 import { SHABAD_PANKTI, SHABAD_PANKTI_MARK_VISITED, SHABAD_PANKTI_NO_VISITED } from "../../state/ActionTypes";
+import { useContext as useCtxSelector } from "use-context-selector";
 
-const useBaniPilot = (finalText: string, partialText: string, status: RecorderState, startTranscription: (panktis: string[]) => any, stopTranscription: (panktis: string[]) => any) => {
+const useBaniPilot = (finalText: string, partialText: string, status: RecorderState, startTranscription: (panktis: string[]) => any, restartTranscript: (panktis: string[]) => any) => {
 
     const [lastCheckIdx, setLastCheckIdx] = useState(0);
-    const [lastCheckIndex] = useState(0);
     const [active, setActive] = useState(false);
-    const shabadContext = useContext(ShabadContext);
-    const [panktiFinished, setPanktiFinished] = useState(false);
+    const shabadContext = useCtxSelector(ShabadContext);
+    const [_panktiFinished, setPanktiFinished] = useState(false);
 
     const [part, setPart] = useState(1);
+    const [panktis, setPanktis] = useState<Pankti[]>([]);
 
     const getTerms = (termPart: number) => {
         let terms: string[] = [];
-        if (shabadContext.state.baniId === 13) {
-            let panktis = []
-            if (termPart === 1) {
-                panktis = shabadContext.state.panktis.filter(pankti => pankti.line_group <= 12);
-            } else if (termPart === 2) {
-                panktis = shabadContext.state.panktis.filter(pankti => pankti.line_group >= 12 && pankti.line_group <= 24);
-            }  else if (termPart === 3) {
-                panktis = shabadContext.state.panktis.filter(pankti => pankti.line_group >= 24 && pankti.line_group <= 36);
-            } else {
-                panktis = shabadContext.state.panktis.filter(pankti => pankti.line_group >= 36);
-            }
 
+        if (shabadContext.state.baniId === 13) {
+            let prevPanktis = shabadContext.state.panktis.filter(pankti => pankti.speech_group == (termPart-1));
+
+            let panktis = [
+                ...prevPanktis.slice(-6),
+                ...shabadContext.state.panktis.filter(pankti => pankti.speech_group == termPart),
+            ];
+            setPanktis(panktis);
             terms = panktis.map((pankti: Pankti) => pankti.gurmukhi_speech);
         } else if (shabadContext.state.baniId === 12) {
             let panktis = [];
@@ -46,87 +44,107 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecorderSt
     }
 
     useEffect(() => {
+        if (!active || (shabadContext.state.baniId ?? 0) <= 0) return;
+
         if (shabadContext.state.baniId === 13) {
-            const lineGroup = shabadContext.state.panktis[shabadContext.state.current].line_group;
-            // todo: switch on last pankti
-            if (
-                (lineGroup === 12 && part == 1) ||
-                (lineGroup === 24 && part == 2) ||
-                (lineGroup === 36 && part == 3)
+
+            const shabadId = shabadContext.state.panktis[shabadContext.state.current].shabad_id;
+            if (shabadContext.state.panktis[shabadContext.state.current-1]?.shabad_id
+                != shabadId
             ) {
-                stopTranscription(getTerms(part+1));
-                setPart(part+1);
+                return;
+            }
+
+            const nextShabadIdx = shabadContext.state.panktis.findIndex(
+                (pankti, index) => index > shabadContext.state.current &&
+                    pankti.shabad_id !== shabadId
+            );
+
+            const speech_group = shabadContext.state.panktis[nextShabadIdx]?.speech_group;
+
+            if (speech_group && speech_group !== part && speech_group > part) {
+                console.log('restarting');
+                restartTranscript(
+                    getTerms(speech_group)
+                );
+                setPart(speech_group);
+                setLastCheckIdx(0);
             }
         } else  if (shabadContext.state.baniId === 12) {
             const lineGroup = shabadContext.state.panktis[shabadContext.state.current].line_group;
             const expectedPart = Math.floor((lineGroup + 1) / 2) + 1;
             if (lineGroup % 2 === 0 && lineGroup < 24 && lineGroup > 1 && expectedPart !== part) {
                 getTerms(part+1);
-                stopTranscription(getTerms(part+1));
+                restartTranscript(getTerms(part+1));
 
                 setPart(part+1);
             }
         }
-    }, [shabadContext.state.current]);
-
-    useEffect(() => {
-        if (!active) return;
-
-        if (![6,9,12,13,15].includes(shabadContext.state.baniId ?? -1)) {
-            return;
-        }
-
-        // asa ki vaar
-        
-
-        if (status === 'Init') {
-            startTranscription(getTerms(part));
-        }
-
-        navigatePankti();
-
-    }, [active, finalText, partialText]);
+    }, [
+        shabadContext.state.current,
+        shabadContext.state.baniId
+    ]);
 
     const navigatePankti = () => {
-        if ((lastCheckIdx + 1) > finalText.length) {
-            return;
-        }
-
-        const panktiFinalText = finalText.slice(lastCheckIdx)
+        const finalAndPartialText = (finalText ?? "") + (partialText ?? "");
+        const tokenText = finalAndPartialText.slice(lastCheckIdx)
             .replaceAll('।', ',')
             .replaceAll('.', ',');
 
-        const tokenText = panktiFinalText + partialText
-            .replaceAll('।', ',')
-            .replaceAll('.', ',');
         const speechText = unifySpeechText(tokenText);
 
         const tokens = speechText.split(' ');
-        const matchingPanktis = findBaniMatchingPankti(shabadContext.state.panktis, tokens, shabadContext.state.current);
+
+        if (tokens.length < 1) return;
+
+        let lastPanktiIdx = 0;
+
+        for (let i = shabadContext.state.panktis.length - 1; i >= 0; i--) {
+            if (shabadContext.state.panktis[i].speech_group === part - 1) {
+                lastPanktiIdx = i;
+                break;
+            }
+        }
+
+        if (lastPanktiIdx > 0) {
+            lastPanktiIdx = lastPanktiIdx - 6 + 1;
+        }
+
+        const matchingPanktis = findBaniMatchingPankti(panktis, tokens, shabadContext.state.current, lastPanktiIdx);
 
         if (matchingPanktis.length === 1) {
             console.log(speechText);
             const matchingPankti = matchingPanktis[0];
-
-            if (matchingPankti.fullMatch && !matchingPankti.startingWordMatch && matchingPankti.panktiIdx === shabadContext.state.current) {
+            if (matchingPankti.fullMatch
+                && !matchingPankti.startingWordMatch
+                && matchingPankti.panktiIdx === shabadContext.state.current
+            ) {
                 setPanktiFinished(true);
 
-                setLastCheckIdx((finalText + partialText).length - 1);
+                setLastCheckIdx(finalAndPartialText.length - 1);
 
                 // auto next
-                shabadContext.dispatch({
-                    type: SHABAD_PANKTI_NO_VISITED,
-                    payload: {
-                        current: (matchingPankti.panktiIdx+1),
-                    }
-                });
-                return;
-            }
+                const currentPankti = shabadContext.state.panktis[shabadContext.state.current];
+                if (currentPankti.auto_next) {
+                    shabadContext.dispatch({
+                        type: SHABAD_PANKTI_NO_VISITED,
+                        payload: {
+                            current: (matchingPankti.panktiIdx+1),
+                        }
+                    });
+                    return;
+                }
 
-            const matchText = matchingPankti.matches.reverse().join(" ");
-            const matchPosition = findIndexIgnoringPunctuation(tokenText, matchText);
-            if (matchPosition > -1 && matchPosition < panktiFinalText.length) {
-                setLastCheckIdx(prev => prev + matchPosition);
+                if (currentPankti.visited !== true) {
+                    shabadContext.dispatch({
+                        type: SHABAD_PANKTI_MARK_VISITED,
+                        payload: {
+                            current: matchingPankti.panktiIdx,
+                        }
+                    });
+                }
+
+                return;
             }
 
             setPanktiFinished(false);
@@ -146,9 +164,37 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecorderSt
                     }
                 });
             }
-            console.log(matchingPankti);
         }
     }
+
+    useEffect(() => {
+        if (!active) return;
+
+        if (![6,9,12,13,15].includes(shabadContext.state.baniId ?? -1)) {
+            return;
+        }
+
+        if (status === 'Init') {
+            const shabadId = shabadContext.state.panktis[shabadContext.state.current].shabad_id;
+            const speechGroup = shabadContext.state.panktis[shabadContext.state.current].speech_group;
+            const groupPanktis = shabadContext.state.panktis.filter(pankti => pankti.speech_group === speechGroup)
+            const lastShabadId = groupPanktis.slice(-1)[0].shabad_id;
+
+            let starPart = shabadContext.state.panktis[shabadContext.state.current].speech_group;
+            if (shabadId === lastShabadId) {
+                starPart++;
+            }
+
+            setPart(starPart);
+            setLastCheckIdx(0);
+            startTranscription(
+                getTerms(starPart)
+            )
+        }
+
+        navigatePankti();
+
+    }, [active, finalText, partialText, setPart]);
 
     return {
         setActive

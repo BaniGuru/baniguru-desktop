@@ -13,6 +13,7 @@ import { AppContext, PAGE_SHABAD } from "../../state/providers/AppProvider";
 import { BANI_ACTION_UPDATE, BaniContext } from "../../state/providers/BaniProvider";
 import { useThemeColors } from "../../utils/useTheme";
 import { formatPanktis, getShabadIds } from "../../utils/shabadUtil";
+import { useContext as useCtxSelector } from "use-context-selector";
 
 interface PanelProps {
     startSpace: number;
@@ -72,7 +73,7 @@ const English = styled.div<FontProps>`
 const ShabadDisplay: React.FC = () => {
     const searchContext = useContext(SearchContext);
     const baniContext = useContext(BaniContext);
-    const {state, dispatch } = useContext(ShabadContext);
+    const {state, dispatch } = useCtxSelector(ShabadContext);
     const {state: appState} = useContext(AppContext);
     const { fontSizes, displaySpacing, activeThemeName, visibility } = useSettings();
     const current = state.current;
@@ -95,7 +96,8 @@ const ShabadDisplay: React.FC = () => {
         const loadShabad = async () => {
             if (appState.page !== PAGE_SHABAD ||
                 searchContext.state.searchShabadPankti == null ||
-                searchContext.state.searchShabadPankti.shabad_id == null
+                searchContext.state.searchShabadPankti.shabad_id == null ||
+                (state.baniId ?? 0) > 0
             ) {
                 return;
             }
@@ -160,7 +162,7 @@ const ShabadDisplay: React.FC = () => {
         };
 
         loadShabad();
-    }, [searchContext.state.searchShabadPankti]);
+    }, [searchContext.state.searchShabadPankti, state.baniId]);
 
     const nextPankti = state.panktis[current+1]?.gurmukhi;
 

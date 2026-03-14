@@ -1,6 +1,6 @@
 import { ChangeEvent, FunctionComponent, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { SearchContext } from "../../state/providers/SearchProvider";
-import { GURBANI_SEARCH, SEARCH_SHABAD_PANKTI, SET_APP_PAGE } from "../../state/ActionTypes";
+import { GURBANI_SEARCH, SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SHABAD_RESET } from "../../state/ActionTypes";
 import styled from "styled-components";
 import { DB } from "../../utils/DB";
 import { Pankti } from "../../models/Pankti";
@@ -8,6 +8,8 @@ import { MdOutlineClear } from "react-icons/md";
 import { BsKeyboard } from "react-icons/bs";
 import SearchList from "./SearchList";
 import { AppContext } from "../../state/providers/AppProvider";
+import { useContextSelector } from "use-context-selector";
+import { ShabadContext } from "../../state/providers/ShabadProvider";
 
 const SearchButton = styled.button`
     font-size: 14px;
@@ -29,6 +31,10 @@ const SearchPanel: FunctionComponent = () => {
     const {dispatch, searchInputRef, searchTerm, setSearchTerm, panktis, setPanktis} = useContext(SearchContext);
     const [focusIndex, setFocusIndex] = useState(0);
     const appDispatch = useContext(AppContext).dispatch;
+    const shabadDispatch = useContextSelector(
+        ShabadContext,
+        ctx => ctx.dispatch
+    );
     const appRef = useRef<number>(0);
     const listContainerRef = useRef<HTMLUListElement | null>(null);
     appRef.current++;
@@ -205,6 +211,7 @@ const SearchPanel: FunctionComponent = () => {
     }, [searchInputRef]);
 
     const displayShabad = useCallback((pankti: Pankti) => {
+        shabadDispatch({ type: SHABAD_RESET });
         dispatch({
             type: SEARCH_SHABAD_PANKTI,
             payload: { pankti }
@@ -214,7 +221,7 @@ const SearchPanel: FunctionComponent = () => {
             type: SET_APP_PAGE,
             payload: { page: "shabad" }
         });
-    }, []);
+    }, [shabadDispatch, dispatch, appDispatch]);
 
     useEffect(() => {
         searchInputRef?.current?.focus();

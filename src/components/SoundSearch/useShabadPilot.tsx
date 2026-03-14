@@ -6,12 +6,13 @@ import { findIndexIgnoringPunctuation, findMatchingPankti, getAllowedNextPanktiI
 import { SET_APP_PAGE, SHABAD_PANKTI, SHABAD_PANKTI_MARK_VISITED, SHABAD_PANKTI_NO_VISITED } from "../../state/ActionTypes";
 import { SearchContext } from "../../state/providers/SearchProvider";
 import { AppContext, PAGE_SEARCH } from "../../state/providers/AppProvider";
+import { useContext as useCtxSelector } from "use-context-selector";
 
 const useShabadPilot = (finalText: string, partialText: string, status: RecorderState, startTranscription: any, silenceSeconds: number) => {
 
     const [lastCheckIdx, setLastCheckIdx] = useState(0);
     const [active, setActive] = useState(false);
-    const shabadContext = useContext(ShabadContext);
+    const shabadContext = useCtxSelector(ShabadContext);
     const searchContext = useContext(SearchContext);
     const appContext = useContext(AppContext);
 
@@ -57,7 +58,8 @@ const useShabadPilot = (finalText: string, partialText: string, status: Recorder
             appContext.dispatch({
                 type: SET_APP_PAGE,
                 payload: {
-                    page: PAGE_SEARCH
+                    page: PAGE_SEARCH,
+                    show_panel: true,
                 }
             });
             return;

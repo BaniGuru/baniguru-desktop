@@ -1,6 +1,7 @@
 import { useContext, useCallback } from "react";
 import { RecentShabad, SearchContext } from "../../state/providers/SearchProvider";
 import { AppContext } from "../../state/providers/AppProvider";
+import { useContext as useCtxSelector } from "use-context-selector";
 import {
   SET_APP_PAGE,
   REMOVE_RECENT_PANKTI,
@@ -14,7 +15,7 @@ import { ShabadContext } from "../../state/providers/ShabadProvider";
 export const RecentPanel = () => {
   const { state, dispatch } = useContext(SearchContext);
   const { dispatch: appDispatch } = useContext(AppContext);
-  const { dispatch: shabadDispatch } = useContext(ShabadContext);
+  const { dispatch: shabadDispatch } = useCtxSelector(ShabadContext);
 
   const recentShabads = state.recent as RecentShabad[] | undefined;
 

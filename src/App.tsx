@@ -19,6 +19,9 @@ import { appVersion, useSettings } from "./state/providers/SettingContext";
 import { closeWindow, minimizeWindow, useAutoHideCursor } from "./utils/useAutoHideCursor";
 import { useThemeColors } from "./utils/useTheme";
 import useSpeech from "./components/SoundSearch/useSpeech";
+import BaniDisplay from "./components/BaniDisplay";
+import { ShabadContext } from "./state/providers/ShabadProvider";
+import { useContextSelector } from "use-context-selector";
 
 
 type DownloadEvent =
@@ -55,8 +58,10 @@ function App() {
   const contentLengthRef = useRef<number>(0);
   const downloadedRef = useRef<number>(0);
   const downloadingRef = useRef<boolean>(false);
+  const baniId = useContextSelector(ShabadContext, (ctx) => ctx.state.baniId);
 
   const speech = useSpeech();
+  const speechStarted = speech.started;
 
   useEffect(() => {
     appRef.current++;
@@ -201,7 +206,10 @@ function App() {
               </div>
             </div>
           )}
-          <ShabadDisplay />
+          {speechStarted && baniId === 13
+            ? <BaniDisplay />
+            : <ShabadDisplay />
+          }
           {appContext.state.show_panel &&
             <TabPanel
               className="absolute flex flex-col w-1/3 h-1/3 right-0 bottom-0 overflow-hidden shadow-2xl border-2 border-gray-300"

@@ -7,12 +7,13 @@ import { Pankti } from "../models/Pankti";
 import { AppContext } from "../state/providers/AppProvider";
 import { useShabadSearch } from "./useShabadSearch";
 import useMeilisearch from "./useMeilisearch";
+import { useContext as useCtxSelector } from "use-context-selector";
 
 const RAHAO_PANKTI   = 3;
 
 export const useBaniPilot = () => {
 
-    const { state, dispatch } = useContext(ShabadContext);
+    const { state, dispatch } = useCtxSelector(ShabadContext);
     const appContext = useContext(AppContext);
     const [speech, setSpeech] = useState<{tokens: string[], rawTokens: Token[], finalised: boolean, endedAt: number}>({tokens: [], rawTokens: [], finalised: false, endedAt: 0});
     const processingRef = useRef(false);
