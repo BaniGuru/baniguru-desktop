@@ -52,7 +52,7 @@ function App() {
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const appRef = useRef<number>(0);
-  const {panelSetting, version, updateVersion} = useSettings();
+  const {panelSetting, version, updateVersion, panelLocation, setPanelLocation} = useSettings();
   const { palette } = useThemeColors();
   
   const contentLengthRef = useRef<number>(0);
@@ -174,6 +174,20 @@ function App() {
                     ev.preventDefault();
                   }
                   break;
+              
+              case "l":
+                  if (ev.ctrlKey) {
+                    setPanelLocation('left');
+                    ev.preventDefault();
+                  }
+                  break;
+              
+              case "r":
+                  if (ev.ctrlKey) {
+                    setPanelLocation('right');
+                    ev.preventDefault();
+                  }
+                  break;
                 
               case "/":
                 if (ev.ctrlKey) {
@@ -238,7 +252,7 @@ function App() {
           }
           {appContext.state.show_panel &&
             <TabPanel
-              className="absolute flex flex-col w-1/3 h-1/3 right-0 bottom-0 overflow-hidden shadow-2xl border-2 border-gray-300"
+              className={`absolute flex flex-col w-1/3 h-1/3 bottom-0 overflow-hidden shadow-2xl border-2 border-gray-300 ${panelLocation === 'right' ? 'right-0' : 'left-0'}`}
               width={panelSetting.panelWidth}
               height={panelSetting.panelHeight}
               fontSize={appContext.fontSize}

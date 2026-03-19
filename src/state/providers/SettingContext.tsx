@@ -12,6 +12,7 @@ type Settings = {
     panelWidth: number;
     panelHeight: number;
   };
+  panelLocation: string;
   width: number;
   height: number;
   version: string;
@@ -31,6 +32,7 @@ type Settings = {
   setMicName: (name: string) => void;
   micName: string | null;
   settingVersion: string;
+  setPanelLocation: (location: string) => void;
 };
 
 const defaultVisibility: Record<LangType, boolean> = {
@@ -65,9 +67,11 @@ const defaultThemes: Theme[] = [
 ];
 
 const LOCAL_STORAGE_KEY = "settings";
+const defaultPanelLocation = "right";
 
 const getDefaultSettings = (): Settings => ({
   panelSetting: defaultPanelSetting,
+  panelLocation: defaultPanelLocation,
   width: defaultWidth,
   height: defaultHeight,
   version: "",
@@ -76,6 +80,7 @@ const getDefaultSettings = (): Settings => ({
   visibility: defaultVisibility,
   micName: "",
 
+  setPanelLocation: () => { },
   updateSetting: () => { },
   updatePanelSetting: () => { },
   updateVersion: () => { },
@@ -99,6 +104,7 @@ const getInitialSettings = () => {
           ...settings,
           visibility: { ...(parsed.visibility ?? defaultVisibility), "Akhand Paath": false },
           panelSetting: { ...defaultPanelSetting, ...parsed.panelSetting },
+          panelLocation: parsed.panelLocation ?? defaultPanelLocation,
           width: parsed.width ?? defaultWidth,
           height: parsed.height ?? defaultHeight,
           version: parsed.version ?? "",
@@ -136,6 +142,7 @@ const storeSettings = (settings: any) => {
       activeThemeName: settings.activeThemeName,
       micName: settings.micName,
       settingVersion: settingVersion,
+      panelLocation: settings.panelLocation,
     })
   );
 };
@@ -149,6 +156,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
   const [height, setHeight] = useState(initial.height);
   const [version, setVersion] = useState(initial.version);
   const [micName, setMicName] = useState(initial.micName);
+  const [panelLocation, setPanelLocation] = useState(initial.panelLocation);
 
   const themes = initial.themes;
   const [activeThemeName, setActiveThemeName] = useState<string>(initial.activeThemeName);
@@ -168,8 +176,9 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
       themes,
       activeThemeName,
       micName,
+      panelLocation
     });
-  }, [visibility, width, height, version, panelSetting, themes, activeThemeName, micName]);
+  }, [visibility, width, height, version, panelSetting, themes, activeThemeName, micName, panelLocation]);
 
   const updateSetting = (key: "width" | "height", value: number) => {
     if (key === "width") setWidth(value);
@@ -197,6 +206,8 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
       value={{
         visibility,
         panelSetting,
+        panelLocation,
+        setPanelLocation,
         width,
         height,
         version,
