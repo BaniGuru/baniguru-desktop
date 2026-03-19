@@ -44,21 +44,14 @@ export const SettingPanel = () => {
       <div className="text-xl ml-4">Search Panel</div>
       <SettingInput lang="Width" name="panelWidth" />
       <SettingInput lang="Height" name="panelHeight" />
-      <SettingInput lang="Font Size" name="panelFontSize" />
 
       <hr />
-      <div className="text-2xl ml-4">Display</div>
-      <SettingInput lang="Start Space" />
-      <SettingInput lang="End Space" />
-      <SettingInput lang="Left Space" />
-      <SettingInput lang="Right Space" />
-      <SettingInput lang="Gurmukhi Space" />
-      <SettingInput lang="Translation Space" />
 
       <div className="text-2xl ml-4">Themes</div>
       <ShabadTheme name="Light" />
       <ShabadTheme name="Blue" />
       <ShabadTheme name="Dark" />
+      <ShabadTheme name="Darker" />
       <ShabadTheme name="Sepia" />
       <ShabadTheme name="ShabadOs1" />
       <ShabadTheme name="ShabadOs2" />

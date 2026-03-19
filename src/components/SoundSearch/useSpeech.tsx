@@ -154,7 +154,7 @@ const useSpeech = () => {
   const shabadContext = useCtxSelector(ShabadContext);
 
   const shabadPilot = useShabadPilot(finalText, nonFinalText, status, startTranscription, silenceSeconds);
-  const baniPilot = useBaniPilot(finalText, nonFinalText, status, startTranscription, restartTranscript);
+  const baniPilot = useBaniPilot(finalText, nonFinalText, status, startTranscription, restartTranscript, silenceSeconds);
 
   const resetText = () => {
     transcriptRef.current = "";
