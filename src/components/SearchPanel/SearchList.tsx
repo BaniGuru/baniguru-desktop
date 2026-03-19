@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import { Pankti } from "../../models/Pankti";
-import { useEffect, useRef } from "react";
+import { useContext, useEffect, useRef } from "react";
+import { AppContext } from "../../state/providers/AppProvider";
 
 type SearchListProps = {
     panktis: Pankti[];
@@ -13,7 +14,6 @@ type SearchListProps = {
 const ListItem = styled.li`
     cursor: default;
     list-style: none;
-    padding: 12px;
     text-align: left;
     border-top: 1px solid #ccc;
 `;
@@ -98,6 +98,7 @@ const HighlightedTextComponent = ({ ang, gurmukhi, searchTerm }: any) => {
 const SearchList: React.FC<SearchListProps> = ({ panktis, current, displayShabad, listContainerRef, searchTerm }) => {
     
     const itemRefs = useRef<Array<HTMLLIElement | null>>([]);
+    const { fontSize } = useContext(AppContext);
 
     useEffect(() => {
         const container = listContainerRef.current;
@@ -126,6 +127,9 @@ const SearchList: React.FC<SearchListProps> = ({ panktis, current, displayShabad
                     }}
                     className={`gurmukhi-font-1 ${current === index ? 'bg-gray-200' : 'bg-gray-100'}`}
                     onClick={() => displayShabad(pankti)}
+                    style={{
+                        padding: `${fontSize*0.25*0.5}px`
+                    }}
                 >
                     
                     <HighlightedTextComponent ang={pankti.source_page} gurmukhi={pankti.gurmukhi} searchTerm={searchTerm} />

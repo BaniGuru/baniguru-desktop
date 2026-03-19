@@ -44,11 +44,11 @@ const AppPanel = styled.div`
 const TabPanel = styled.div<TabPanelProps>`
     width: ${({ width }) => `${width}%`};
     height: ${({ height }) => `${height}%`};
-    font-size: ${({ fontSize }) => `${fontSize}px`};
+    font-size: ${({ fontSize }) => `${fontSize*0.24}px`};
 `;
 
 function App() {
-  const appContext: {state: AppState, setDbPath: any, dispatch: any} = useContext(AppContext);
+  const appContext: {state: AppState, setDbPath: any, dispatch: any, setFontSize: any, fontSize: number} = useContext(AppContext);
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const appRef = useRef<number>(0);
@@ -62,6 +62,32 @@ function App() {
 
   const speech = useSpeech();
   const speechStarted = speech.started;
+
+  const calculateFontSize = () => {
+    const viewPortHeight = window.innerHeight;
+
+    let newPortion = 10;
+    if (viewPortHeight > 800) {
+      newPortion = 12;
+    }
+
+    const newFontSize = Math.max(12, Math.min(viewPortHeight / newPortion, 150));
+    appContext.setFontSize(newFontSize);
+  };
+
+  useEffect(() => {
+    calculateFontSize();
+
+    const handleResize = () => {
+      calculateFontSize();
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   useEffect(() => {
     appRef.current++;
@@ -215,7 +241,7 @@ function App() {
               className="absolute flex flex-col w-1/3 h-1/3 right-0 bottom-0 overflow-hidden shadow-2xl border-2 border-gray-300"
               width={panelSetting.panelWidth}
               height={panelSetting.panelHeight}
-              fontSize={panelSetting.panelFontSize}
+              fontSize={appContext.fontSize}
             >
               <div className="flex-none h-8 bg-gray-200 flex items-center justify-between">
                 <div className="flex" style={{ width: '90%' }}>

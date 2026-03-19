@@ -42,7 +42,12 @@ const THEME_CATALOG: Record<string, ThemeColors> = {
     "punjabi": "#ffffff",        // White text for clarity
     "english": "#e0e0e0",        // Light gray for softer balance
     "background": "linear-gradient(135deg, #000000, #333333)" // Dark gradient
-
+  },
+  Darker: {
+    "gurmukhi": "#ffcc00",
+    "punjabi": "#ffffff",
+    "english": "#e0e0e0",
+    "background": "linear-gradient(135deg, #000000, #000000)"
   },
   Charcol: {
     "gurmukhi": "#ffd700",

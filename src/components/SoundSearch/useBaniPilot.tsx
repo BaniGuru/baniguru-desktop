@@ -1,16 +1,18 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { RecorderState } from "@soniox/speech-to-text-web";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { Pankti } from "../../models/Pankti";
 import { findBaniMatchingPankti, unifySpeechText } from "./SpeechHelper";
-import { SHABAD_PANKTI, SHABAD_PANKTI_MARK_VISITED, SHABAD_PANKTI_NO_VISITED } from "../../state/ActionTypes";
+import { SET_APP_PAGE, SHABAD_PANKTI, SHABAD_PANKTI_MARK_VISITED, SHABAD_PANKTI_NO_VISITED, SHABAD_RESET } from "../../state/ActionTypes";
 import { useContext as useCtxSelector } from "use-context-selector";
+import { AppContext, PAGE_SEARCH } from "../../state/providers/AppProvider";
 
-const useBaniPilot = (finalText: string, partialText: string, status: RecorderState, startTranscription: (panktis: string[]) => any, restartTranscript: (panktis: string[]) => any) => {
+const useBaniPilot = (finalText: string, partialText: string, status: RecorderState, startTranscription: (panktis: string[]) => any, restartTranscript: (panktis: string[]) => any, silenceSeconds: number) => {
 
     const [lastCheckIdx, setLastCheckIdx] = useState(0);
     const [active, setActive] = useState(false);
     const shabadContext = useCtxSelector(ShabadContext);
+    const appContext = useContext(AppContext);
     const [_panktiFinished, setPanktiFinished] = useState(false);
 
     const [part, setPart] = useState(1);
@@ -86,6 +88,18 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecorderSt
     ]);
 
     const navigatePankti = () => {
+        if (silenceSeconds > 5 && (shabadContext.state.panktis.length - 1) === shabadContext.state.current) {
+            shabadContext.dispatch({ type: SHABAD_RESET });
+            appContext.dispatch({
+                type: SET_APP_PAGE,
+                payload: {
+                    page: PAGE_SEARCH,
+                    show_panel: true,
+                }
+            });
+            return;
+        }
+
         const finalAndPartialText = (finalText ?? "") + (partialText ?? "");
         const tokenText = finalAndPartialText.slice(lastCheckIdx)
             .replaceAll('।', ',')
@@ -113,7 +127,6 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecorderSt
         const matchingPanktis = findBaniMatchingPankti(panktis, tokens, shabadContext.state.current, lastPanktiIdx);
 
         if (matchingPanktis.length === 1) {
-            console.log(speechText);
             const matchingPankti = matchingPanktis[0];
             if (matchingPankti.fullMatch
                 && !matchingPankti.startingWordMatch
@@ -194,7 +207,7 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecorderSt
 
         navigatePankti();
 
-    }, [active, finalText, partialText, setPart]);
+    }, [active, finalText, partialText, setPart, appContext.dispatch, shabadContext.dispatch]);
 
     return {
         setActive

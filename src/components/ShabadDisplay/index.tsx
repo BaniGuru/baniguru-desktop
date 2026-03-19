@@ -14,39 +14,34 @@ import { BANI_ACTION_UPDATE, BaniContext } from "../../state/providers/BaniProvi
 import { useThemeColors } from "../../utils/useTheme";
 import { formatPanktis, getShabadIds } from "../../utils/shabadUtil";
 import { useContext as useCtxSelector } from "use-context-selector";
+import useFitTextToTwoLines from "../../utils/useFitTextToTwoLines";
 
 interface PanelProps {
-    startSpace: number;
-    endSpace: number;
-    leftSpace: number;
-    rightSpace: number;
+    fontSize: number;
 }
 
 const Panel = styled.div<PanelProps>`
-    padding-top: ${({ startSpace }) => `${startSpace}px`};
-    padding-left: ${({ leftSpace }) => `${leftSpace}px`};
-    padding-right: ${({ rightSpace }) => `${rightSpace}px`};
+    padding-top: ${({ fontSize }) => `${fontSize}px`};
+    padding-left: ${() => `${window.innerWidth * 0.03}px`};
+    padding-right: ${() => `${window.innerWidth * 0.03}px`};
 `;
 
 interface FontProps {
     fontSize: number;
-    contentSpace: number;
 }
 
 interface NextPanktiProps {
     fontSize: number;
-    endSpace: number;
-    leftSpace: number;
 }
 
 const NextPanktiGurmukhi = styled.div<NextPanktiProps>`
     font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.2;
-    margin-bottom: ${({ endSpace }) => `${endSpace}px`};
+    margin-bottom: ${({ fontSize }) => `${fontSize * 0.5}px`};
     font-family: "Open Gurbani Akhar";
     font-weight: 900;
-    padding-left: ${({ leftSpace }) => `${leftSpace}px`};
-    padding-right: ${({ leftSpace }) => `${leftSpace}px`};
+    padding-left: ${() => `${window.innerWidth * 0.03}px`};
+    padding-right: ${() => `${window.innerWidth * 0.03}px`};
 
     white-space: nowrap;
 `;
@@ -54,33 +49,48 @@ const NextPanktiGurmukhi = styled.div<NextPanktiProps>`
 const Punjabi = styled.div<FontProps>`
     font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.4;
-    margin-top: ${({ contentSpace }) => `${contentSpace}px`};
-    display: flex;
+    margin-top: ${({ fontSize }) => `${fontSize}px`};
     font-family: "Open Anmol Uni", sans-serif;
     font-weight: 900;
+    display: block;
+    text-align: center;
 `;
 
 const English = styled.div<FontProps>`
     font-size: ${({ fontSize }) => `${fontSize}px`};
-    line-height: 1.4;
-    margin-top: ${({ contentSpace }) => `${contentSpace}px`};
-    padding-left: 40px;
-    padding-right: 40px;
+    line-height: 1.3;
+    margin-top: ${({ fontSize }) => `${fontSize*0.2}px`};
     font-family: "Noto Sans", sans-serif;
     font-weight: 700;
+    display: block;
+    text-align: center;
 `;
 
 const ShabadDisplay: React.FC = () => {
     const searchContext = useContext(SearchContext);
     const baniContext = useContext(BaniContext);
     const {state, dispatch } = useCtxSelector(ShabadContext);
-    const {state: appState} = useContext(AppContext);
-    const { fontSizes, displaySpacing, activeThemeName, visibility } = useSettings();
+    const {state: appState, fontSize} = useContext(AppContext);
+    const { activeThemeName, visibility } = useSettings();
     const current = state.current;
 
     const nextPanktiRef = useRef<HTMLDivElement>(null);
-    const [nextPanktiFontSize, setNextPanktiFontSize] = useState(fontSizes["Next Pankti"]);
+    const [nextPanktiFontSize, setNextPanktiFontSize] = useState(fontSize);
     const { palette } = useThemeColors();
+
+    const punjabiRef = useRef<HTMLDivElement>(null);
+    const { fontSize: punjabiFontSize, isClamped: punjabiClamped } = useFitTextToTwoLines(
+        punjabiRef,
+        state.panktis[current]?.punjabi_translation ?? '',
+        fontSize * 0.5,
+    );
+
+    const englishRef = useRef<HTMLDivElement>(null);
+    const { fontSize: englishFontSize, isClamped: englishClamped } = useFitTextToTwoLines(
+        englishRef,
+        state.panktis[current]?.english_translation ?? '',
+        fontSize * 0.45,
+    );
 
     useEffect(() => {
         const sendDataToBackend = async () => {
@@ -172,7 +182,7 @@ const ShabadDisplay: React.FC = () => {
             if (!element) return;
 
             const containerWidth = element.parentElement?.clientWidth || 0;
-            let currentFontSize = fontSizes["Next Pankti"];
+            let currentFontSize = fontSize;
             const minFontSize = 10;
             element.style.overflow = 'hidden';
             element.style.fontSize = `${currentFontSize}px`;
@@ -189,7 +199,7 @@ const ShabadDisplay: React.FC = () => {
         if (nextPankti) {
             resizeFontToFit();
         }
-    }, [nextPankti, fontSizes]);
+    }, [nextPankti, fontSize]);
 
     useEffect(() => {
         if (state.baniId !== null) {
@@ -234,36 +244,43 @@ const ShabadDisplay: React.FC = () => {
 
     return (
         <Panel
+            fontSize={fontSize}
             className="w-screen h-screen flex flex-col justify-between overflow-hidden"
-            startSpace={displaySpacing.startSpace}
-            endSpace={displaySpacing.endSpace}
-            leftSpace={displaySpacing.leftSpace}
-            rightSpace={displaySpacing.rightSpace}
             // style={palette.background}
             style={{backgroundColor: activeThemeName === "Bandi Chorh Diwas" ?  "rgb(200 200 200 / 80%)": "rgb(200 200 200 / 20%)"}}
         >
             <div className={`flex-1 flex flex-col items-start w-full ${activeThemeName === "Bandi Chorh Diwas" ? 'justify-between' : 'justify-start'}`}>
-                <div className="flex flex-row w-full justify-center">
-                    <FormatAndBreakText
-                        containerClassName="text-center"
-                        containerStyle={{
-                            color: palette.gurmukhi,
-                            fontSize: fontSizes["ਗੁਰਮੁਖੀ"] + "px",
-                            lineHeight: 1.3,
-                            fontFamily: "Open Gurbani Akhar",
-                            fontWeight: 900
-                        }}
-                        text={state.panktis[current]?.gurmukhi || ""}
-                    />
+                <div className="flex w-full justify-center">
+                    <div className="w-full">
+                        <FormatAndBreakText
+                            key={state.panktis[current]?.gurmukhi || ""}
+                            containerClassName="text-center"
+                            containerStyle={{
+                                color: palette.gurmukhi,
+                                fontSize: fontSize + "px",
+                                lineHeight: 1.3,
+                                fontFamily: "Open Gurbani Akhar",
+                                fontWeight: 900
+                            }}
+                            text={state.panktis[current]?.gurmukhi || ""}
+                        />
+                    </div>
                 </div>
-                
+
                 <div className="flex flex-col w-full items-center">
                     { visibility.ਪੰਜਾਬੀ &&
                         <Punjabi
-                            className="text-center"
-                            fontSize={fontSizes["ਪੰਜਾਬੀ"]}
-                            contentSpace={displaySpacing.gurmukhiSpace}
-                            style={{ color: palette.punjabi }}
+                            key={state.panktis[current]?.punjabi_translation}
+                            ref={punjabiRef}
+                            fontSize={punjabiFontSize}
+                            style={{
+                                color: palette.punjabi,
+                                display: punjabiClamped ? "-webkit-box" : "block",
+                                WebkitLineClamp: punjabiClamped ? 2 : "unset",
+                                WebkitBoxOrient: punjabiClamped ? "vertical" : "unset",
+                                overflow: punjabiClamped ? "hidden" : "visible",
+                                textOverflow: "ellipsis"
+                            }}
                         >
                             { state.panktis[current]?.punjabi_translation }
                         </Punjabi>
@@ -271,10 +288,17 @@ const ShabadDisplay: React.FC = () => {
                     {
                         visibility.English &&
                         <English
-                            className="text-center"
-                            fontSize={fontSizes["English"]}
-                            contentSpace={displaySpacing.translationSpace}
-                            style={{ color: palette.english }}
+                            key={state.panktis[current]?.english_translation}
+                            ref={englishRef}
+                            fontSize={englishFontSize}
+                            style={{
+                                color: palette.english,
+                                display: englishClamped ? "-webkit-box" : "block",
+                                WebkitLineClamp: englishClamped ? 2 : "unset",
+                                WebkitBoxOrient: englishClamped ? "vertical" : "unset",
+                                overflow: englishClamped ? "hidden" : "visible",
+                                textOverflow: "ellipsis"
+                            }}
                         >
                             { state.panktis[current]?.english_translation }
                         </English>
@@ -288,8 +312,6 @@ const ShabadDisplay: React.FC = () => {
                     ref={nextPanktiRef}
                     className="gurmukhi-font-2 text-center"
                     fontSize={nextPanktiFontSize}
-                    endSpace={displaySpacing.endSpace}
-                    leftSpace={displaySpacing.leftSpace}
                     style={{ color: palette.gurmukhi }}
                 >
                     { Format.removeVishraams(nextPankti) }

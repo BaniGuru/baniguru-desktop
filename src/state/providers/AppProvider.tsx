@@ -49,6 +49,8 @@ const AppContext = createContext<{
     setDbPath: React.Dispatch<any>,
     terms: string[],
     setTerms: React.Dispatch<any>,
+    fontSize: number,
+    setFontSize: React.Dispatch<any>
 }>({
     state: initAppState,
     dispatch: () => null,
@@ -56,12 +58,15 @@ const AppContext = createContext<{
     setDbPath: () => null,
     terms: [],
     setTerms: () => null,
+    fontSize: 16,
+    setFontSize: () => null,
 });
 
 const AppProvider: React.FC<{ children: React.ReactNode}> = ({ children }) => {
     const [state, dispatch] = useReducer(appReducer, initAppState);
     const [dbPath, setDbPath] = useState("");
     const [terms, setTerms] = useState([]);
+    const [fontSize, setFontSize] = useState<number>(16);
 
     return (
         <AppContext.Provider value={{
@@ -70,7 +75,9 @@ const AppProvider: React.FC<{ children: React.ReactNode}> = ({ children }) => {
             state,
             dispatch,
             dbPath, 
-            setDbPath
+            setDbPath,
+            fontSize,
+            setFontSize,
         }}>
             { children }
         </AppContext.Provider>

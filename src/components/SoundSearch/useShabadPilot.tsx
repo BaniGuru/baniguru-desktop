@@ -6,6 +6,7 @@ import { findIndexIgnoringPunctuation, findMatchingPankti, getAllowedNextPanktiI
 import { SET_APP_PAGE, SHABAD_PANKTI, SHABAD_PANKTI_MARK_VISITED, SHABAD_PANKTI_NO_VISITED } from "../../state/ActionTypes";
 import { SearchContext } from "../../state/providers/SearchProvider";
 import { AppContext, PAGE_SEARCH } from "../../state/providers/AppProvider";
+import * as Sentry from "@sentry/react";
 import { useContext as useCtxSelector } from "use-context-selector";
 
 const useShabadPilot = (finalText: string, partialText: string, status: RecorderState, startTranscription: any, silenceSeconds: number) => {
@@ -116,16 +117,27 @@ const useShabadPilot = (finalText: string, partialText: string, status: Recorder
             }
 
             if (matchingPankti.panktiIdx !== shabadContext.state.current || !shabadContext.state.panktis[shabadContext.state.current].visited) {
-                console.log('=======================================================================================');
-                console.log('final: ', panktiFinalText, ' partial: ', partialText.replaceAll('।', ','));
-                console.log('speech: ', speechText);
-                console.log('silence: ', silenceSeconds);
-                console.log(JSON.stringify(matchingPankti));
-                console.log('nextpanktis: ', getAllowedNextPanktiIdxs(
-                    shabadContext.state.panktis,
-                    shabadContext.state.home,
-                    shabadContext.state.current
-                ))
+                Sentry.captureMessage(JSON.stringify({
+                    tkn: panktiFinalText + partialText,
+                    stxt: speechText,
+                    mch: matchingPankti.matches.join(" "),
+                    wrds: matchingPankti.words.join(" "),
+                    nxt: getAllowedNextPanktiIdxs(
+                        shabadContext.state.panktis,
+                        shabadContext.state.home,
+                        shabadContext.state.current
+                    ).join(","),
+                    idx: matchingPankti.panktiIdx,
+                    shbd: shabadContext.state.panktis[matchingPankti.panktiIdx].shabad_id,
+                }), "info");
+                // console.log('final: ', panktiFinalText, ' partial: ', partialText.replaceAll('।', ','));
+                // console.log('speech: ', speechText);
+                // console.log(JSON.stringify(matchingPankti));
+                // console.log('nextpanktis: ', getAllowedNextPanktiIdxs(
+                //     shabadContext.state.panktis,
+                //     shabadContext.state.home,
+                //     shabadContext.state.current
+                // ))
 
                 shabadContext.dispatch({
                     type: SHABAD_PANKTI,
