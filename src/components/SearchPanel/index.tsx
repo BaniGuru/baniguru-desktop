@@ -51,7 +51,7 @@ const SearchPanel: FunctionComponent = () => {
                 "M": "m",
             };
 
-            if (blockedKeys[event.key]) {
+            if (!event.ctrlKey && blockedKeys[event.key]) {
                 event.preventDefault();
 
                 const replacementChar = blockedKeys[event.key];
