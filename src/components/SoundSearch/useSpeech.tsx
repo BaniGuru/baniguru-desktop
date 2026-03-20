@@ -1,7 +1,7 @@
 import { ErrorStatus, RecorderState, SonioxClient } from "@soniox/speech-to-text-web";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import useShabadPilot from "./useShabadPilot";
-import { AppContext, PAGE_BANI, PAGE_SEARCH, PAGE_SHABAD } from "../../state/providers/AppProvider";
+import { AppContext, PAGE_ANNOUNCEMENT, PAGE_BANI, PAGE_RECENT, PAGE_SEARCH, PAGE_SHABAD } from "../../state/providers/AppProvider";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import useBaniPilot from "./useBaniPilot";
 import { invoke } from "@tauri-apps/api/core";
@@ -114,7 +114,17 @@ const useSpeech = () => {
     }
 
     console.log('started');
-  }, [setTerms, setStatus, setError, micName, API_KEY]);
+  }, [
+    status,
+    micName,
+    API_KEY,
+    setFinalText,
+    setNonFinalText,
+    setSpeechTokens,
+    setError,
+    setTerms,
+    setStatus
+  ]);
 
   const stopTranscription = useCallback(async () => {
     try {
@@ -128,7 +138,7 @@ const useSpeech = () => {
       setSilenceStart(null);
       setStatus('Init');
       console.log('speech stopped')
-  }, []);
+  }, [setStatus, setSilenceSeconds, setSilenceStart]);
 
   const restartTranscript = useCallback(async (panktis: string[]) => {
     try {
@@ -148,7 +158,16 @@ const useSpeech = () => {
     setTerms(panktis);
     setStatus('Running');
     console.log('Restrated');
-  }, []);
+  }, [
+    setStarted,
+    setStarted,
+    setFinalText,
+    setNonFinalText,
+    setSpeechTokens,
+    setError,
+    setTerms,
+    setStatus,
+  ]);
 
   const appContext = useContext(AppContext);
   const shabadContext = useCtxSelector(ShabadContext);
@@ -169,18 +188,21 @@ const useSpeech = () => {
       resetText();
     }
 
-    if (started && appContext.state.page === PAGE_SEARCH && status !== 'Init') {
-      stopTranscription();
-      setStatus('Init');
-    }
-
-    if (started && appContext.state.page === PAGE_BANI && status !== 'Init') {
+    if (started &&
+      (
+        appContext.state.page === PAGE_SEARCH ||
+        appContext.state.page === PAGE_RECENT ||
+        appContext.state.page === PAGE_BANI
+      ) &&
+      status !== 'Init') {
       stopTranscription();
       setStatus('Init');
     }
 
     shabadPilot.setActive(
-      appContext.state.page === PAGE_SHABAD &&
+      (appContext.state.page === PAGE_SHABAD ||
+        appContext.state.page === PAGE_ANNOUNCEMENT
+      ) &&
       started &&
       (shabadContext.state.baniId === null)
     );
@@ -190,7 +212,15 @@ const useSpeech = () => {
       started &&
       (shabadContext.state.baniId !== null)
     );
-  }, [appContext.state.page, status, started, shabadPilot.setActive, baniPilot.setActive, shabadContext.state.baniId]);
+  }, [
+    appContext.state.page,
+    shabadContext.state.baniId,
+    status,
+    started,
+    shabadPilot.setActive,
+    baniPilot.setActive,
+    resetText,
+  ]);
 
   const updateLastTokenElapse = useCallback((finalText: string, nonFinalText: string) => {
     // Silence begins when:

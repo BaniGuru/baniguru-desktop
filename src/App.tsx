@@ -210,7 +210,8 @@ function App() {
                           appContext.dispatch({
                               type: SET_APP_PAGE,
                               payload: {
-                                  page: appContext.state.prev_page
+                                  page: appContext.state.prev_page,
+                                  show_panel: appContext.state.prev_show_panel,
                               }
                           });
                           break;
@@ -219,7 +220,8 @@ function App() {
                       appContext.dispatch({
                           type: SET_APP_PAGE,
                           payload: {
-                              page: PAGE_ANNOUNCEMENT
+                              page: PAGE_ANNOUNCEMENT,
+                              show_panel: false,
                           }
                       });
                   }

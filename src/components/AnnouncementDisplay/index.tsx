@@ -59,7 +59,7 @@ export const AnnouncementDisplay = () => {
             {keyAnnouncement === 0 && (
                 <div
                     className="relative gurmukhi-font-1 text-center mb-[10pc]"
-                    style={{ ...baseStyle, fontSize: fontSize * 2.8 }}
+                    style={{ ...baseStyle, fontSize: fontSize * 3.5 }}
                 >
                     vwihgurU
                 </div>
@@ -69,10 +69,10 @@ export const AnnouncementDisplay = () => {
             {keyAnnouncement === -1 && (
                 <div
                     className="relative gurmukhi-font-1 text-center mb-[10pc]"
-                    style={{ ...baseStyle, fontSize }}
+                    style={{ ...baseStyle, fontSize: `${fontSize}px` }}
                 >
-                    <div>{"<> siqnwmu krqw purKu inrBau inrvYru"}</div>
-                    <div>Akwl mUriq AjUnI sYBM gur pRswid ]</div>
+                    <div>{"<>siqnwmu krqw purKu inrBau inrvYru"}</div>
+                    <div>Akwl mUriq AjUnI sYBM gurpRswid ]</div>
                 </div>
             )}
 
