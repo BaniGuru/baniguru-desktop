@@ -5,9 +5,29 @@ import { Pankti } from "../../models/Pankti";
 import { findIndexIgnoringPunctuation, findMatchingPankti, getAllowedNextPanktiIdxs, unifySpeechText } from "./SpeechHelper";
 import { SET_APP_PAGE, SHABAD_PANKTI, SHABAD_PANKTI_MARK_VISITED, SHABAD_PANKTI_NO_VISITED } from "../../state/ActionTypes";
 import { SearchContext } from "../../state/providers/SearchProvider";
-import { AppContext, PAGE_SEARCH } from "../../state/providers/AppProvider";
+import { AppContext, PAGE_ANNOUNCEMENT, PAGE_SEARCH } from "../../state/providers/AppProvider";
 import * as Sentry from "@sentry/react";
 import { useContext as useCtxSelector } from "use-context-selector";
+
+function isSimran(tokenText: string) {
+    const tokens = tokenText.trim().split(/[\s,]+/);
+
+    let count = 0;
+
+    for (let i = tokens.length - 2; i >= 0; i--) {
+        const word = tokens[i];
+
+        if (word === "ਵਾਹਿਗੁਰੂ") {
+            count++;
+        } else if (word === "ਗੁਰੂ") {
+            continue;
+        } else {
+            break;
+        }
+    }
+
+    return count >= 4;
+}
 
 const useShabadPilot = (finalText: string, partialText: string, status: RecorderState, startTranscription: any, silenceSeconds: number) => {
 
@@ -16,6 +36,7 @@ const useShabadPilot = (finalText: string, partialText: string, status: Recorder
     const shabadContext = useCtxSelector(ShabadContext);
     const searchContext = useContext(SearchContext);
     const appContext = useContext(AppContext);
+    const [simran, setSimran] = useState(false);
 
     const getTerms = (panktis: Pankti[]) => {
         const terms = panktis.map((pankti: Pankti) => pankti.gurmukhi_speech);
@@ -35,19 +56,31 @@ const useShabadPilot = (finalText: string, partialText: string, status: Recorder
 
         if (status === 'Init') {
             startTranscription(getTerms(shabadContext.state.panktis));
+            setLastCheckIdx(0);
+            setSimran(false);
         }
 
         matchPankti();
 
-    }, [active, finalText, partialText, shabadContext.state.shabadId, status, silenceSeconds,
-        // shabadContext.state.panktis,
+    }, [
+        active,
+        finalText,
+        partialText,
+        status,
+        silenceSeconds,
+        shabadContext.state.shabadId,
         searchContext.state.searchShabadPankti,
-        appContext.state.prev_page
+        appContext.state.prev_page,
+        appContext.state.page,
+        simran,
+        setSimran,
+        startTranscription,
+        setLastCheckIdx
     ]);
 
     useEffect(() => {
-        console.log('silence: ', silenceSeconds);
-        if (silenceSeconds < 5) return;
+        console.log('silence: ', silenceSeconds, ' simran: ', simran);
+        if (silenceSeconds < 5 || simran) return;
 
         const panktis = shabadContext.state.panktis
         const firstUnvisitedIndex = panktis.findIndex(
@@ -55,7 +88,7 @@ const useShabadPilot = (finalText: string, partialText: string, status: Recorder
         );
 
         // all visited and on home
-        if (firstUnvisitedIndex === -1 && shabadContext.state.home === shabadContext.state.current) {
+        if (firstUnvisitedIndex === -1 && shabadContext.state.home === shabadContext.state.current && silenceSeconds > 7) {
             appContext.dispatch({
                 type: SET_APP_PAGE,
                 payload: {
@@ -83,11 +116,11 @@ const useShabadPilot = (finalText: string, partialText: string, status: Recorder
     }, [silenceSeconds, shabadContext.dispatch]);
 
     const matchPankti = () => {
-        if (silenceSeconds > 3) {
+        if (silenceSeconds > 5 && !simran) {
             return;
         }
 
-        if (silenceSeconds > 2) {
+        if (silenceSeconds > 4 && !simran) {
             setLastCheckIdx(finalText.length - 1);
             return;
         }
@@ -99,11 +132,36 @@ const useShabadPilot = (finalText: string, partialText: string, status: Recorder
             .replaceAll('।', ',')
             .replaceAll('.', ',');
         const speechText = unifySpeechText(tokenText);
-        // console.log('tokenText: ', tokenText, 'speechText: ', speechText);
 
         const tokens = speechText.split(' ');
+
+        if (isSimran(tokenText)) {
+            if (!simran) {
+                setSimran(true);
+                appContext.dispatch({
+                    type: SET_APP_PAGE,
+                    payload: {
+                        page: PAGE_ANNOUNCEMENT,
+                        show_panel: false,
+                    }
+                });
+            }
+            return;
+        } else if (simran) {
+            if (appContext.state.page === PAGE_ANNOUNCEMENT) {
+                appContext.dispatch({
+                    type: SET_APP_PAGE,
+                    payload: {
+                        page: appContext.state.prev_page,
+                        show_panel: appContext.state.prev_show_panel,
+                    }
+                });
+            }
+
+            setSimran(false);
+        }
+
         const matchingPanktis = findMatchingPankti(shabadContext.state.panktis, tokens, shabadContext.state.home, shabadContext.state.current);
-        // console.log(matchingPanktis);
 
         if (matchingPanktis.length === 1) {
             const matchingPankti = matchingPanktis[0];
@@ -112,7 +170,6 @@ const useShabadPilot = (finalText: string, partialText: string, status: Recorder
             const matchText = matchingPankti.matches.reverse().join(" ");
             const matchPosition = findIndexIgnoringPunctuation(tokenText, matchText);
             if (matchPosition > -1 && matchPosition < panktiFinalText.length) {
-                // console.log('new speech: ', finalText.slice(lastCheckIdx+matchPosition));
                 setLastCheckIdx(prev => prev + matchPosition);
             }
 

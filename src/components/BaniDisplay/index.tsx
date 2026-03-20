@@ -248,7 +248,7 @@ const BaniDisplay: React.FC = () => {
                                 <>
                                     <Punjabi
                                         className="translation-line text-center flex-row justify-center"
-                                        fontSize={fontSize * 0.35}
+                                        fontSize={punjabiFontSize}
                                         contentSpace={fontSize * 0}
                                         style={{
                                             color: palette.punjabi,
@@ -263,7 +263,7 @@ const BaniDisplay: React.FC = () => {
                                     </Punjabi>
                                     <English
                                         className="translation-line text-center"
-                                        fontSize={fontSize * 0.35}
+                                        fontSize={englishFontSize}
                                         contentSpace={fontSize * 0}
                                         style={{
                                             color: palette.english,

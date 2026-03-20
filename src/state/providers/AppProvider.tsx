@@ -5,6 +5,7 @@ export type AppState = {
     page: string;
     prev_page: string;
     show_panel: boolean;
+    prev_show_panel: boolean;
     // dbPath: string;
 };
 
@@ -12,11 +13,13 @@ export const PAGE_SEARCH = "search";
 export const PAGE_SHABAD = "shabad";
 export const PAGE_BANI = "bani";
 export const PAGE_ANNOUNCEMENT = "announcement";
+export const PAGE_RECENT = "recent";
 
 const initAppState: AppState = {
     page: "search",
     prev_page: "",
     show_panel: true,
+    prev_show_panel: true,
     // dbPath: "",
 };
 
@@ -26,6 +29,7 @@ const appReducer = (state: AppState, action: any) => {
             return {
                 ...state,
                 prev_page: state.page,
+                prev_show_panel: state.show_panel,
                 ...action.payload,
             };
         case TOGGLE_PANEL:
@@ -36,6 +40,7 @@ const appReducer = (state: AppState, action: any) => {
             return {
                 ...state,
                 page: page,
+                prev_show_panel: state.show_panel,
                 show_panel: !state.show_panel,
             }
     }
