@@ -31,9 +31,12 @@ const SearchPanel: FunctionComponent = () => {
     const {dispatch, searchInputRef, searchTerm, setSearchTerm, panktis, setPanktis} = useContext(SearchContext);
     const [focusIndex, setFocusIndex] = useState(0);
     const {dispatch: appDispatch, fontSize} = useContext(AppContext);
-    const shabadDispatch = useContextSelector(
+    const { dispatch: shabadDispatch, shabadId } = useContextSelector(
         ShabadContext,
-        ctx => ctx.dispatch
+        ctx => ({
+            dispatch: ctx.dispatch,
+            shabadId: ctx.state.shabadId,
+        })
     );
     const appRef = useRef<number>(0);
     const listContainerRef = useRef<HTMLUListElement | null>(null);
@@ -211,6 +214,15 @@ const SearchPanel: FunctionComponent = () => {
     }, [searchInputRef]);
 
     const displayShabad = useCallback((pankti: Pankti) => {
+        // current shabad
+        if (pankti.shabad_id == shabadId) {
+            appDispatch({
+                type: SET_APP_PAGE,
+                payload: { page: "shabad" }
+            });
+            return;
+        }
+
         shabadDispatch({ type: SHABAD_RESET });
         dispatch({
             type: SEARCH_SHABAD_PANKTI,

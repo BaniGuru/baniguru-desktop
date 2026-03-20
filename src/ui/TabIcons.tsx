@@ -1,6 +1,6 @@
 import { useContext } from "react";
-import { FaBook, FaBookOpen, FaClock, FaCog, FaSearch } from "react-icons/fa";
-import { AppContext } from "../state/providers/AppProvider";
+import { FaBook, FaBookOpen, FaClock, FaCog, FaComment, FaSearch } from "react-icons/fa";
+import { AppContext, PAGE_ANNOUNCEMENT } from "../state/providers/AppProvider";
 import { SET_APP_PAGE } from "../state/ActionTypes";
 
 const TabIcons: React.FC = () => {
@@ -42,6 +42,12 @@ const TabIcons: React.FC = () => {
                     onClick={() => switchTab('bani')}
                 >
                     <FaBook className="text-xl" />
+                </button>
+                <button
+                    className={`px-4 py-2 flex-none ${state.page === PAGE_ANNOUNCEMENT ? "bg-gray-200" : "bg-gray-300"}`}
+                    onClick={() => switchTab(PAGE_ANNOUNCEMENT)}
+                >
+                    <FaComment className="text-xl" />
                 </button>
                 <button
                     className={`px-4 py-2 flex-none ${state.page === "settings" ? "bg-gray-200" : "bg-gray-300"}`}

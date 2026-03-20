@@ -3,7 +3,7 @@ import "./App.css";
 import SearchPanel from "./components/SearchPanel";
 import ShabadDisplay from "./components/ShabadDisplay";
 import ShabadPanel from "./components/ShabadPanel";
-import { AppContext, AppState } from "./state/providers/AppProvider";
+import { AppContext, AppState, PAGE_ANNOUNCEMENT } from "./state/providers/AppProvider";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { DB } from "./utils/DB";
 import LoadingScreen from "./ui/LoadingScreen";
@@ -22,6 +22,8 @@ import useSpeech from "./components/SoundSearch/useSpeech";
 import BaniDisplay from "./components/BaniDisplay";
 import { ShabadContext } from "./state/providers/ShabadProvider";
 import { useContextSelector } from "use-context-selector";
+import AnnouncementPanel from "./components/AnnouncementPanel";
+import { AnnouncementDisplay } from "./components/AnnouncementDisplay";
 
 
 type DownloadEvent =
@@ -202,6 +204,26 @@ function App() {
                 }
                 break;
 
+              case "Tab":
+                  if (ev.ctrlKey) {
+                      if (appContext.state.page === PAGE_ANNOUNCEMENT) {
+                          appContext.dispatch({
+                              type: SET_APP_PAGE,
+                              payload: {
+                                  page: appContext.state.prev_page
+                              }
+                          });
+                          break;
+                      }
+
+                      appContext.dispatch({
+                          type: SET_APP_PAGE,
+                          payload: {
+                              page: PAGE_ANNOUNCEMENT
+                          }
+                      });
+                  }
+                  break;
           }
       };
 
@@ -246,10 +268,15 @@ function App() {
               </div>
             </div>
           )}
-          {speechStarted && baniId === 13
+        {
+            appContext.state.page === PAGE_ANNOUNCEMENT &&
+            <AnnouncementDisplay />
+        }
+
+        {speechStarted && baniId === 13
             ? <BaniDisplay />
             : <ShabadDisplay />
-          }
+        }
           {appContext.state.show_panel &&
             <TabPanel
               className={`absolute flex flex-col w-1/3 h-1/3 bottom-0 overflow-hidden shadow-2xl border-2 border-gray-300 ${panelLocation === 'right' ? 'right-0' : 'left-0'}`}
@@ -298,6 +325,7 @@ function App() {
                 {appContext.state.page === "settings" && <SettingPanel />}
                 {appContext.state.page === "recent" && <RecentPanel />}
                 {appContext.state.page === "bani" && <BaniPanel />}
+                {appContext.state.page === PAGE_ANNOUNCEMENT && <AnnouncementPanel />}
               </div>
               <div className="flex-none">
                 <TabIcons />

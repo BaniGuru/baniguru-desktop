@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { SearchContext } from "../../state/providers/SearchProvider";
+import { RecentShabad, SearchContext } from "../../state/providers/SearchProvider";
 import Format from "../../utils/Format";
 import { DB } from "../../utils/DB";
 import styled from "styled-components";
@@ -9,7 +9,7 @@ import { RECENT_SEARCH_UPDATE, RECENT_VISITED_UPDATE, SHABAD_UPDATE } from "../.
 import { useSettings } from "../../state/providers/SettingContext";
 import { updateServerPankti } from "../../utils/TauriCommands";
 import FormatAndBreakText from "../../ui/FormatAndBreakText";
-import { AppContext, PAGE_SHABAD } from "../../state/providers/AppProvider";
+import { AppContext, PAGE_ANNOUNCEMENT, PAGE_SHABAD } from "../../state/providers/AppProvider";
 import { BANI_ACTION_UPDATE, BaniContext } from "../../state/providers/BaniProvider";
 import { useThemeColors } from "../../utils/useTheme";
 import { formatPanktis, getShabadIds } from "../../utils/shabadUtil";
@@ -49,7 +49,7 @@ const NextPanktiGurmukhi = styled.div<NextPanktiProps>`
 const Punjabi = styled.div<FontProps>`
     font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.4;
-    margin-top: ${({ fontSize }) => `${fontSize}px`};
+    margin-top: ${({ fontSize }) => `${fontSize*1.5}px`};
     font-family: "Open Anmol Uni", sans-serif;
     font-weight: 900;
     display: block;
@@ -59,7 +59,7 @@ const Punjabi = styled.div<FontProps>`
 const English = styled.div<FontProps>`
     font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.3;
-    margin-top: ${({ fontSize }) => `${fontSize*0.2}px`};
+    margin-top: ${({ fontSize }) => `${fontSize*0.5}px`};
     font-family: "Noto Sans", sans-serif;
     font-weight: 700;
     display: block;
@@ -83,6 +83,7 @@ const ShabadDisplay: React.FC = () => {
         punjabiRef,
         state.panktis[current]?.punjabi_translation ?? '',
         fontSize * 0.5,
+        3
     );
 
     const englishRef = useRef<HTMLDivElement>(null);
@@ -113,6 +114,28 @@ const ShabadDisplay: React.FC = () => {
             }
 
             const searchPankti: Pankti = searchContext.state.searchShabadPankti;
+
+            // load recent shabad if exists
+            const shabadId = searchPankti.shabad_id;
+            const recentIndex = searchContext.state.recent.findIndex(r => r.shabadId === shabadId);
+            if (recentIndex >= 0) {                
+                const recentShabad: RecentShabad = searchContext.state.recent[recentIndex];
+                const current = recentShabad.panktis.findIndex(
+                    (pankti: Pankti) => pankti.id === searchPankti.id
+                );
+                recentShabad.panktis[current].visited = true;
+
+                dispatch({
+                    type: SHABAD_UPDATE,
+                    payload: {
+                        shabadId: recentShabad.shabadId,
+                        panktis: recentShabad.panktis,
+                        home: recentShabad.home,
+                        current: current,
+                    }
+                });
+                return;
+            }
 
             const instance = await DB.getInstance();
             instance.select(`
@@ -247,7 +270,9 @@ const ShabadDisplay: React.FC = () => {
             fontSize={fontSize}
             className="w-screen h-screen flex flex-col justify-between overflow-hidden"
             // style={palette.background}
-            style={{backgroundColor: activeThemeName === "Bandi Chorh Diwas" ?  "rgb(200 200 200 / 80%)": "rgb(200 200 200 / 20%)"}}
+            style={{
+                visibility: (appState.page === PAGE_ANNOUNCEMENT ? 'hidden' : 'visible'),
+                backgroundColor: activeThemeName === "Bandi Chorh Diwas" ?  "rgb(200 200 200 / 80%)": "rgb(200 200 200 / 20%)"}}
         >
             <div className={`flex-1 flex flex-col items-start w-full ${activeThemeName === "Bandi Chorh Diwas" ? 'justify-between' : 'justify-start'}`}>
                 <div className="flex w-full justify-center">
@@ -276,7 +301,7 @@ const ShabadDisplay: React.FC = () => {
                             style={{
                                 color: palette.punjabi,
                                 display: punjabiClamped ? "-webkit-box" : "block",
-                                WebkitLineClamp: punjabiClamped ? 2 : "unset",
+                                WebkitLineClamp: punjabiClamped ? 3 : "unset",
                                 WebkitBoxOrient: punjabiClamped ? "vertical" : "unset",
                                 overflow: punjabiClamped ? "hidden" : "visible",
                                 textOverflow: "ellipsis"

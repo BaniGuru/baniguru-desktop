@@ -11,6 +11,7 @@ export type AppState = {
 export const PAGE_SEARCH = "search";
 export const PAGE_SHABAD = "shabad";
 export const PAGE_BANI = "bani";
+export const PAGE_ANNOUNCEMENT = "announcement";
 
 const initAppState: AppState = {
     page: "search",
@@ -29,7 +30,7 @@ const appReducer = (state: AppState, action: any) => {
             };
         case TOGGLE_PANEL:
             let page = state.page;
-            if (state.show_panel) {
+            if (state.show_panel && page !== PAGE_ANNOUNCEMENT) {
                 page = PAGE_SHABAD;
             }
             return {

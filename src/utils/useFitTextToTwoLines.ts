@@ -4,7 +4,8 @@ const useFitTextToTwoLines = (
     ref: React.RefObject<HTMLElement>,
     text: string,
     baseFontSize: number,
-    minScale: number = 0.7
+    minScale: number = 0.7,
+    maxLines: number = 2,
 ) => {
     const [fontSize, setFontSize] = useState(baseFontSize);
     const [isClamped, setIsClamped] = useState(false);
@@ -33,7 +34,7 @@ const useFitTextToTwoLines = (
             const isOverflowing = () => {
                 const lh = getLineHeight();
                 const lines = Math.round(el.scrollHeight / lh);
-                return lines > 2;
+                return lines > maxLines;
             };
 
             // shrink
