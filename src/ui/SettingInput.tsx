@@ -61,7 +61,7 @@ const SettingInput = ({
     }
   };
 
-  if (lang === "ਗੁਰਮੁਖੀ") return;
+  if (lang === "ਗੁਰਮੁਖੀ") return null;
 
   return (
     <div className="flex flex-row items-center w-full">

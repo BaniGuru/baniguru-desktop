@@ -25,12 +25,7 @@ export const AnnouncementDisplay = () => {
 
     const baseStyle = {
         fontWeight: 900,
-        color: "#d1d5db",
-        textShadow: `
-            0 1px 0 #ffffff40,
-            0 2px 4px rgba(0,0,0,0.8),
-            0 0 12px rgba(255,255,255,0.15)
-        `
+        color: "#111111",
     };
 
     useEffect(() => {
@@ -51,10 +46,11 @@ export const AnnouncementDisplay = () => {
     }, [keyAnnouncement, fontSize]);
 
     return (
-        <div className="relative w-full min-h-screen flex items-center justify-center overflow-hidden bg-[#0b1c24]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#123c4a_0%,#0b1c24_75%)]"></div>
-            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
-
+        <div className="relative w-full min-h-screen flex items-center justify-center overflow-hidden"
+            style={{
+                background: "linear-gradient(to bottom, #f8f6f0, #ece7db)"
+            }}
+        >
             {/* vwihgurU */}
             {keyAnnouncement === 0 && (
                 <div

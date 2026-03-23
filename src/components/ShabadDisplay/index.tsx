@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { RecentShabad, SearchContext } from "../../state/providers/SearchProvider";
 import Format from "../../utils/Format";
 import { DB } from "../../utils/DB";
@@ -49,7 +49,6 @@ const NextPanktiGurmukhi = styled.div<NextPanktiProps>`
 const Punjabi = styled.div<FontProps>`
     font-size: ${({ fontSize }) => `${fontSize}px`};
     line-height: 1.4;
-    margin-top: ${({ fontSize }) => `${fontSize*1.5}px`};
     font-family: "Open Anmol Uni", sans-serif;
     font-weight: 900;
     display: block;
@@ -74,6 +73,11 @@ const ShabadDisplay: React.FC = () => {
     const { activeThemeName, visibility } = useSettings();
     const current = state.current;
 
+    const mainRef = useRef<HTMLDivElement>(null); 
+    const topRef = useRef<HTMLDivElement>(null);
+    const middleRef = useRef<HTMLDivElement>(null);
+    const [middleGap, setMiddleGap] = useState(0);
+
     const nextPanktiRef = useRef<HTMLDivElement>(null);
     const [nextPanktiFontSize, setNextPanktiFontSize] = useState(fontSize);
     const { palette } = useThemeColors();
@@ -92,6 +96,43 @@ const ShabadDisplay: React.FC = () => {
         state.panktis[current]?.english_translation ?? '',
         fontSize * 0.45,
     );
+
+    useLayoutEffect(() => {
+        const main = mainRef.current;
+        const top = topRef.current;
+        const middle = middleRef.current;
+
+        if (!main || !top || !middle) return;
+
+        const calculateGap = () => {
+            const mainRect = main.getBoundingClientRect();
+            const topRect = top.getBoundingClientRect();
+            const middleRect = middle.getBoundingClientRect();
+
+            const bottomGap = mainRect.bottom - middleRect.bottom;
+            const topGap = middleRect.top - topRect.bottom;
+
+            let gap = fontSize;
+            if (bottomGap < fontSize) {
+                gap = (topGap + bottomGap) / 2;
+            }
+
+            setMiddleGap(gap);
+        };
+
+        const observer = new ResizeObserver(() => {
+            calculateGap();
+        });
+
+        observer.observe(main);
+        observer.observe(top);
+        observer.observe(middle);
+
+        // Initial run
+        calculateGap();
+
+        return () => observer.disconnect();
+    }, [fontSize, state.current]);
 
     useEffect(() => {
         const sendDataToBackend = async () => {
@@ -205,7 +246,7 @@ const ShabadDisplay: React.FC = () => {
             if (!element) return;
 
             const containerWidth = element.parentElement?.clientWidth || 0;
-            let currentFontSize = fontSize;
+            let currentFontSize = fontSize*0.8;
             const minFontSize = 10;
             element.style.overflow = 'hidden';
             element.style.fontSize = `${currentFontSize}px`;
@@ -268,22 +309,25 @@ const ShabadDisplay: React.FC = () => {
     return (
         <Panel
             fontSize={fontSize}
-            className="w-screen h-screen flex flex-col justify-between overflow-hidden"
+            className="w-screen h-screen flex flex-col overflow-hidden"
             // style={palette.background}
             style={{
                 visibility: (appState.page === PAGE_ANNOUNCEMENT ? 'hidden' : 'visible'),
                 backgroundColor: activeThemeName === "Bandi Chorh Diwas" ?  "rgb(200 200 200 / 80%)": "rgb(200 200 200 / 20%)"}}
         >
-            <div className={`flex-1 flex flex-col items-start w-full ${activeThemeName === "Bandi Chorh Diwas" ? 'justify-between' : 'justify-start'}`}>
-                <div className="flex w-full justify-center">
-                    <div className="w-full">
+            <div
+                ref={mainRef}
+                className={`flex-1 flex flex-col items-start w-full ${activeThemeName === "Bandi Chorh Diwas" ? 'justify-between' : 'justify-start'}`}
+            >
+                <div ref={topRef} className="flex w-full justify-center">
+                    <div className="w-full" style={{marginBottom: `-${fontSize*0.2}px`}}>
                         <FormatAndBreakText
                             key={state.panktis[current]?.gurmukhi || ""}
                             containerClassName="text-center"
                             containerStyle={{
                                 color: palette.gurmukhi,
                                 fontSize: fontSize + "px",
-                                lineHeight: 1.3,
+                                lineHeight: 1.25,
                                 fontFamily: "Open Gurbani Akhar",
                                 fontWeight: 900
                             }}
@@ -292,8 +336,12 @@ const ShabadDisplay: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex flex-col w-full items-center">
-                    { visibility.ਪੰਜਾਬੀ &&
+                <div
+                    ref={middleRef}
+                    className="flex flex-col w-full items-center"
+                    style={{ marginTop: middleGap}}
+                >
+                    { visibility.ਪੰਜਾਬੀ && state.panktis[current]?.punjabi_translation &&
                         <Punjabi
                             key={state.panktis[current]?.punjabi_translation}
                             ref={punjabiRef}
@@ -311,7 +359,7 @@ const ShabadDisplay: React.FC = () => {
                         </Punjabi>
                     }
                     {
-                        visibility.English &&
+                        visibility.English && state.panktis[current]?.english_translation &&
                         <English
                             key={state.panktis[current]?.english_translation}
                             ref={englishRef}
@@ -330,6 +378,7 @@ const ShabadDisplay: React.FC = () => {
                     }
                 </div>
             </div>
+            <div className="flex flex-col w-full items-center">
             {
                 visibility["Next Pankti"] &&
                 nextPankti &&
@@ -342,6 +391,7 @@ const ShabadDisplay: React.FC = () => {
                     { Format.removeVishraams(nextPankti) }
                 </NextPanktiGurmukhi>
             }
+            </div>
         </Panel>
     );
 };

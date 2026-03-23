@@ -104,7 +104,6 @@ const getInitialSettings = () => {
           ...settings,
           visibility: { ...(parsed.visibility ?? defaultVisibility), "Akhand Paath": false },
           panelSetting: { ...defaultPanelSetting, ...parsed.panelSetting },
-          panelLocation: parsed.panelLocation ?? defaultPanelLocation,
           width: parsed.width ?? defaultWidth,
           height: parsed.height ?? defaultHeight,
           version: parsed.version ?? "",
@@ -142,7 +141,6 @@ const storeSettings = (settings: any) => {
       activeThemeName: settings.activeThemeName,
       micName: settings.micName,
       settingVersion: settingVersion,
-      panelLocation: settings.panelLocation,
     })
   );
 };
