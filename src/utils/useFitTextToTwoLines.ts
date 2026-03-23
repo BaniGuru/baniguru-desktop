@@ -12,7 +12,7 @@ const useFitTextToTwoLines = (
 
     useLayoutEffect(() => {
         const el = ref.current;
-        if (!el || !text) return;
+        if (!el || !text || text === '') return;
 
         let frameId: number;
 
