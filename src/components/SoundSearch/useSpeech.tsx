@@ -8,6 +8,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useSettings } from "../../state/providers/SettingContext";
 import { useContext as useCtxSelector } from "use-context-selector";
+import useSearchPilot from "./useSearchPilot";
 
 const API_KEY = "";
 
@@ -17,20 +18,26 @@ type TranscriptionError = {
   errorCode: number | undefined;
 };
 
+export type RecordState = "Init" | "Running" | "Restarting";
+
 const useSpeech = () => {
   const sonioxClient = useRef<SonioxClient | null>(null);
 
-  const [status, setStatus] = useState<RecorderState>("Init");
+  const [status, setStatus] = useState<RecordState>("Init");
+  const [startPage, setStartPage] = useState<string|null>(null);
   const [speechTokens, setSpeechTokens] = useState<string[]>([]);
   const [error, setError] = useState<TranscriptionError | null>(null);
   const [terms, setTerms] = useState<string[]>([]);
   const [started, setStarted] = useState(false);
+  const appContext = useContext(AppContext);
+  const shabadContext = useCtxSelector(ShabadContext);
 
   const transcriptRef = useRef("");
   const listenerRef = useRef(false);
   const [finalText, setFinalText] = useState("");
   const [nonFinalText, setNonFinalText] = useState("");
   const [lastTokenTime, setLastTokenTime] = useState(0);
+  const { autoSearch } = useSettings();
 
   useEffect(() => {
 
@@ -79,6 +86,7 @@ const useSpeech = () => {
   const [silenceStart, setSilenceStart] = useState<number|null>(null);
   const prevLastEndMsRef = useRef<number|null>(null);
   const {micName} = useSettings();
+  const speechStarted = useRef(false);
 
   if (sonioxClient.current == null) {
     sonioxClient.current = new SonioxClient({
@@ -93,8 +101,8 @@ const useSpeech = () => {
       return;
     }
 
-    if (status === 'Running') {
-      console.log('Alert: Already started.');
+    if (speechStarted.current) {
+      console.log("already started");
       return;
     }
 
@@ -105,6 +113,8 @@ const useSpeech = () => {
     setError(null);
     setTerms(panktis);
     setStatus('Running');
+    setStartPage(appContext.state.page);
+    speechStarted.current = true;
 
     try {
       await invoke('start_soniox', { micName: micName, apiKey: API_KEY, panktis });
@@ -123,10 +133,14 @@ const useSpeech = () => {
     setSpeechTokens,
     setError,
     setTerms,
-    setStatus
+    setStatus,
+    setStartPage,
+    appContext.state.page,
   ]);
 
   const stopTranscription = useCallback(async () => {
+    speechStarted.current = false;
+
     try {
         await invoke('stop_soniox');
       } catch (error) {
@@ -137,10 +151,20 @@ const useSpeech = () => {
       setSilenceSeconds(0);
       setSilenceStart(null);
       setStatus('Init');
-      console.log('speech stopped')
+      setStartPage(null);
+      setFinalText("");
+      setNonFinalText("");
+      console.log('speech stopped');
   }, [setStatus, setSilenceSeconds, setSilenceStart]);
 
   const restartTranscript = useCallback(async (panktis: string[]) => {
+    if (speechStarted.current) {
+      console.log("already started");
+      return;
+    }
+
+    setStartPage(appContext.state.page);
+
     try {
       await invoke('restart_soniox', { micName: micName, apiKey: API_KEY, panktis });
     } catch (error) {
@@ -158,22 +182,14 @@ const useSpeech = () => {
     setTerms(panktis);
     setStatus('Running');
     console.log('Restrated');
+    speechStarted.current = true;
   }, [
-    setStarted,
-    setStarted,
-    setFinalText,
-    setNonFinalText,
-    setSpeechTokens,
-    setError,
-    setTerms,
-    setStatus,
+    appContext.state.page,
   ]);
 
-  const appContext = useContext(AppContext);
-  const shabadContext = useCtxSelector(ShabadContext);
-
-  const shabadPilot = useShabadPilot(finalText, nonFinalText, status, startTranscription, silenceSeconds);
+  const shabadPilot = useShabadPilot(finalText, nonFinalText, status, startPage, speechStarted, startTranscription, restartTranscript, silenceSeconds);
   const baniPilot = useBaniPilot(finalText, nonFinalText, status, startTranscription, restartTranscript, silenceSeconds);
+  const searchPilot = useSearchPilot(finalText, nonFinalText, status, speechStarted, startTranscription, restartTranscript);
 
   const resetText = () => {
     transcriptRef.current = "";
@@ -190,13 +206,25 @@ const useSpeech = () => {
 
     if (started &&
       (
-        appContext.state.page === PAGE_SEARCH ||
         appContext.state.page === PAGE_RECENT ||
-        appContext.state.page === PAGE_BANI
+        appContext.state.page === PAGE_BANI ||
+        (
+          appContext.state.page === PAGE_SEARCH &&
+          !autoSearch
+        )
       ) &&
       status !== 'Init') {
       stopTranscription();
       setStatus('Init');
+    }
+
+    if (started &&
+        status !== 'Init' &&
+        appContext.state.page !== startPage &&
+        appContext.state.page === PAGE_SEARCH &&
+        appContext.state.prev_page === PAGE_SHABAD
+    ) {
+      setStartPage(appContext.state.page);
     }
 
     shabadPilot.setActive(
@@ -212,6 +240,12 @@ const useSpeech = () => {
       started &&
       (shabadContext.state.baniId !== null)
     );
+
+    searchPilot.setActive(
+      autoSearch &&
+      appContext.state.page === PAGE_SEARCH &&
+      started
+    )
   }, [
     appContext.state.page,
     shabadContext.state.baniId,
@@ -220,6 +254,7 @@ const useSpeech = () => {
     shabadPilot.setActive,
     baniPilot.setActive,
     resetText,
+    autoSearch
   ]);
 
   const updateLastTokenElapse = useCallback((finalText: string, nonFinalText: string) => {

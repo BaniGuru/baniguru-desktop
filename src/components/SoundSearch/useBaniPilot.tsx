@@ -1,13 +1,13 @@
 import { useContext, useEffect, useState } from "react";
-import { RecorderState } from "@soniox/speech-to-text-web";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { Pankti } from "../../models/Pankti";
 import { findBaniMatchingPankti, unifySpeechText } from "./SpeechHelper";
 import { SET_APP_PAGE, SHABAD_PANKTI, SHABAD_PANKTI_MARK_VISITED, SHABAD_PANKTI_NO_VISITED, SHABAD_RESET } from "../../state/ActionTypes";
 import { useContext as useCtxSelector } from "use-context-selector";
 import { AppContext, PAGE_SEARCH } from "../../state/providers/AppProvider";
+import { RecordState } from "./useSpeech";
 
-const useBaniPilot = (finalText: string, partialText: string, status: RecorderState, startTranscription: (panktis: string[]) => any, restartTranscript: (panktis: string[]) => any, silenceSeconds: number) => {
+const useBaniPilot = (finalText: string, partialText: string, status: RecordState, startTranscription: (panktis: string[]) => any, restartTranscript: (panktis: string[]) => any, silenceSeconds: number) => {
 
     const [lastCheckIdx, setLastCheckIdx] = useState(0);
     const [active, setActive] = useState(false);
@@ -39,6 +39,7 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecorderSt
             terms = panktis.map((pankti: Pankti) => pankti.gurmukhi_speech);
             console.log(terms);
         } else {
+            setPanktis(shabadContext.state.panktis);
             terms = shabadContext.state.panktis.map((pankti: Pankti) => pankti.gurmukhi_speech);
         }
 

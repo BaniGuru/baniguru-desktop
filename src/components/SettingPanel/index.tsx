@@ -1,4 +1,4 @@
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaCheckCircle, FaEye, FaEyeSlash, FaTimesCircle } from "react-icons/fa";
 import SettingInput from "../../ui/SettingInput";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
@@ -11,7 +11,7 @@ const languages = ["ਗੁਰਮੁਖੀ", "ਪੰਜਾਬੀ", "English", "Ne
 export const SettingPanel = () => {
   const [ip, setIP] = useState<string | null>(null);
   const [mics, setMics] = useState<string[]>([]);
-  const {micName, setMicName} = useSettings();
+  const {micName, setMicName, autoSearch, setAutoSearch} = useSettings();
   
   const { visibility, setVisibility } = useSettings();
 
@@ -95,6 +95,14 @@ export const SettingPanel = () => {
           </option>
         ))}
       </select>
+      <div className="flex flex-row items-center w-full px-4">
+        <div className={`flex-1 text-xl`}>Auto search</div>
+        <div className="flex text-xl" onClick={() => setAutoSearch(!autoSearch)}>
+          {
+            autoSearch ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-black-400" />
+          }
+        </div>
+      </div>
     </div>
   );
 };
