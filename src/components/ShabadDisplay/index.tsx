@@ -236,7 +236,7 @@ const ShabadDisplay: React.FC = () => {
         };
 
         loadShabad();
-    }, [searchContext.state.searchShabadPankti, state.baniId]);
+    }, [searchContext.state.searchShabadPankti, state.baniId, dispatch, searchContext.dispatch]);
 
     const nextPankti = state.panktis[current+1]?.gurmukhi;
 

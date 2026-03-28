@@ -1,5 +1,6 @@
 import { get } from "fast-levenshtein";
 import { Pankti } from "../../models/Pankti";
+import { ratio } from "fuzzball";
 
 export type PanktiScore = {
     matches: string[];
@@ -56,6 +57,38 @@ export const getLatestPanktiPart = (token: string) => {
 
         return getLastRelatedIndex(a) - getLastRelatedIndex(b);
     });
+};
+
+export const getUnvisitedIdx = (panktis: Pankti[], currentIdx: number) => {
+    const groups = [...new Set(panktis.map(pankti => pankti.group))];
+    const groupShabad = groups.length > 1;
+
+    if (!groupShabad) {
+        return panktis.findIndex(
+            p => !p.visited && p.type_id > 2 && p.gurmukhi_words.length > 2
+        );
+    }
+
+    const currentGroup = panktis[currentIdx].group;
+    const currentGroupIdxs = panktis
+        .map((pankti, idx) => ({ pankti, idx }))
+        .filter(
+            ({ pankti }) =>
+            currentGroup === pankti.group &&
+            pankti.type_id > 2 &&
+            pankti.gurmukhi_words.length > 2
+        )
+        .map(({ idx }) => idx);
+
+    if (currentGroupIdxs.length > 3) {
+        return panktis.findIndex(
+            p => !p.visited && p.type_id > 2 && p.gurmukhi_words.length > 1 && p.group === currentGroup
+        );
+    }
+
+    return panktis.findIndex(
+        p => !p.visited && p.type_id > 2 && p.gurmukhi_words.length > 2
+    );
 };
 
 export const getAllowedNextPanktiIdxs = (panktis: Pankti[], homeIdx: number, currentIdx: number) => {
@@ -130,7 +163,7 @@ export const getAllowedNextPanktiIdxs = (panktis: Pankti[], homeIdx: number, cur
         // long group, keep within group
         if (currentGroupIdxs.length > 3) {
             const groupUnvisitedIndex = panktis.findIndex(
-                p => !p.visited && p.type_id > 2 && p.gurmukhi_words.length > 1 && p.group === currentGroup
+                p => !p.visited && p.type_id > 2 && p.gurmukhi_words.length > 2 && p.group === currentGroup
             );
             if (groupUnvisitedIndex === -1) {
                 return [currentIdx, homeIdx];
@@ -257,7 +290,7 @@ export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], curr
     return [];
 };
 
-const findMatchTowardEnd = (scores: PanktiScore[]) => {
+export const findMatchTowardEnd = (scores: PanktiScore[]) => {
     // most matches with ending match
     const sorted = [...scores].sort((a, b) => {
         // Step 1: Ascending firstMatchIdx
@@ -284,7 +317,7 @@ const findMatchTowardEnd = (scores: PanktiScore[]) => {
     });
 }
 
-const getPanktiScores = (panktis: Pankti[], tokens: string[], prefixIdx = 0, strictMatch: boolean = true) => {
+export const getPanktiScores = (panktis: Pankti[], tokens: string[], prefixIdx = 0, strictMatch: boolean = true) => {
     const rTokens = tokens.join(' ').split(' ').reverse();
 
     const matches = [];
@@ -304,6 +337,9 @@ const getPanktiScores = (panktis: Pankti[], tokens: string[], prefixIdx = 0, str
 
 const isMatching = (word: string, token: string, strictMatch: boolean): boolean => {
     if (!word || !token) return false;
+
+    word = word.replace('ਂ', '');
+    token = token.replace('ਂ', '');
 
     if (word === token) return true;
 
@@ -484,6 +520,138 @@ export const getPanktiScore = (pankti: Pankti, tokens: string[], strictMatch: bo
 
     return null;
 };
+
+export function unifySearchText(text: string) {
+  const parts = text
+    .replaceAll("।", ",")
+    .replaceAll(";", ",")
+    .split(",")
+    .map(p => p.trim())
+    .filter(Boolean);
+
+  const words = (s: string) => s.split(/\s+/);
+
+  const isSubset = (small: string, big: string) => {
+    const s = words(small);
+    const b = words(big);
+
+    for (let i = 0; i <= b.length - s.length; i++) {
+      let match = true;
+
+      for (let j = 0; j < s.length; j++) {
+        const sw = s[j];
+        const bw = b[i + j];
+
+        if (j === s.length - 1) {
+          if (!bw.startsWith(sw)) {
+            match = false;
+            break;
+          }
+        } else {
+          if (get(bw, sw) > 1) {
+            match = false;
+            break;
+          }
+        }
+      }
+
+      if (match) return true;
+    }
+
+    return false;
+  };
+
+  // track last occurrence
+  const lastIndex = new Map<string, number>();
+  parts.forEach((p, i) => lastIndex.set(p, i));
+
+  const unique = [...lastIndex.keys()];
+
+  const filtered = unique.filter(a => {
+    return !unique.some(
+      b => a !== b && isSubset(a, b) && words(b).length >= words(a).length
+    );
+  });
+
+  return filtered
+    .sort((a, b) => lastIndex.get(a)! - lastIndex.get(b)!)
+    .join(",").replaceAll('  ', ' ');
+};
+
+export function removeMatras(text: string) {
+    // Array of Gurmukhi matras (diacritical marks)
+    const matras = ['ਿ', 'ੀ', 'ੁ', 'ੂ', 'ੇ', 'ੈ', 'ੋ', 'ੌ', '੍', 'ਾ', 'ਂ', 'ੰ', 'ੱ'];
+
+    // Split the text into an array of characters, filter out matras, and join back into a string
+    return text.replaceAll('੍ਰ', '').split('')
+            .map(char => char
+                .replace('ਆ', 'ਅ')
+                .replace('ਐ', 'ਅ')
+                .replace('ਉ', 'ੳ')
+                .replace('ਊ', 'ੳ')
+                .replace('ਇ', 'ੲ')
+                .replace('ਈ', 'ੲ')
+                .replace('ਏ', 'ੲ')
+            )
+            .filter(char => !matras.includes(char))
+               
+               .join('');
+}
+
+function normalizeText(text: string): string {
+  return text.replace(/[।,]/g, "").trim();
+}
+
+export function postProcessText(speechText: string, panktis: Pankti[]): string {
+  // Split speech text by "।" (Gurmukhi full stop)
+  const speechLines = speechText.split("।").map(l => l.trim()).filter(Boolean);
+  const correctedLines: string[] = [];
+
+  speechLines.forEach(speechLine => {
+    const normSpeechLine = normalizeText(speechLine);
+
+    // Find best matching pankti using first few words for start
+    let bestMatchPankti: string | null = null;
+    let highestScore = 0;
+
+    for (const panktiObj of panktis) {
+      const pankti = panktiObj.gurmukhi_speech;
+      const normPankti = normalizeText(pankti);
+
+      // Match first 3 words
+      const panktiStart = normPankti.split(" ").slice(0, 3).join(" ");
+      const score = ratio(normSpeechLine.slice(0, panktiStart.length), panktiStart); // keep using fuzzball for line-level
+
+      if (score > highestScore) {
+        highestScore = score;
+        bestMatchPankti = pankti;
+      }
+    }
+
+    if (bestMatchPankti && highestScore >= 90) {
+      const speechWords = speechLine.split(" ");
+      const panktiWords = bestMatchPankti.split(" ");
+
+      const correctedWords = speechWords.map((word, idx) => {
+        if (idx < panktiWords.length) {
+          const candidate = panktiWords[idx];
+          // Use Levenshtein distance to correct typos or small differences
+          if (get(word, candidate) <= 2) {
+            return candidate;
+          }
+        }
+        return word;
+      });
+
+      correctedLines.push(correctedWords.join(" "));
+    } else {
+      correctedLines.push(speechLine);
+    }
+  });
+
+  // Rejoin lines with proper punctuation
+  return correctedLines.map(l => l.trim()).join("। ");
+}
 
 export function unifySpeechText(text: string) {
   const parts = text

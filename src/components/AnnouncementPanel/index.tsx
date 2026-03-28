@@ -15,6 +15,7 @@ const AnnouncementPanel: React.FC = () => {
         "DMn gurU qyg bhwdr swihb jI",
         "DMn gurU goibMd isMG swihb jI",
         "DMn gurU gRMQ swihb jI",
+        "Kwlsw swjnw idvs"
     ];
 
     return (

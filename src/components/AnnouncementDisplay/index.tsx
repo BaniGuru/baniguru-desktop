@@ -2,6 +2,8 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { AppContext } from "../../state/providers/AppProvider";
 import { useAnnouncement } from "../../state/providers/AnnouncementProvider";
 
+import khalsaSajnaDiwas from "../../assets/images/khalsa_sajna_diwas.png"; 
+
 export const AnnouncementDisplay = () => {
     const { fontSize } = useContext(AppContext);
     const { keyAnnouncement } = useAnnouncement();
@@ -44,6 +46,13 @@ export const AnnouncementDisplay = () => {
             setDynamicSize(size);
         }
     }, [keyAnnouncement, fontSize]);
+
+    if (keyAnnouncement === 12) {
+        return <img src={khalsaSajnaDiwas} style={{
+            width: '100%',
+            height: '100%',
+        }} />
+    }
 
     return (
         <div className="relative w-full min-h-screen flex items-center justify-center overflow-hidden"
