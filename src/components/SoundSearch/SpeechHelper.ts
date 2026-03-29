@@ -783,6 +783,38 @@ function isPartialWord(word: string, panktis: Pankti[]): boolean {
 }
 
 /**
+ * A word is "complete" at a position if:
+ * 1. It exactly matches the pankti word at that position, OR
+ * 2. It exists as an exact word in ANY pankti (so it's a real complete word, not a fragment)
+ *    BUT only if the current pankti word is longer (meaning this pankti sees it as partial)
+ */
+function isCompleteWordAtPosition(
+  fWord: string,
+  panktiWords: string[],
+  pos: number,
+  panktis: Pankti[]
+): boolean {
+  const f = normalizeGurmukhi(fWord);
+  const pWord = normalizeGurmukhi(panktiWords[pos]);
+
+  // If current pankti has exact match at this position — definitely complete
+  if (f === pWord) return true;
+
+  // If another pankti has this as an exact word AND
+  // the current pankti word is longer (i.e. current pankti treats it as prefix)
+  // then trust the other pankti — fWord is complete, not partial
+  if (pWord.startsWith(f) && pWord !== f) {
+    for (const p of panktis) {
+      for (const w of p.gurmukhi_speech.split(/\s+/)) {
+        if (normalizeGurmukhi(w) === f) return true; // exists as complete word elsewhere
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
  * 🔥 Find best matching Pankti segment
  * Uses:
  * - total matches
@@ -816,14 +848,17 @@ function findBestPanktiFragment(
           const fWord = fragWords[j + k];
           const isLastToken = (j + k + 1) >= fragWords.length;
 
+          // fix: ਐਸੀ ਕਿਰਪਾ ਮੋਹਿ ਕਰੋ, ਐਸੀ ਕਿਰਪਾ ਮੋਹਿ ਕਰੋ। ਐਸੀ ਕਿਰਪਾ ਮੋਹਿ ਕਰੋ, ਐਸੀ ਕਿਰਪਾ ਮੋਹਿ ਕਰੋ। ਸੰਤ
+
           // ✅ Check prefix match FIRST, before fuzzy distance
           // A partial word should always prefer its completion over a fuzzy wrong word
           const isPrefixMatch =
             isLastToken &&
+            pWord !== normalizeGurmukhi(fWord) &&        // ✅ not an exact match at this position
+            !isCompleteWordAtPosition(fWord, panktiWords, i + k, panktis) &&
             normalizeGurmukhi(fWord)[0] === normalizeGurmukhi(pWord)[0] &&  // ✅ normalized first char
             fWord.length < pWord.length &&
-            isFuzzyPrefix(fWord, pWord) &&
-            fWord.length >= Math.ceil(pWord.length / 2);
+            isFuzzyPrefix(fWord, pWord);
 
           if (isPrefixMatch) {
             // Treat prefix as a near-exact match — high quality, low distance
@@ -846,7 +881,12 @@ function findBestPanktiFragment(
         }
 
         if (k === 0) continue;
-        if (hasStartingMatch && k < 2) continue;
+        if (hasStartingMatch) {
+          const matchedFromStart = j === 0;
+          const prefixIsLastFragWord = (j + k) === fragWords.length;
+
+          if (!matchedFromStart || !prefixIsLastFragWord) continue;
+        }
 
         const score: MatchScore = {
           matchLen: k,
@@ -887,8 +927,10 @@ function isFuzzyPrefix(fWord: string, pWord: string): boolean {
 
   if (f.length > p.length) return false;
   if (f[0] !== p[0]) return false;
-  if (f.length < Math.ceil(p.length / 2)) return false;
+
   if (p.startsWith(f)) return true;
+
+  if (removeMatras(p).startsWith(removeMatras(f))) return true;
 
   const pSlice = p.slice(0, f.length);
   return levenshteinDistance(f, pSlice) <= 1;
