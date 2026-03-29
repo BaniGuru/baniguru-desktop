@@ -29,7 +29,7 @@ function isSimran(tokenText: string) {
     return count >= 4;
 }
 
-const useShabadPilot = (finalText: string, partialText: string, status: RecordState, startPage: string|null, speechStarted: React.MutableRefObject<boolean>, startTranscription: any, restartTranscript: any, silenceSeconds: number) => {
+const useShabadPilot = (finalText: string, partialText: string, status: RecordState, startPage: string|null, startTranscription: any, restartTranscript: any, silenceSeconds: number) => {
 
     const [lastCheckIdx, setLastCheckIdx] = useState(0);
     const [prevTokenText, setPrevTokenText] = useState("");
@@ -38,7 +38,6 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
     const searchContext = useContext(SearchContext);
     const appContext = useContext(AppContext);
     const [simran, setSimran] = useState(false);
-    const triggered = useRef(false);
 
     const getTerms = useCallback((panktis: Pankti[]) => {
         if (panktis.length > 30) {
@@ -53,9 +52,6 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
 
     useEffect(() => {
         if (!active || appContext.state.page === PAGE_SEARCH) {
-            if (triggered.current) {
-                triggered.current = false;
-            }
             return;
         };
 
@@ -70,9 +66,7 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
             startTranscription(getTerms(shabadContext.state.panktis));
             setLastCheckIdx(0);
             setSimran(false);
-        } else if (status === 'Running' && startPage !== PAGE_SHABAD && !triggered.current) {
-            triggered.current = true;
-            speechStarted.current = false;
+        } else if (status === 'Running' && startPage !== PAGE_SHABAD) {
             restartTranscript(getTerms(shabadContext.state.panktis));
             setLastCheckIdx(0);
             setSimran(false);
@@ -103,8 +97,7 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
 
         setPrevTokenText(tokenText);
 
-        const processedText = postProcessText(tokenText, shabadContext.state.panktis);
-        const speechText = unifySpeechText(processedText.replaceAll('।', ','));
+        const speechText = postProcessText(tokenText, shabadContext.state.panktis);
 
         const tokens = speechText.split(' ');
 

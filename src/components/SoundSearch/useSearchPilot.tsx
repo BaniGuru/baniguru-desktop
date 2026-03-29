@@ -10,7 +10,7 @@ import { SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SHABAD_RESET } from "../../state/Ac
 import { AppContext } from "../../state/providers/AppProvider";
 import { RecordState } from "./useSpeech";
 
-const useSearchPilot = (finalText: string, partialText: string, status: RecordState, speechStarted: React.MutableRefObject<boolean>, startTranscription: any, restartTranscript: any) => {
+const useSearchPilot = (finalText: string, partialText: string, status: RecordState, startTranscription: any, restartTranscript: any) => {
 
     const [active, setActive] = useState<boolean>(false);
     const {panktis, setPanktis, searchTerm, dispatch: searchDispatch} = useContext(SearchContext);
@@ -231,7 +231,6 @@ const useSearchPilot = (finalText: string, partialText: string, status: RecordSt
                 setMatchShabads(distinctShabadIds);
                 const terms = res.map((pankti: any) => pankti.gurmukhi_speech);
                 console.log(terms);
-                speechStarted.current = false;
                 restartTranscript(terms);
             } else {
                 console.log('existing match shabad');

@@ -1,4 +1,4 @@
-import { ErrorStatus, RecorderState, SonioxClient } from "@soniox/speech-to-text-web";
+import { ErrorStatus, SonioxClient } from "@soniox/speech-to-text-web";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import useShabadPilot from "./useShabadPilot";
 import { AppContext, PAGE_ANNOUNCEMENT, PAGE_BANI, PAGE_RECENT, PAGE_SEARCH, PAGE_SHABAD } from "../../state/providers/AppProvider";
@@ -9,8 +9,9 @@ import { listen } from "@tauri-apps/api/event";
 import { useSettings } from "../../state/providers/SettingContext";
 import { useContext as useCtxSelector } from "use-context-selector";
 import useSearchPilot from "./useSearchPilot";
+import { ENV } from "../../utils/env";
 
-const API_KEY = "";
+const API_KEY = ENV.speechToken;
 
 type TranscriptionError = {
   status: ErrorStatus;
@@ -18,13 +19,13 @@ type TranscriptionError = {
   errorCode: number | undefined;
 };
 
-export type RecordState = "Init" | "Running" | "Restarting";
+export type RecordState = "Init" | "Running" | "Starting" | "Restarting";
 
 const useSpeech = () => {
   const sonioxClient = useRef<SonioxClient | null>(null);
 
-  const [status, setStatus] = useState<RecordState>("Init");
-  const [startPage, setStartPage] = useState<string|null>(null);
+  const status = useRef<RecordState>("Init");
+  const startPage = useRef<string|null>(null);
   const [speechTokens, setSpeechTokens] = useState<string[]>([]);
   const [error, setError] = useState<TranscriptionError | null>(null);
   const [terms, setTerms] = useState<string[]>([]);
@@ -86,7 +87,6 @@ const useSpeech = () => {
   const [silenceStart, setSilenceStart] = useState<number|null>(null);
   const prevLastEndMsRef = useRef<number|null>(null);
   const {micName} = useSettings();
-  const speechStarted = useRef(false);
 
   if (sonioxClient.current == null) {
     sonioxClient.current = new SonioxClient({
@@ -101,31 +101,32 @@ const useSpeech = () => {
       return;
     }
 
-    if (speechStarted.current) {
+    if (status.current === "Starting" || status.current === "Running") {
       console.log("already started");
       return;
     }
 
+    status.current = 'Starting';
     transcriptRef.current = "";
     setFinalText("");
     setNonFinalText("");
     setSpeechTokens([]);
     setError(null);
     setTerms(panktis);
-    setStatus('Running');
-    setStartPage(appContext.state.page);
-    speechStarted.current = true;
+    startPage.current = appContext.state.page;
 
     try {
       await invoke('start_soniox', { micName: micName, apiKey: API_KEY, panktis });
     } catch (error) {
+      setStarted(false);
+      setNonFinalText("Error: could not start.");
       console.error('Error starting Soniox:', error);
       return;
     }
 
+    status.current = 'Running';
     console.log('started');
   }, [
-    status,
     micName,
     API_KEY,
     setFinalText,
@@ -133,14 +134,10 @@ const useSpeech = () => {
     setSpeechTokens,
     setError,
     setTerms,
-    setStatus,
-    setStartPage,
     appContext.state.page,
   ]);
 
   const stopTranscription = useCallback(async () => {
-    speechStarted.current = false;
-
     try {
         await invoke('stop_soniox');
       } catch (error) {
@@ -150,26 +147,27 @@ const useSpeech = () => {
 
       setSilenceSeconds(0);
       setSilenceStart(null);
-      setStatus('Init');
-      setStartPage(null);
+      status.current = 'Init';
+      startPage.current = null;
       setFinalText("");
       setNonFinalText("");
       console.log('speech stopped');
-  }, [setStatus, setSilenceSeconds, setSilenceStart]);
+  }, [setSilenceSeconds, setSilenceStart]);
 
   const restartTranscript = useCallback(async (panktis: string[]) => {
-    if (speechStarted.current) {
-      console.log("already started");
+    if (status.current === "Restarting") {
+      console.log("already restarted");
       return;
     }
 
-    setStartPage(appContext.state.page);
+    startPage.current = appContext.state.page;
+    status.current = "Restarting";
 
     try {
       await invoke('restart_soniox', { micName: micName, apiKey: API_KEY, panktis });
     } catch (error) {
       setStarted(false);
-      setStatus('Init');
+      status.current = 'Init';
       console.error('Error restarting Soniox:', error);
       return;
     }
@@ -180,16 +178,15 @@ const useSpeech = () => {
     setSpeechTokens([]);
     setError(null);
     setTerms(panktis);
-    setStatus('Running');
+    status.current = 'Running';
     console.log('Restrated');
-    speechStarted.current = true;
   }, [
     appContext.state.page,
   ]);
 
-  const shabadPilot = useShabadPilot(finalText, nonFinalText, status, startPage, speechStarted, startTranscription, restartTranscript, silenceSeconds);
-  const baniPilot = useBaniPilot(finalText, nonFinalText, status, startTranscription, restartTranscript, silenceSeconds);
-  const searchPilot = useSearchPilot(finalText, nonFinalText, status, speechStarted, startTranscription, restartTranscript);
+  const shabadPilot = useShabadPilot(finalText, nonFinalText, status.current, startPage.current, startTranscription, restartTranscript, silenceSeconds);
+  const baniPilot = useBaniPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript, silenceSeconds);
+  const searchPilot = useSearchPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript);
 
   const resetText = () => {
     transcriptRef.current = "";
@@ -198,9 +195,9 @@ const useSpeech = () => {
   };
 
   useEffect(() => {
-    if (!started && status !== 'Init') {
+    if (!started && status.current !== 'Init') {
       stopTranscription();
-      setStatus('Init');
+      status.current = 'Init';
       resetText();
     }
 
@@ -213,18 +210,18 @@ const useSpeech = () => {
           !autoSearch
         )
       ) &&
-      status !== 'Init') {
+      status.current !== 'Init') {
       stopTranscription();
-      setStatus('Init');
+      status.current = 'Init';
     }
 
     if (started &&
-        status !== 'Init' &&
-        appContext.state.page !== startPage &&
+        status.current !== 'Init' &&
+        appContext.state.page !== startPage.current &&
         appContext.state.page === PAGE_SEARCH &&
         appContext.state.prev_page === PAGE_SHABAD
     ) {
-      setStartPage(appContext.state.page);
+      startPage.current = appContext.state.page;
     }
 
     shabadPilot.setActive(
@@ -249,7 +246,6 @@ const useSpeech = () => {
   }, [
     appContext.state.page,
     shabadContext.state.baniId,
-    status,
     started,
     shabadPilot.setActive,
     baniPilot.setActive,
