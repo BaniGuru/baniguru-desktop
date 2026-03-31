@@ -1,6 +1,6 @@
 import { get } from "fast-levenshtein";
 import { Pankti } from "../../models/Pankti";
-import { partial_ratio, ratio } from "fuzzball";
+import { extract, partial_ratio } from "fuzzball";
 
 export type PanktiScore = {
     matches: string[];
@@ -180,6 +180,51 @@ export const getAllowedNextPanktiIdxs = (panktis: Pankti[], homeIdx: number, cur
     }
 
     return nextPanktiIdxs;
+};
+
+// Checks if candidate matches all words within MAX_TYPOS
+const isWithinTypos = (input: string, candidate: string, typos: number = 2): boolean => {
+  const inputWords = input.trim().split(/\s+/);
+  const candidateWords = candidate.trim().split(/\s+/);
+
+  return inputWords.every(inputWord => {
+    // Find best match for this word in candidate
+    const minDistance = Math.min(
+      ...candidateWords.map(cw => get(inputWord, cw))
+    );
+    return minDistance <= typos;
+  });
+};
+
+export const findMatchPankti = (panktis: Pankti[], speechText: string) => {
+  const panktisText = panktis.map(p => p.gurmukhi_speech);
+
+  // Step 1: get fuzzy candidates
+  const results = extract(speechText, panktisText, {
+    scorer: partial_ratio,
+    limit: 20,
+  });
+
+  // Step 2: filter by word-level typo constraint
+  const filtered = results.filter(([text]) => isWithinTypos(speechText, text));
+
+  if (!filtered.length) return [];
+
+  // Step 3: find highest fuzzy score among filtered
+  const topScore = Math.max(...filtered.map(([, score]) => score));
+
+  // Step 4: return all matches with top score
+  const bestMatches = filtered
+    .filter(([, score]) => score === topScore)
+    .map(([text, score, index]) => ({
+      text,
+      gurmukhi_speech: panktis[index].gurmukhi_speech,
+      gurmukhi_words: panktis[index].gurmukhi_words,
+      score,
+      pankti: panktis[index],
+    }));
+
+  return bestMatches;
 };
 
 export const findMatchingPankti = (panktis: Pankti[], tokens: string[], homeIdx: number, currentIdx: number) => {
@@ -598,400 +643,6 @@ export function removeMatras(text: string) {
                .join('');
 }
 
-interface MatchScore {
-  matchLen: number;
-  exactMatches: number;      // exact matches score higher than fuzzy
-  totalDistance: number;     // lower is better
-  hasStartingMatch: boolean;
-}
-
-function isBetterScore(a: MatchScore, b: MatchScore): boolean {
-  if (a.matchLen !== b.matchLen) return a.matchLen > b.matchLen;
-  if (a.exactMatches !== b.exactMatches) return a.exactMatches > b.exactMatches;
-  if (a.totalDistance !== b.totalDistance) return a.totalDistance < b.totalDistance;
-  if (a.hasStartingMatch !== b.hasStartingMatch) return !a.hasStartingMatch; // prefer no partial
-  return false;
-}
-
-export function postProcessText(
-  speechText: string,
-  panktis: Pankti[]
-): string {
-  const rawFragments = speechText.split("।");
-
-  // Dedup now also cleans internally — returns cleaned, unique fragments
-  const uniqueFragments = deduplicateFuzzyFragments(rawFragments, panktis);
-
-  const processedFragments = uniqueFragments.map(fragment => {
-    if (!fragment.trim()) return "";
-
-    // Tokenize words + commas
-    const tokens = fragment.match(/[^,\s]+|[,]/g) || [];
-    if (!tokens.length) return fragment;
-
-    const fragWords = tokens.filter(t => t !== ",");
-
-    // Find best matching Pankti window
-    const bestWindow = findBestPanktiFragment(fragWords, panktis);
-
-    // Typo correction ONLY
-    const correctedWords = fragWords.map((w, idx) =>
-      bestWindow[idx] && levenshteinDistance(w, bestWindow[idx]) <= 2
-        ? bestWindow[idx]
-        : w
-    );
-
-    // Reconstruct with commas preserved
-    const reconstructed: string[] = [];
-    let wordIdx = 0;
-    for (const t of tokens) {
-      if (t === ",") reconstructed.push(",");
-      else reconstructed.push(correctedWords[wordIdx++]);
-    }
-
-    return reconstructed.join(" ");
-  });
-
-  return processedFragments
-    .filter(Boolean)
-    .map(f => f.trim().replace(/,\s*$/, ""))
-    .join(" ।")
-    .replace(/।\s*/g, "। ")
-    .replace(/\s+,/g, ",")
-    .replace(/,+/g, ",")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function deduplicateFuzzyFragments(fragments: string[], panktis: Pankti[]): string[] {
-  const seen: string[] = [];
-
-  return fragments
-    .map(fragment => {
-      const trimmed = fragment.trim();
-      if (!trimmed) return null;
-
-      const cleaned = cleanFragmentFuzzy(trimmed, panktis); // ✅ pass panktis
-      if (!cleaned) return null;
-
-      const isDuplicate = seen.some(prev => fragmentsSimilar(prev, cleaned));
-      if (isDuplicate) return null;
-
-      seen.push(cleaned);
-      return cleaned;
-    })
-    .filter((f): f is string => f !== null);
-}
-
-/**
- * Two fragments are "similar" if their word-level Levenshtein ratio is high.
- * Uses normalized total edit distance across aligned words.
- */
-/**
- * Two fragments are "similar" if:
- * 1. Same length + fuzzy word match (existing logic), OR
- * 2. One is a fuzzy suffix/substring of the other
- */
-function fragmentsSimilar(a: string, b: string): boolean {
-  const wordsA = a.trim().split(/\s+/);
-  const wordsB = b.trim().split(/\s+/);
-
-  const longer  = wordsA.length >= wordsB.length ? wordsA : wordsB;
-  const shorter = wordsA.length <  wordsB.length ? wordsA : wordsB;
-
-  // Case 1: similar length — fuzzy word alignment (existing logic)
-  if (longer.length - shorter.length <= 2) {
-    let totalDist = 0;
-    for (let i = 0; i < shorter.length; i++) {
-      totalDist += levenshteinDistance(shorter[i], longer[i]);
-    }
-    if (totalDist / shorter.length <= 1) return true;
-  }
-
-  // Case 2: shorter is a fuzzy suffix of longer
-  // e.g. ["ਹਮਾਰੋ","ਮਾਥਾ"] is a suffix of ["ਸੰਤਹ","ਚਰਣ","ਹਮਾਰੋ","ਮਾਥਾ"]
-  if (shorter.length < longer.length) {
-    const suffixStart = longer.length - shorter.length;
-    const suffix = longer.slice(suffixStart);
-
-    let totalDist = 0;
-    for (let i = 0; i < shorter.length; i++) {
-      totalDist += levenshteinDistance(shorter[i], suffix[i]);
-    }
-    if (totalDist / shorter.length <= 1) return true;
-  }
-
-  return false;
-}
-
-/**
- * Only drop a comma-part as duplicate if it is FULLY complete
- * (i.e. the last word is not a partial prefix of any pankti word).
- * A partial last word means speech is still mid-word — keep it.
- */
-function cleanFragmentFuzzy(fragment: string, panktis: Pankti[]): string {
-  const parts = fragment
-    .split(",")
-    .map(p => p.trim())
-    .filter(Boolean);
-
-  const deduped: string[] = [];
-
-  for (const part of parts) {
-    const words = part.trim().split(/\s+/);
-    const lastWord = words[words.length - 1];
-
-    // ✅ If last word looks partial, this part is still being spoken — always keep
-    const isPartial = isPartialWord(lastWord, panktis);
-    if (isPartial) {
-      deduped.push(part);
-      continue;
-    }
-
-    const isDuplicate = deduped.some(prev => fragmentsSimilar(prev, part));
-    if (!isDuplicate) {
-      deduped.push(part);
-    }
-  }
-
-  return deduped.join(", ");
-}
-
-/**
- * A word is "partial" if it is a strict prefix (not full match) of any pankti word
- * AND it meets the half-length threshold.
- */
-function isPartialWord(word: string, panktis: Pankti[]): boolean {
-  if (word.length <= 1) return true; // single char is always partial
-
-  for (const p of panktis) {
-    for (const pWord of p.gurmukhi_speech.split(/\s+/)) {
-      if (
-        pWord !== word &&                              // not an exact match
-        pWord.startsWith(word) &&                     // is a prefix
-        word.length >= Math.ceil(pWord.length / 2)   // at least half length
-      ) {
-        return true;
-      }
-      // Also partial if it's shorter than half — definitely incomplete
-      if (pWord.startsWith(word) && word.length < Math.ceil(pWord.length / 2)) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-/**
- * A word is "complete" at a position if:
- * 1. It exactly matches the pankti word at that position, OR
- * 2. It exists as an exact word in ANY pankti (so it's a real complete word, not a fragment)
- *    BUT only if the current pankti word is longer (meaning this pankti sees it as partial)
- */
-function isCompleteWordAtPosition(
-  fWord: string,
-  panktiWords: string[],
-  pos: number,
-  panktis: Pankti[]
-): boolean {
-  const f = normalizeGurmukhi(fWord);
-  const pWord = normalizeGurmukhi(panktiWords[pos]);
-
-  // If current pankti has exact match at this position — definitely complete
-  if (f === pWord) return true;
-
-  // If another pankti has this as an exact word AND
-  // the current pankti word is longer (i.e. current pankti treats it as prefix)
-  // then trust the other pankti — fWord is complete, not partial
-  if (pWord.startsWith(f) && pWord !== f) {
-    for (const p of panktis) {
-      for (const w of p.gurmukhi_speech.split(/\s+/)) {
-        if (normalizeGurmukhi(w) === f) return true; // exists as complete word elsewhere
-      }
-    }
-  }
-
-  return false;
-}
-
-/**
- * 🔥 Find best matching Pankti segment
- * Uses:
- * - total matches
- * - longest contiguous match (priority)
- */
-function findBestPanktiFragment(
-  fragWords: string[],
-  panktis: Pankti[]
-): string[] {
-  if (!fragWords.length) return fragWords;
-
-  let bestScore: MatchScore | null = null;
-  let bestWindow: string[] | null = null;
-
-  for (const p of panktis) {
-    const panktiWords = p.gurmukhi_speech.split(/\s+/);
-
-    for (let i = 0; i < panktiWords.length; i++) {
-      for (let j = 0; j < fragWords.length; j++) {
-
-        let k = 0;
-        let hasStartingMatch = false;
-        let exactMatches = 0;
-        let totalDistance = 0;
-
-        while (
-          i + k < panktiWords.length &&
-          j + k < fragWords.length
-        ) {
-          const pWord = panktiWords[i + k];
-          const fWord = fragWords[j + k];
-          const isLastToken = (j + k + 1) >= fragWords.length;
-
-          // fix: ਐਸੀ ਕਿਰਪਾ ਮੋਹਿ ਕਰੋ, ਐਸੀ ਕਿਰਪਾ ਮੋਹਿ ਕਰੋ। ਐਸੀ ਕਿਰਪਾ ਮੋਹਿ ਕਰੋ, ਐਸੀ ਕਿਰਪਾ ਮੋਹਿ ਕਰੋ। ਸੰਤ
-
-          // ✅ Check prefix match FIRST, before fuzzy distance
-          // A partial word should always prefer its completion over a fuzzy wrong word
-          const isPrefixMatch =
-            isLastToken &&
-            pWord !== normalizeGurmukhi(fWord) &&        // ✅ not an exact match at this position
-            !isCompleteWordAtPosition(fWord, panktiWords, i + k, panktis) &&
-            normalizeGurmukhi(fWord)[0] === normalizeGurmukhi(pWord)[0] &&  // ✅ normalized first char
-            fWord.length < pWord.length &&
-            isFuzzyPrefix(fWord, pWord);
-
-          if (isPrefixMatch) {
-            // Treat prefix as a near-exact match — high quality, low distance
-            exactMatches += 0.9;                             // almost exact credit
-            totalDistance += 0;                              // no penalty — it's intentionally partial
-            hasStartingMatch = true;
-            k++;
-            break;
-          }
-
-          const dist = wordsMatch_distance(fWord, pWord);
-
-          if (dist !== -1) {
-            if (dist === 0) exactMatches++;
-            totalDistance += dist;
-            k++;
-          } else {
-            break;
-          }
-        }
-
-        if (k === 0) continue;
-        if (hasStartingMatch) {
-          const matchedFromStart = j === 0;
-          const prefixIsLastFragWord = (j + k) === fragWords.length;
-
-          if (!matchedFromStart || !prefixIsLastFragWord) continue;
-        }
-
-        const score: MatchScore = {
-          matchLen: k,
-          exactMatches,
-          totalDistance,
-          hasStartingMatch,
-        };
-
-        const windowStart = i - j;
-        if (windowStart < 0) continue;
-
-        if (!bestScore || isBetterScore(score, bestScore)) {
-          bestScore = score;
-          bestWindow = panktiWords.slice(windowStart, windowStart + fragWords.length);
-        }
-      }
-    }
-  }
-
-  const minMatch = Math.ceil(fragWords.length * 0.5);
-  if (!bestScore || bestScore.matchLen < minMatch) return fragWords;
-
-  // Keep partial last word as-is
-  if (bestScore.hasStartingMatch && bestWindow && bestWindow.length === fragWords.length) {
-    bestWindow[fragWords.length - 1] = fragWords[fragWords.length - 1];
-  }
-
-  return bestWindow ?? fragWords;
-}
-
-/**
- * Check if fWord is a fuzzy prefix of pWord.
- * e.g. "ਨਨ" ~ prefix of "ਨਾਨਕ" (dist between "ਨਨ" and "ਨਾਨ" <= 1)
- */
-function isFuzzyPrefix(fWord: string, pWord: string): boolean {
-  const f = normalizeGurmukhi(fWord);
-  const p = normalizeGurmukhi(pWord);
-
-  if (f.length > p.length) return false;
-  if (f[0] !== p[0]) return false;
-
-  if (p.startsWith(f)) return true;
-
-  if (removeMatras(p).startsWith(removeMatras(f))) return true;
-
-  const pSlice = p.slice(0, f.length);
-  return levenshteinDistance(f, pSlice) <= 1;
-}
-
-/**
- * Returns levenshtein distance if words match, -1 if they don't.
- */
-function wordsMatch_distance(fWord: string, pWord: string): number {
-  const f = normalizeGurmukhi(fWord);
-  const p = normalizeGurmukhi(pWord);
-
-  if (f.length === 1) return f === p ? 0 : -1;
-  if (f[0] !== p[0]) return -1;
-  if (f.length === 2) {
-    const d = levenshteinDistance(f, p);
-    return d <= 1 ? d : -1;
-  }
-
-  const dist = levenshteinDistance(f, p);
-  if (dist <= 1) return dist;
-  if (dist === 2) {
-    if (f.length >= 4) return f[f.length - 1] === p[p.length - 1] ? dist : -1;
-    return dist;
-  }
-  return -1;
-}
-
-/**
- * Normalize Gurmukhi text for comparison:
- * - Remove virama (੍) joining characters so conjuncts don't inflate distance
- * - Normalize unicode to NFC
- */
-function normalizeGurmukhi(word: string): string {
-  return word
-    .normalize('NFC')
-    .replace(/੍/g, '');  // remove virama so ਪ੍ਰ counts as ਪਰ for distance purposes
-}
-
-function levenshteinDistance(a: string, b: string): number {
-  // ✅ Normalize before comparing
-  a = normalizeGurmukhi(a);
-  b = normalizeGurmukhi(b);
-
-  const dp = Array.from({ length: a.length + 1 }, () =>
-    Array(b.length + 1).fill(0)
-  );
-
-  for (let i = 0; i <= a.length; i++) dp[i][0] = i;
-  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
-
-  for (let i = 1; i <= a.length; i++) {
-    for (let j = 1; j <= b.length; j++) {
-      if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1];
-      else dp[i][j] = 1 + Math.min(dp[i-1][j-1], dp[i][j-1], dp[i-1][j]);
-    }
-  }
-
-  return dp[a.length][b.length];
-}
-
 export function unifySpeechText(text: string) {
   const parts = text
     .replaceAll("|", ",")
@@ -1049,34 +700,3 @@ export function unifySpeechText(text: string) {
     .join(" ").replaceAll('  ', ' ');
 };
 
-function normalizeWithMap(text: string) {
-  const normalized = [];
-  const indexMap = [];
-
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-
-    // Ignore punctuation
-    if (/[^\p{L}\p{N}\s]/u.test(char)) continue;
-
-    normalized.push(char);
-    indexMap.push(i);
-  }
-
-  return {
-    cleanText: normalized.join(""),
-    indexMap
-  };
-}
-
-export function findIndexIgnoringPunctuation(text: string, searchText: string) {
-  const { cleanText, indexMap } = normalizeWithMap(text);
-
-  const cleanSearch = searchText.replace(/[^\p{L}\p{N}\s]/gu, "");
-
-  const pos = cleanText.indexOf(cleanSearch);
-
-  if (pos === -1) return -1;
-
-  return indexMap[pos]; // original string index
-}

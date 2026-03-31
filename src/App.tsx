@@ -24,6 +24,7 @@ import { ShabadContext } from "./state/providers/ShabadProvider";
 import { useContextSelector } from "use-context-selector";
 import AnnouncementPanel from "./components/AnnouncementPanel";
 import { AnnouncementDisplay } from "./components/AnnouncementDisplay";
+import { gurbaniSearch } from "./utils/gurbaniSearch";
 
 
 type DownloadEvent =
@@ -93,7 +94,11 @@ function App() {
 
   useEffect(() => {
     appRef.current++;
-  }, []);
+
+    if (DB.getDbPath()) {
+      gurbaniSearch.init();
+    }
+  }, [DB.getDbPath()]);
 
   useShabadNavigation();
   const { mouseVisible, showTitleBar } = useAutoHideCursor({ delay: 5, titleBarThreshold: 100 });
