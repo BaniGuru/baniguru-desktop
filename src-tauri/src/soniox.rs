@@ -141,6 +141,8 @@ pub async fn start_soniox_stream(
         "enable_language_identification": false,
         "target_language": "pa",
         "keepAlive": true,
+        "enable_endpoint_detection": true,
+        "max_endpoint_delay_ms": 2000,
         "context": {
             "terms": panktis
         }
@@ -186,7 +188,7 @@ pub async fn start_soniox_stream(
 
         let mut buffer: Vec<i16> = Vec::new();
 
-        let mut sent_final_count = 0usize;
+        // let mut sent_final_count = 0usize;
         let mut last_partial = String::new();
 
         loop {
@@ -271,18 +273,18 @@ pub async fn start_soniox_stream(
                                 first_non_final = i + 1;
                             }
 
-                            let stable_count = stable_final.len();
+                            // let stable_count = stable_final.len();
 
-                            let new_final = if stable_count > sent_final_count {
+                            // let new_final = if stable_count > sent_final_count {
 
-                                stable_final[sent_final_count..].join("")
+                            //     stable_final[sent_final_count..].join("")
 
-                            } else {
+                            // } else {
 
-                                String::new()
-                            };
+                            //     String::new()
+                            // };
 
-                            sent_final_count = stable_count;
+                            // sent_final_count = stable_count;
 
                             let partial = tokens[first_non_final..]
                                 .iter()
@@ -290,7 +292,7 @@ pub async fn start_soniox_stream(
                                 .collect::<Vec<String>>()
                                 .join("");
 
-                            if !new_final.is_empty() || partial != last_partial {
+                            if !stable_final.is_empty() || partial != last_partial {
 
                                 last_partial = partial.clone();
                                 let last_end_ms = tokens
@@ -299,7 +301,7 @@ pub async fn start_soniox_stream(
                                     .unwrap_or(0);
 
                                 let payload = json!({
-                                    "final": new_final,
+                                    "final": stable_final.join(""),
                                     "partial": partial,
                                     "end_ms": last_end_ms
                                 });
