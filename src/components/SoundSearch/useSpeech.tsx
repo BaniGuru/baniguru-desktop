@@ -10,6 +10,7 @@ import { useSettings } from "../../state/providers/SettingContext";
 import { useContext as useCtxSelector } from "use-context-selector";
 import useSearchPilot from "./useSearchPilot";
 import { ENV } from "../../utils/env";
+import { ApiClient, apiClient } from "../../utils/apiClient";
 
 const API_KEY = ENV.speechToken;
 
@@ -36,9 +37,17 @@ const useSpeech = () => {
   const transcriptRef = useRef("");
   const listenerRef = useRef(false);
   const [finalText, setFinalText] = useState("");
+  const [newFinalToken, setNewFinalToken] = useState<string>("");
   const [nonFinalText, setNonFinalText] = useState("");
   const [lastTokenTime, setLastTokenTime] = useState(0);
+  const lastLineId = useRef("");
   const { autoSearch } = useSettings();
+  const clientRef = useRef<ApiClient|null>(null);
+
+  if (!clientRef.current) {
+    clientRef.current = apiClient();
+    clientRef.current.connect();
+  }
 
   useEffect(() => {
 
@@ -53,7 +62,10 @@ const useSpeech = () => {
 
       if (final) {
         transcriptRef.current += final.replaceAll('<end>', '');
+        setNewFinalToken(final.replaceAll('<end>', ''));
         setFinalText(transcriptRef.current);
+      } else {
+        setNewFinalToken("");
       }
 
       setNonFinalText(partial);
@@ -69,6 +81,30 @@ const useSpeech = () => {
     };
 
   }, []);
+
+  const lineId =
+    appContext.state.page === PAGE_SHABAD
+      ? (shabadContext.state.panktis[shabadContext.state.current]?.id ?? "")
+      : "";
+
+  const shabadId = shabadContext.state.shabadId;
+
+  useEffect(() => {
+    if ((newFinalToken == "" && nonFinalText == "" && lineId === lastLineId.current) || !clientRef.current) {
+      return;
+    }
+
+    clientRef.current.sendToken({
+      final: newFinalToken,
+      partial: nonFinalText,
+      corrected: "",
+      status: status.current,
+      line_id: lineId,
+      shabad_id: shabadId,
+      page: appContext.state.page,
+    });
+    lastLineId.current = lineId
+  }, [newFinalToken, nonFinalText, lineId, shabadId, appContext.state.page]);
 
   useEffect(() => {
     const addToken = (final: string, partial: string) => {

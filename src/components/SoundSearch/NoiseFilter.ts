@@ -5,14 +5,14 @@ import { get } from "fast-levenshtein";
 import { DB } from "../../utils/DB";
 import { gurbaniSearch } from "../../utils/gurbaniSearch";
 
-interface Match {
+export interface Match {
     gurmukhi: string;
     gurmukhi_words: string[];
     score: number;
     idx: number;
 }
 
-interface MatchScore {
+export interface MatchScore {
     matchLen: number;
     exactMatches: number;      // exact matches score higher than fuzzy
     totalDistance: number;     // lower is better
@@ -96,7 +96,7 @@ const isMatch = (
         typoMatch = typoMatch <= 1 ? 1 : typoMatch;
         matches.push(match.gurmukhi_words[i+k]);
         matchFound = true;
-    } else if (get(fragWord, gurmukhiWord) <= 2 && gurmukhiWord.length > 3 && fragWord.length > 3 && !hasStartingMatch) {
+    } else if (get(fragWord, gurmukhiWord) <= 2 && gurmukhiWord.length > 2 && fragWord.length > 2 && !hasStartingMatch) {
         totalDistance += 2;
         typoMatch = typoMatch <= 2 ? 2 : typoMatch;
         matches.push(match.gurmukhi_words[i+k]);
@@ -207,6 +207,8 @@ const findBestPanktiMatch = (searchText: string, matches: Match[], prevWord: str
                         typoMatch,
                     );
 
+                    // console.log('matchFound: ', matchResult.matchFound);
+
                     // todo: only gap match if matching with previous (maybe if current token exists in previous match tokens)
                     while (k > 0 && (
                         !matchResult.matchFound ||
@@ -254,6 +256,7 @@ const findBestPanktiMatch = (searchText: string, matches: Match[], prevWord: str
 
                     if (matchFound) {
                         k++;
+                        // console.log('match found: ', k);
 
                         // all speech words matched
                         // ਗੁਰੂ ਕੇ ਸਬ ਦਿ
@@ -340,12 +343,13 @@ const findBestPanktiMatch = (searchText: string, matches: Match[], prevWord: str
     };
 }
 
-type SearchPankti = {
+export type SearchPankti = {
+    id: string,
     gurmukhi_words: string[],
     gurmukhi_speech: string,
 }
 
-const findRelativePankti = (searchText: string, panktis: SearchPankti[], gurmukhiPanktis: string[], prevWord: string | null, nextRawFragment: string|null = null) => {
+export const findRelativePankti = (searchText: string, panktis: SearchPankti[], gurmukhiPanktis: string[], prevWord: string | null, nextRawFragment: string|null = null) => {
     const matches: Match[] = extract(searchText, gurmukhiPanktis, {
         scorer: partial_token_set_ratio,
         cutoff: 60,
@@ -550,6 +554,7 @@ export function postProcessText(
             prevText = "";
             data = defaultMatchData();
             lastSpeechText = rawFrag + rawFragments[i].delimiter;
+            processedText += "<multi-match>। ";
             continue;
         }
 
@@ -604,7 +609,7 @@ export function postProcessText(
  * - Remove virama (੍) joining characters so conjuncts don't inflate distance
  * - Normalize unicode to NFC
  */
-function normalizeGurmukhi(word: string): string {
+export function normalizeGurmukhi(word: string): string {
     let normalised = word
         .normalize('NFC')
         .replace(/੍/g, '');
@@ -623,7 +628,34 @@ function normalizeGurmukhi(word: string): string {
     return normalised;
 }
 
-const normalisedGurmukhiText = (gurmukhi: string) => {
+export function normaliseSearchGurmukhi(word: string): string {
+    let normalised = word
+        .normalize('NFC')
+        .replace(/੍|ਂ|[ੁਿ]$/g, "")
+        .replace(/ਸ਼/g, 'ਸ')
+        .replace(/ਓ/g, 'ੋ');
+
+    const lastThree = normalised.slice(-3);
+
+    if (normalised[0] !== 'ਉ') {
+        normalised = normalised.replaceAll('ਉ', 'ੋ');;
+    }
+
+    if (lastThree === 'ਰਹੁ') {
+        normalised = normalised.slice(0, -3) + 'ਰੋ';
+    }
+
+    normalised.replaceAll
+
+    return normalised;
+}
+
+export const normalisedSearchGurmukhiText = (gurmukhi: string) => {
+    return gurmukhi.trim().split(' ').map(word => normaliseSearchGurmukhi(word))
+        .join(' ');
+}
+
+export const normalisedGurmukhiText = (gurmukhi: string) => {
     return gurmukhi.trim().split(' ').map(word => normalizeGurmukhi(word))
         .join(' ');
 }

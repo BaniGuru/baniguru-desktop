@@ -1,5 +1,5 @@
-import { useContext, useEffect, useState } from "react";
-import { findMatchTowardEnd, getPanktiScores, PanktiScore, removeMatras, unifySearchText } from "./SpeechHelper";
+import { useContext, useEffect, useRef, useState } from "react";
+import { removeMatras, unifySearchText } from "./SpeechHelper";
 import { DB } from "../../utils/DB";
 import { SearchContext } from "../../state/providers/SearchProvider";
 import { Pankti } from "../../models/Pankti";
@@ -9,28 +9,33 @@ import { useContext as useCtxSelector } from "use-context-selector";
 import { SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SHABAD_RESET } from "../../state/ActionTypes";
 import { AppContext } from "../../state/providers/AppProvider";
 import { RecordState } from "./useSpeech";
+import { gurbaniSearch } from "../../utils/gurbaniSearch";
+import { findRelativePankti, Match, MatchScore, normalisedSearchGurmukhiText, normaliseSearchGurmukhi, SearchPankti } from "./NoiseFilter";
 
 const useSearchPilot = (finalText: string, partialText: string, status: RecordState, startTranscription: any, restartTranscript: any) => {
 
     const [active, setActive] = useState<boolean>(false);
-    const {panktis, setPanktis, searchTerm, dispatch: searchDispatch} = useContext(SearchContext);
+    const {setPanktis, searchTerm, dispatch: searchDispatch} = useContext(SearchContext);
     const {dispatch: shabadDispatch} = useCtxSelector(ShabadContext);
     const {dispatch: appDispatch} = useContext(AppContext);
-    const [searchPanktis, setSearchPanktis] = useState<Pankti[]>([]);
-    const {loading, setQuery, results} = usePanktiSearch();
-    const [matchShabads, setMatchShabads] = useState<string[]>([]);
-    const [lastTokens, setLastTokens] = useState<string[]>([]);
+    const {loading} = usePanktiSearch();
+    const started = useRef<boolean>(false);
+    const lastIdx = useRef<number>(0);
 
     useEffect(() => {
         if (!active) {
-            if (matchShabads.length > 0 || searchPanktis.length > 0 || lastTokens.length > 0) {
-                setSearchPanktis([]);
-                setMatchShabads([]);
-                setLastTokens([]);
+            if (started.current || lastIdx.current > 0) {
+                started.current = false;
+                lastIdx.current = 0;
             }
 
             return;
         };
+
+        if (!started.current) {
+            started.current = true;
+            lastIdx.current = (finalText + partialText).length - 1;
+        }
 
         if (status === 'Init') {
             startTranscription([]);
@@ -44,160 +49,113 @@ const useSearchPilot = (finalText: string, partialText: string, status: RecordSt
         status,
         active,
         loading,
-        setQuery,
-        lastTokens,
-        setLastTokens,
         searchTerm,
-        setSearchPanktis,
-        searchPanktis,
         shabadDispatch,
         searchDispatch,
         appDispatch
     ]);
 
-    useEffect(() => {
-        if (results.length > 0 && results.length <= 30) {
-            setTerms(results.map(result => result.id));
-        }
-
-        if (results.length == 0 || results.length > 5) return;
-
-        getByLineIds(results.map(result => result.id));
-    }, [results, setSearchPanktis]);
-
     const searchShabad = async () => {
-        if (loading) return;
-
         if (searchTerm && searchTerm.length > 0) {
             return;
         }
 
-        const tokenText = finalText + partialText;
+        const tokenText = (finalText + partialText).substring(lastIdx.current);
+
         const speechText = unifySearchText(tokenText);
 
-        console.log('search panktis: ', searchPanktis);
-        if (searchPanktis.length > 0) {
-            console.log('speech: ', speechText);
-            const parts = speechText.split(',').slice(-2);
+        const regex = /[^।.]+[।.]?/g;
+        const tokens = speechText.match(regex);
 
-            //todo: try reverse parts
-
-            const tokens = parts.join(' ').split(' ');
-
-            console.log('tokens: ', tokens);
-            // gurmukhi_rwords
-            // vishraam_ridx
-            let matchScores: PanktiScore[] = getPanktiScores(
-                searchPanktis,
-                tokens
-            );
-            let reverseScores: PanktiScore[] = getPanktiScores(
-                searchPanktis,
-                parts.length === 2 ? (parts[1] + ' ' + parts[0]).split(' ') : parts.join(' ').split(' '),
-            )
-
-            if (matchScores.length > 0) {
-                // filter towards last match
-                matchScores = findMatchTowardEnd(matchScores);
-                console.log('scores: ', matchScores);
-            }
-
-            if (reverseScores.length > 0) {
-                reverseScores = findMatchTowardEnd(reverseScores);
-                console.log('reverse scores: ', reverseScores);
-            }
-
-            let pankti = null;
-            if (matchScores.length === 1 && matchScores[0].fullMatch) {
-                pankti = searchPanktis[matchScores[0].panktiIdx];
-            } else if (reverseScores.length === 1 && reverseScores[0].fullMatch) {
-                pankti = searchPanktis[reverseScores[0].panktiIdx];
-            }
-
-            console.log('score final pankti: ', pankti);
-            if (pankti !== null) {
-                console.log('shabad navigate: ', pankti);
-                shabadDispatch({ type: SHABAD_RESET });
-                searchDispatch({
-                    type: SEARCH_SHABAD_PANKTI,
-                    payload: { pankti }
-                });
-
-                appDispatch({
-                    type: SET_APP_PAGE,
-                    payload: {
-                        page: "shabad",
-                        prev_page: "search",
-                        show_panel: false,
-                    }
-                });
-                return;
-            } else {
-                let match = null;
-                if (matchScores.length === 1 && matchScores[0].totalMatches > 1) {
-                    match = matchScores[0];
-                }
-
-                if (reverseScores.length === 1 && reverseScores[0].totalMatches > 1 && reverseScores[0].totalMatches > (match?.totalMatches ?? 0)) {
-                    match = reverseScores[0];
-                }
-
-                // check match
-                if (match) {
-                    const db = await DB.getInstance();
-                    const res: any = await db.select(`
-                        SELECT id
-                        FROM panktis
-                        WHERE gurmukhi_speech like '%${match.matches.reverse().concat(' ')}%'
-                    `);
-                    if (res.length === 1) {
-                        console.log('shabad navigate: ', pankti);
-                        shabadDispatch({ type: SHABAD_RESET });
-                        searchDispatch({
-                            type: SEARCH_SHABAD_PANKTI,
-                            payload: { pankti: pankti }
-                        });
-                
-                        appDispatch({
-                            type: SET_APP_PAGE,
-                            payload: { 
-                                page: "shabad",
-                                prev_page: "search",
-                                show_panel: false,
-                            }
-                        });
-                    }
-                }
-            }
-        }
-
-        const tokens = removeMatras(speechText).split(',');
-
-        let newTokens = tokens.slice(-2);
-
-        // wait for more words
-        if (speechText.split(' ').length <= 3) {
+        if (!tokens ||
+            (tokens.length == 1 && tokens[0].split(' ').length <= 2)
+        ) {
             return;
         }
 
-        // skip same search
-        if (newTokens.length === 1 && lastTokens.length == 1) {
-            if (newTokens[0] === lastTokens[0]) {
-                return;
+        const searchTokens = tokens.filter(token => token.trim().endsWith(',') || token.trim().endsWith('।'))
+            .map(token => token.trim().slice(0, -1));
+
+        const result = await gurbaniSearch.search(searchTokens.map(searchToken => removeMatras(searchToken)), "search");
+
+        const searchPanktis: SearchPankti[] = result.map(row => {
+            return {
+                id: row.id,
+                gurmukhi_speech: row.gurmukhi_speech,
+                gurmukhi_words: normalisedSearchGurmukhiText(row.gurmukhi_speech).split(' '),
+            }
+        });
+
+        const gurmukhiPanktis = searchPanktis.map(searchPankti => normalisedSearchGurmukhiText(searchPankti.gurmukhi_speech));
+
+        const relativePanktis = [];
+        const exactMatches = new Map<string, { match: Match; score: MatchScore, searchToken: string, valid: boolean }>();
+        const panktiIds = [];
+        for (let i = 0; i < searchTokens.length; i++) {
+            const searchText = normaliseSearchGurmukhi(searchTokens[i].trim());
+            const {matches, score} = findRelativePankti(searchText, searchPanktis, gurmukhiPanktis, null, null);
+
+            if (!score) continue;
+
+            if (matches.length === 1) {
+                if (!exactMatches.has(searchTokens[i].trim())) {
+                    exactMatches.set(searchTokens[i].trim(), {
+                        match: matches[0],
+                        score,
+                        searchToken: searchTokens[i].trim(),
+                        valid:  matches[0].gurmukhi_words.length === score.matchLen ||
+                                matches[0].gurmukhi_words.length === (score.matchLen + 1),
+                    });
+                }
+
+                if (score.matchLen > 1) {
+                    panktiIds.push(searchPanktis[matches[0].idx].id);
+                }
+                continue;
+            }
+
+            relativePanktis.push(...matches);
+        }
+
+        let lastValidMatch = null;
+        for (let i = searchTokens.length-1; i >= 0; i--) {
+            const searchToken = searchTokens[i].trim();
+            if (exactMatches.has(searchToken) && exactMatches.get(searchToken)?.valid) {
+                lastValidMatch = exactMatches.get(searchToken);
+                break;
             }
         }
 
-        if (newTokens.length === 2 && lastTokens.length == 2) {
-            if (newTokens[0] === lastTokens[0] && newTokens[1] === lastTokens[1]) {
-                return;
-            }
+        if (lastValidMatch) {
+            const panktiId = searchPanktis[lastValidMatch.score.idx].id;
+            const panktis = await getByLineIds([panktiId]);
+
+            if (panktis.length === 0) return;
+
+            const pankti = panktis[0];
+
+            shabadDispatch({ type: SHABAD_RESET });
+            searchDispatch({
+                type: SEARCH_SHABAD_PANKTI,
+                payload: { pankti }
+            });
+
+            appDispatch({
+                type: SET_APP_PAGE,
+                payload: {
+                    page: "shabad",
+                    prev_page: "search",
+                    show_panel: false,
+                }
+            });
+            
+            return;
         }
 
-        setLastTokens(newTokens);
-        setQuery(newTokens);
+        showMatchingPanktis(panktiIds);
     }
 
-    const setTerms = async (lineIds: string[]) => {
+    const showMatchingPanktis = async (lineIds: string[]) => {
         if (!lineIds.length) return;
 
         const db = await DB.getInstance();
@@ -216,25 +174,21 @@ const useSearchPilot = (finalText: string, partialText: string, status: RecordSt
         const res: any = await db.select(query);
 
         if (res) {
-            if (matchShabads.length === 0) {
-                const panktis: Pankti[] = res.map(
-                    (pankti: any) => {
-                        return {
-                            ...pankti,
-                            gurmukhi_words: JSON.parse(pankti.gurmukhi_words),
-                            gurmukhi_rwords: JSON.parse(pankti.gurmukhi_rwords),
-                        };
-                    }
-                );
-                setSearchPanktis(panktis);
-                const distinctShabadIds: string[] = [...new Set(panktis.map(p => p.shabad_id))];
-                setMatchShabads(distinctShabadIds);
-                const terms = res.map((pankti: any) => pankti.gurmukhi_speech);
-                console.log(terms);
-                restartTranscript(terms);
-            } else {
-                console.log('existing match shabad');
-            }
+            const panktis: Pankti[] = res.map(
+                (pankti: any) => {
+                    return {
+                        ...pankti,
+                        gurmukhi_words: JSON.parse(pankti.gurmukhi_words),
+                        gurmukhi_rwords: JSON.parse(pankti.gurmukhi_rwords),
+                    };
+                }
+            );
+
+            setPanktis(panktis);
+            // const distinctShabadIds: string[] = [...new Set(panktis.map(p => p.shabad_id))];
+            // setMatchShabads(distinctShabadIds);
+            // const terms = res.map((pankti: any) => pankti.gurmukhi_speech);
+            // restartTranscript(terms);
         }
     }
 
@@ -252,15 +206,18 @@ const useSearchPilot = (finalText: string, partialText: string, status: RecordSt
             ORDER BY shabads.source_id
         `;
 
+        let resultPanktis = [];
         try {
             const res: any = await db.select(query);
 
             if (res) {
-                setPanktis(res as Pankti[]);
+                resultPanktis = res;
             }
         } catch (err) {
             console.error("DB error:", err);
         }
+
+        return resultPanktis;
     };
 
     return {
