@@ -566,13 +566,23 @@ export const getPanktiScore = (pankti: Pankti, tokens: string[], strictMatch: bo
     return null;
 };
 
-export function unifySearchText(text: string) {
-  const parts = text
-    .replaceAll("।", ",")
-    .replaceAll(";", ",")
-    .split(",")
-    .map(p => p.trim())
-    .filter(Boolean);
+export function unifySearchText(speechText: string) {
+  const regex = /[^।,.]+[।,.]?/g;
+
+  const rawFragments =
+    speechText.match(regex)?.map(fragment => {
+      const trimmed = fragment.trim();
+
+      const lastChar = trimmed.slice(-1);
+      if (lastChar === "।" || lastChar === "," || lastChar === ".") {
+        return {
+          text: trimmed.slice(0, -1).trim(),
+          delimiter: lastChar,
+        };
+      }
+
+      return { text: trimmed, delimiter: "" };
+    }) ?? [];
 
   const words = (s: string) => s.split(/\s+/);
 
@@ -593,7 +603,7 @@ export function unifySearchText(text: string) {
             break;
           }
         } else {
-          if (get(bw, sw) > 1) {
+          if (sw !== bw) {
             match = false;
             break;
           }
@@ -606,22 +616,42 @@ export function unifySearchText(text: string) {
     return false;
   };
 
-  // track last occurrence
-  const lastIndex = new Map<string, number>();
-  parts.forEach((p, i) => lastIndex.set(p, i));
+  const result: typeof rawFragments = [];
 
-  const unique = [...lastIndex.keys()];
+  for (const frag of rawFragments) {
+    if (!frag.text) continue;
 
-  const filtered = unique.filter(a => {
-    return !unique.some(
-      b => a !== b && isSubset(a, b) && words(b).length >= words(a).length
+    const exists = result.some(
+      r => r.text === frag.text || isSubset(frag.text, r.text)
     );
-  });
 
-  return filtered
-    .sort((a, b) => lastIndex.get(a)! - lastIndex.get(b)!)
-    .join(",").replaceAll('  ', ' ');
-};
+    if (!exists) {
+      result.push(frag);
+    }
+  }
+
+  // rebuild preserving original delimiter
+  let output = result
+    .map(f => f.text + f.delimiter)
+    .join(" ")
+    .trim();
+
+  // important fix:
+  // if only one fragment left but original had commas → keep last delimiter
+  if (
+    result.length === 1 &&
+    rawFragments.length > 1 &&
+    !result[0].delimiter
+  ) {
+    // find any delimiter from original
+    const found = rawFragments.find(f => f.delimiter);
+    if (found) {
+      output = result[0].text + found.delimiter;
+    }
+  }
+
+  return output;
+}
 
 export function removeMatras(text: string) {
     // Array of Gurmukhi matras (diacritical marks)

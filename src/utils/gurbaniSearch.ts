@@ -1,6 +1,7 @@
 import Fuse from "fuse.js";
 import { DB } from "../utils/DB";
 import { get } from "fast-levenshtein";
+import { removeMatras } from "../components/SoundSearch/SpeechHelper";
 
 type PanktiRow = {
   id: string;
@@ -47,6 +48,7 @@ function isOrderedFuzzyMatch(query: string, text: string, maxDistance = 1) {
 
 class GurbaniSearch {
   private fuse: Fuse<PanktiRow> | null = null;
+  private searchFuse: Fuse<PanktiRow> | null = null;
   private data: PanktiRow[] = [];
   private initialized = false;
 
@@ -67,11 +69,21 @@ class GurbaniSearch {
 
     this.data = (rows || []).map(row => ({
       ...row,
-      gurmukhi_speech: row.gurmukhi_speech
+      gurmukhi_speech: row.gurmukhi_speech,
+      gurmukhi_nomatra: removeMatras(row.gurmukhi_speech),
     }));
 
     this.fuse = new Fuse(this.data, {
       keys: ["gurmukhi_speech"],
+      includeScore: true,
+      threshold: 0.4,
+      ignoreLocation: true,
+      minMatchCharLength: 0,
+      useExtendedSearch: true
+    });
+
+    this.searchFuse = new Fuse(this.data, {
+      keys: ["gurmukhi_nomatra"],
       includeScore: true,
       threshold: 0.4,
       ignoreLocation: true,
@@ -87,31 +99,35 @@ class GurbaniSearch {
   /**
    * Search
    */
-  async search(queries: string[]): Promise<PanktiRow[]> {
+  async search(queries: string[], type: "shabad"|"search" = "shabad"): Promise<PanktiRow[]> {
     if (!this.initialized) {
       await this.init();
     }
 
+    console.log('search queries: ', queries);
+
     if (!this.fuse || queries.length === 0) return [];
 
-    let results: PanktiRow[] = [];
+    const map = new Map<string, PanktiRow>();
 
     for (const query of queries) {
-      const queryResults = this.fuse.search(query);
+      let queryResults;
+      if (type === "search" && this.searchFuse) {
+        queryResults = this.searchFuse.search(query.trim());
+      } else {
+        queryResults = this.fuse.search(query.trim());
+      }
 
-      const matches = queryResults.map(r => r.item);
-      results.push(...matches);
+      for (const r of queryResults) {
+        const item = r.item;
 
-    //   const ordered = queryResults
-    //     .map(r => r.item)
-    //     .filter(item =>
-    //       isOrderedFuzzyMatch(query, item.gurmukhi_no_matra, 1)
-    //     );
-
-    //   results.push(...ordered);
+        if (!map.has(item.id)) {
+          map.set(item.id, item);
+        }
+      }
     }
 
-    return results;
+    return Array.from(map.values());
   }
 }
 

@@ -1,11 +1,10 @@
 import { useCallback, useContext, useEffect, useState } from "react";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { Pankti } from "../../models/Pankti";
-import { findMatchingPankti, findMatchPankti, getAllowedNextPanktiIdxs, getUnvisitedIdx } from "./SpeechHelper";
+import { findMatchingPankti, getUnvisitedIdx } from "./SpeechHelper";
 import { SET_APP_PAGE, SHABAD_PANKTI, SHABAD_PANKTI_MARK_VISITED, SHABAD_PANKTI_NO_VISITED } from "../../state/ActionTypes";
 import { SearchContext } from "../../state/providers/SearchProvider";
 import { AppContext, PAGE_ANNOUNCEMENT, PAGE_SEARCH, PAGE_SHABAD } from "../../state/providers/AppProvider";
-import * as Sentry from "@sentry/react";
 import { useContext as useCtxSelector } from "use-context-selector";
 import { RecordState } from "./useSpeech";
 import { postProcessText } from "./NoiseFilter";
@@ -49,7 +48,7 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
         const terms = panktis.map((pankti: Pankti) => pankti.gurmukhi_speech);
 
         return terms;
-    }, [shabadContext.state.panktis, shabadContext.state.current])
+    }, [shabadContext.state.panktis, shabadContext.state.current]);
 
     useEffect(() => {
         if (!active || appContext.state.page === PAGE_SEARCH) {
@@ -101,9 +100,10 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
         setPrevText(totalText);
 
         const {speechText, lastText} = postProcessText(tokenText, shabadContext.state.panktis);
+        // console.log('tokentext: ', tokenText);
+        // console.log('speechText: ', speechText);
+
         // console.log('totalText: ', totalText)
-        console.log('tokentext: ', tokenText);
-        console.log('speechText: ', speechText);
         // console.log('last Token: ', lastText);
         const checkIdx = (finalText + partialText).length - lastText.length;
 
@@ -113,13 +113,13 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
         }
 
         // wait for matching pankti
-        if (speechText.endsWith('<no_match>।')) {
+        if (speechText.trim().endsWith('<no_match>।') || speechText.trim().endsWith('<multi-match>।')) {
             return;
         }
 
         const speechParts = speechText.replace(/[,।\s]+$/g, '').split('।');
         const lastPart = speechParts[speechParts.length-1];
-        console.log('lastPart: ', lastPart);
+        // console.log('lastPart: ', lastPart);
 
         const tokens = lastPart.split(' ');
 
@@ -158,19 +158,6 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
             const matchingPankti = matchingPanktis[0];
 
             if (matchingPankti.panktiIdx !== shabadContext.state.current || !shabadContext.state.panktis[shabadContext.state.current].visited) {
-                Sentry.captureMessage(JSON.stringify({
-                    tkn: lastPart,
-                    stxt: speechText,
-                    mch: matchingPankti.matches.join(" "),
-                    wrds: matchingPankti.words.join(" "),
-                    nxt: getAllowedNextPanktiIdxs(
-                        shabadContext.state.panktis,
-                        shabadContext.state.home,
-                        shabadContext.state.current
-                    ).join(","),
-                    idx: matchingPankti.panktiIdx,
-                    shbd: shabadContext.state.panktis[matchingPankti.panktiIdx].shabad_id,
-                }), "info");
 
                 shabadContext.dispatch({
                     type: SHABAD_PANKTI,
