@@ -6,7 +6,7 @@ import { Pankti } from "../../models/Pankti";
 import { usePanktiSearch } from "../../hooks/usePanktiSearch";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { useContext as useCtxSelector } from "use-context-selector";
-import { SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SHABAD_RESET } from "../../state/ActionTypes";
+import { SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SET_PANKTIS, SHABAD_RESET } from "../../state/ActionTypes";
 import { AppContext } from "../../state/providers/AppProvider";
 import { RecordState } from "./useSpeech";
 import { gurbaniSearch } from "../../utils/gurbaniSearch";
@@ -15,7 +15,7 @@ import { findRelativePankti, Match, MatchScore, normalisedSearchGurmukhiText, no
 const useSearchPilot = (finalText: string, partialText: string, status: RecordState, startTranscription: any, restartTranscript: any) => {
 
     const [active, setActive] = useState<boolean>(false);
-    const {setPanktis, searchTerm, dispatch: searchDispatch} = useContext(SearchContext);
+    const {searchTerm, dispatch: searchDispatch} = useContext(SearchContext);
     const {dispatch: shabadDispatch} = useCtxSelector(ShabadContext);
     const {dispatch: appDispatch} = useContext(AppContext);
     const {loading} = usePanktiSearch();
@@ -184,7 +184,10 @@ const useSearchPilot = (finalText: string, partialText: string, status: RecordSt
                 }
             );
 
-            setPanktis(panktis);
+            searchDispatch({
+                type: SET_PANKTIS,
+                payload: panktis
+            });
             // const distinctShabadIds: string[] = [...new Set(panktis.map(p => p.shabad_id))];
             // setMatchShabads(distinctShabadIds);
             // const terms = res.map((pankti: any) => pankti.gurmukhi_speech);

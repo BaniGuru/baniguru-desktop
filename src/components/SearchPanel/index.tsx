@@ -1,6 +1,6 @@
-import { ChangeEvent, FunctionComponent, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { SearchContext } from "../../state/providers/SearchProvider";
-import { GURBANI_SEARCH, SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SHABAD_RESET } from "../../state/ActionTypes";
+import { GURBANI_SEARCH, SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SET_PANKTIS, SHABAD_RESET } from "../../state/ActionTypes";
 import styled from "styled-components";
 import { DB } from "../../utils/DB";
 import { Pankti } from "../../models/Pankti";
@@ -10,6 +10,7 @@ import SearchList from "./SearchList";
 import { AppContext } from "../../state/providers/AppProvider";
 import { useContextSelector } from "use-context-selector";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
+import { ApiClient } from "../../utils/apiClient";
 
 const SearchButton = styled.button`
     font-size: 14px;
@@ -27,8 +28,12 @@ const KeyboardButton = styled.button`
     color: #444;
 `;
 
-const SearchPanel: FunctionComponent = () => {
-    const {dispatch, searchInputRef, searchTerm, setSearchTerm, panktis, setPanktis} = useContext(SearchContext);
+interface SearchPanelProps {
+  apiClient: ApiClient | null;
+}
+
+const SearchPanel: React.FC<SearchPanelProps> = ({ apiClient }) => {
+    const {dispatch, searchInputRef, searchTerm, setSearchTerm, panktis} = useContext(SearchContext);
     const [focusIndex, setFocusIndex] = useState(0);
     const {dispatch: appDispatch, fontSize} = useContext(AppContext);
     const { dispatch: shabadDispatch, shabadId } = useContextSelector(
@@ -130,7 +135,10 @@ const SearchPanel: FunctionComponent = () => {
             }
 
             const panktis: Pankti[] = res;
-            setPanktis(panktis);
+            dispatch({
+                type: SET_PANKTIS,
+                payload: panktis
+            });
             setFocusIndex(0);
             if (listContainerRef.current) {
                 listContainerRef.current.scrollTo({
@@ -171,7 +179,10 @@ const SearchPanel: FunctionComponent = () => {
             }
 
             const panktis: Pankti[] = res;
-            setPanktis(panktis);
+            dispatch({
+                type: SET_PANKTIS,
+                payload: panktis
+            });
             setFocusIndex(0);
             if (listContainerRef.current) {
                 listContainerRef.current.scrollTo({
@@ -181,9 +192,7 @@ const SearchPanel: FunctionComponent = () => {
         });
     };
 
-    const handleSearch = async (e: ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value.trim();
-        setSearchTerm(value);
+    const handleSearch = async (value: string) => {
         if (value.length < 2) {
             return;
         }
@@ -240,14 +249,36 @@ const SearchPanel: FunctionComponent = () => {
         searchInputRef?.current?.select;
     }, []);
 
+    useEffect(() => {
+        if (! searchInputRef.current?.value) {
+            return;
+        }
+
+        handleSearch(searchTerm);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        if (!apiClient) {
+            return;
+        }
+
+        if (panktis.length > 20) {
+            return;
+        }
+
+        const ids = panktis.map(pankti => pankti.id);
+        apiClient.sendSearchPanktis(ids);
+    }, [panktis]);
+
     return (
         <>
             <div className="flex-none">
                 <div className="flex flex-row my-2">
                     <input
                         ref={searchInputRef}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                         type="text"
-                        onChange={handleSearch}
                         className="gurmukhi-font-1 flex-1 mx-2 px-2 py-1 border-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
                         spellCheck="false"
                         autoComplete="off"
