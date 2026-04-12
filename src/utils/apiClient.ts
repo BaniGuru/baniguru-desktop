@@ -1,4 +1,4 @@
-import { SELECT_PANKTI, SET_APP_PAGE, SHABAD_PANKTI } from "../state/ActionTypes";
+import { SELECT_PANKTI, SET_APP_PAGE } from "../state/ActionTypes";
 import { ENV } from "./env";
 
 export type ApiToken = {
