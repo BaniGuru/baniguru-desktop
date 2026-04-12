@@ -99,7 +99,7 @@ export const apiClient = (shabadDispatch: React.Dispatch<any>, appDispatch: Reac
     const final = token.final?.trim() || "";
     const partial = token.partial?.trim() || "";
 
-    if (!final || !partial) return;
+    if (!final && !partial) return;
 
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       console.warn("WebSocket not connected");

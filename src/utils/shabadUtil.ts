@@ -52,7 +52,7 @@ export const cleanGurmukhiUnicode = (gurmukhi: string, vishraamReplace = true) =
     
     gurmukhi = gurmukhi.trim();
 
-    console.log(gurmukhi);
+    // console.log(gurmukhi);
 
     return gurmukhi;
 };
