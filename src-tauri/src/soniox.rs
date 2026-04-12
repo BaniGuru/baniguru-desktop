@@ -190,6 +190,7 @@ pub async fn start_soniox_stream(
 
         // let mut sent_final_count = 0usize;
         let mut last_partial = String::new();
+        let mut total_audio_proc_ms: u64;
 
         loop {
 
@@ -255,6 +256,11 @@ pub async fn start_soniox_stream(
 
                             let tokens = sx_msg.tokens;
 
+                            // update persistent timestamp
+                            // if let Some(last_token) = tokens.last() {
+                            total_audio_proc_ms = sx_msg.total_audio_proc_ms;
+                            // }
+
                             let mut stable_final = Vec::new();
                             let mut first_non_final = 0;
 
@@ -295,15 +301,11 @@ pub async fn start_soniox_stream(
                             if !stable_final.is_empty() || partial != last_partial {
 
                                 last_partial = partial.clone();
-                                let last_end_ms = tokens
-                                    .last()
-                                    .map(|t| t.end_ms)
-                                    .unwrap_or(0);
 
                                 let payload = json!({
                                     "final": stable_final.join(""),
                                     "partial": partial,
-                                    "end_ms": last_end_ms
+                                    "end_ms": total_audio_proc_ms
                                 });
 
                                 let _ = app.emit("soniox_transcript", payload);
