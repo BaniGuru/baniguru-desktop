@@ -15,6 +15,7 @@ import { useThemeColors } from "../../utils/useTheme";
 import { formatPanktis, getShabadIds } from "../../utils/shabadUtil";
 import { useContext as useCtxSelector } from "use-context-selector";
 import useFitTextToTwoLines from "../../utils/useFitTextToTwoLines";
+import { ApiClient } from "../../utils/apiClient";
 
 interface PanelProps {
     fontSize: number;
@@ -65,7 +66,11 @@ const English = styled.div<FontProps>`
     text-align: center;
 `;
 
-const ShabadDisplay: React.FC = () => {
+interface ShabadDisplayProps {
+  apiClient: ApiClient | null;
+}
+
+const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
     const searchContext = useContext(SearchContext);
     const baniContext = useContext(BaniContext);
     const {state, dispatch } = useCtxSelector(ShabadContext);
@@ -266,6 +271,8 @@ const ShabadDisplay: React.FC = () => {
     }, [nextPankti, fontSize]);
 
     useEffect(() => {
+        apiClient?.sendPankti(state.shabadId ?? "", state.current ?? 0, state.home ?? 0, state.baniId);
+
         if (state.baniId !== null) {
             return;
         }

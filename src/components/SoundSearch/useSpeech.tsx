@@ -10,7 +10,7 @@ import { useSettings } from "../../state/providers/SettingContext";
 import { useContext as useCtxSelector } from "use-context-selector";
 import useSearchPilot from "./useSearchPilot";
 import { ENV } from "../../utils/env";
-import { ApiClient, apiClient } from "../../utils/apiClient";
+import { ApiClient } from "../../utils/apiClient";
 
 const API_KEY = ENV.speechToken;
 
@@ -22,7 +22,7 @@ type TranscriptionError = {
 
 export type RecordState = "Init" | "Running" | "Starting" | "Restarting";
 
-const useSpeech = () => {
+const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const sonioxClient = useRef<SonioxClient | null>(null);
 
   const status = useRef<RecordState>("Init");
@@ -42,12 +42,6 @@ const useSpeech = () => {
   const [lastTokenTime, setLastTokenTime] = useState(0);
   const lastLineId = useRef("");
   const { autoSearch } = useSettings();
-  const clientRef = useRef<ApiClient|null>(null);
-
-  if (!clientRef.current) {
-    clientRef.current = apiClient();
-    clientRef.current.connect();
-  }
 
   useEffect(() => {
 
@@ -90,19 +84,20 @@ const useSpeech = () => {
   const shabadId = shabadContext.state.shabadId;
 
   useEffect(() => {
-    if ((newFinalToken == "" && nonFinalText == "" && lineId === lastLineId.current) || !clientRef.current) {
+    if ((newFinalToken == "" && nonFinalText == "")) {
       return;
     }
 
-    clientRef.current.sendToken({
+    apiClient?.sendToken({
       final: newFinalToken,
       partial: nonFinalText,
       corrected: "",
       status: status.current,
-      line_id: lineId,
-      shabad_id: shabadId,
+      line_id: "",
+      shabad_id: "",
       page: appContext.state.page,
     });
+
     lastLineId.current = lineId
   }, [newFinalToken, nonFinalText, lineId, shabadId, appContext.state.page]);
 

@@ -76,6 +76,17 @@ const shabadReducer = (state: ShabadState, action: any) => {
                 ...state,
                 current: state.home
             };
+        
+        case "SHABAD_HOME_WITH_PANKTI":
+            if (payload?.current >= 0 && payload.current < state.panktis.length) {
+                return {
+                    ...state,
+                    current: payload.current,
+                    home: payload.home,
+                    panktis: markVisited(state.panktis, payload.current),
+                };
+            }
+            break;
 
         case SHABAD_SET_HOME:
             return {

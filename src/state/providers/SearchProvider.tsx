@@ -1,5 +1,5 @@
 import { createContext, createRef, RefObject, useState} from "react";
-import { CLEAR_RECENT_PANKTIS, GURBANI_SEARCH, REMOVE_RECENT_PANKTI, SEARCH_SHABAD_PANKTI, RECENT_SEARCH_UPDATE, RECENT_VISITED_UPDATE } from "../ActionTypes";
+import { CLEAR_RECENT_PANKTIS, GURBANI_SEARCH, REMOVE_RECENT_PANKTI, SEARCH_SHABAD_PANKTI, RECENT_SEARCH_UPDATE, RECENT_VISITED_UPDATE, SELECT_PANKTI, SET_PANKTIS } from "../ActionTypes";
 import { Pankti } from "../../models/Pankti";
 import * as React from "react";
 
@@ -15,12 +15,14 @@ type initSearchStateType = {
     searchTerm: string;
     searchShabadPankti: Pankti|null;
     recent: RecentShabad[];
+    panktis: Pankti[];
 };
 
 const initSearchState = {
     searchTerm: "",
     searchShabadPankti: null,
     recent: [],
+    panktis: [],
 };
 
 const searchReducer = (state: initSearchStateType, action: any) => {
@@ -39,6 +41,29 @@ const searchReducer = (state: initSearchStateType, action: any) => {
                 searchShabadPankti: action.payload.pankti
             };
         }
+
+        case SELECT_PANKTI: {
+            const pankti = state.panktis.find(
+                (p) => p.id === action.payload.id
+            );
+
+            if (!pankti || state.searchShabadPankti?.id == action.payload.id) {
+                return {
+                    ...state
+                };
+            }
+
+            return {
+                ...state,
+                searchShabadPankti: pankti || null
+            };
+        }
+
+        case SET_PANKTIS:
+            return {
+                ...state,
+                panktis: action.payload
+            };
 
         case RECENT_SEARCH_UPDATE:
             const shabadId = action.payload.shabadId;
@@ -105,7 +130,6 @@ const SearchContext = createContext<{
     searchTerm: string,
     setSearchTerm: React.Dispatch<any>,
     panktis: Array<Pankti>,
-    setPanktis: React.Dispatch<any>,
 }>({
     state: initSearchState,
     dispatch: () => {},
@@ -113,17 +137,17 @@ const SearchContext = createContext<{
     searchTerm: "",
     setSearchTerm: () => {},
     panktis: [],
-    setPanktis: () => {},
 });
 
 const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [state, dispatch] = React.useReducer(searchReducer, initSearchState);
     const searchInputRef = createRef<HTMLInputElement>();
     const [searchTerm, setSearchTerm] = useState("");
-    const [panktis, setPanktis] = useState<Pankti[]>([]);
 
     return (
-        <SearchContext.Provider value={{state, dispatch, searchInputRef, searchTerm, setSearchTerm, panktis, setPanktis}}>
+        <SearchContext.Provider value={{
+            state, dispatch, searchInputRef, searchTerm, setSearchTerm, panktis: state.panktis
+        }}>
             {children}
         </SearchContext.Provider>
     );

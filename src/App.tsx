@@ -25,6 +25,8 @@ import { useContextSelector } from "use-context-selector";
 import AnnouncementPanel from "./components/AnnouncementPanel";
 import { AnnouncementDisplay } from "./components/AnnouncementDisplay";
 import { gurbaniSearch } from "./utils/gurbaniSearch";
+import { apiClient, ApiClient } from "./utils/apiClient";
+import { SearchContext } from "./state/providers/SearchProvider";
 
 
 type DownloadEvent =
@@ -61,9 +63,26 @@ function App() {
   const contentLengthRef = useRef<number>(0);
   const downloadedRef = useRef<number>(0);
   const downloadingRef = useRef<boolean>(false);
+  const apiClientRef = useRef<ApiClient|null>(null);
+
   const baniId = useContextSelector(ShabadContext, (ctx) => ctx.state.baniId);
 
-  const speech = useSpeech();
+  const {dispatch: searchDispatch, setSearchTerm} = useContext(SearchContext);
+
+  const shabadDispatch = useContextSelector(
+    ShabadContext,
+    (ctx) => ctx.dispatch
+  );
+
+  useEffect(() => {
+    if (!apiClientRef.current || !apiClientRef.current.isOpen) {
+      const client = apiClient(shabadDispatch, appContext.dispatch, setSearchTerm, searchDispatch);
+      client.connect();
+      apiClientRef.current = client;
+    }
+  }, [shabadDispatch, appContext.dispatch, setSearchTerm]);
+
+  const speech = useSpeech({apiClient: apiClientRef.current ?? null});
   const speechStarted = speech.started;
 
   const calculateFontSize = () => {
@@ -159,6 +178,10 @@ function App() {
 
     downloadDB();
   }, []);
+
+  useEffect(() => {
+    apiClientRef.current?.sendPage(appContext.state.page);
+  }, [appContext.state.page]);
 
   useEffect(() => {
       const onESC = (ev: KeyboardEvent) => {
@@ -282,7 +305,7 @@ function App() {
 
         {speechStarted && baniId === 13
             ? <BaniDisplay />
-            : <ShabadDisplay />
+            : <ShabadDisplay apiClient={apiClientRef.current ?? null} />
         }
           {appContext.state.show_panel &&
             <TabPanel
@@ -328,7 +351,7 @@ function App() {
               </div>
               <div className="flex-1 flex flex-col overflow-hidden bg-gray-100">
                 {appContext.state.page === "shabad" && <ShabadPanel />}
-                {appContext.state.page === "search" && <SearchPanel />}
+                {appContext.state.page === "search" && <SearchPanel apiClient={apiClientRef.current ?? null} />}
                 {appContext.state.page === "settings" && <SettingPanel />}
                 {appContext.state.page === "recent" && <RecentPanel />}
                 {appContext.state.page === "bani" && <BaniPanel />}
