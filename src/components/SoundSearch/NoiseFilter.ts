@@ -2,8 +2,6 @@ import { extract, partial_token_set_ratio } from "fuzzball";
 import { Pankti } from "../../models/Pankti";
 import { removeMatras } from "./SpeechHelper";
 import { get } from "fast-levenshtein";
-import { DB } from "../../utils/DB";
-import { gurbaniSearch } from "../../utils/gurbaniSearch";
 
 export interface Match {
     gurmukhi: string;
@@ -438,36 +436,10 @@ const addAndMergeScore = (ranges: Range[], newScore: Range): Range[] => {
     return merged;
 }
 
-type PanktiSearchRow = {
-  id: string;
-  gurmukhi_no_matra: string;
-};
-
 export const searchText = async (searchText: string) => {
     if (searchText.trim().split(" ").length <= 2) {
         return;
     }
-
-    return;
-
-    const rows = await gurbaniSearch.search([searchText]);
-
-    const panktis: SearchPankti[] = rows.map(row => {
-        return {
-            id: row.id,
-            gurmukhi_words: row.gurmukhi_speech.split(" ").map(word => normalizeGurmukhi(word)),
-            gurmukhi_speech: row.gurmukhi_speech,
-        }
-    });
-
-    const gurmukhiPanktis = panktis.map(pankti => pankti.gurmukhi_words.join(" "));
-
-    const {match, score} = findRelativePankti(searchText, panktis, gurmukhiPanktis)
-
-    console.log('searchText: ', searchText);
-    console.log('Matched rows:', rows);
-    console.log('match: ', match);
-    console.log('score: ', score);
 };
 
 export type ProcessResult = {

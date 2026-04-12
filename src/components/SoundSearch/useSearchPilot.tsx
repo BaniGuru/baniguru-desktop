@@ -12,7 +12,7 @@ import { RecordState } from "./useSpeech";
 import { gurbaniSearch } from "../../utils/gurbaniSearch";
 import { findRelativePankti, Match, MatchScore, normalisedSearchGurmukhiText, normaliseSearchGurmukhi, SearchPankti } from "./NoiseFilter";
 
-const useSearchPilot = (finalText: string, partialText: string, status: RecordState, startTranscription: any, restartTranscript: any) => {
+const useSearchPilot = (finalText: string, partialText: string, status: RecordState, startTranscription: any, _restartTranscript: any) => {
 
     const [active, setActive] = useState<boolean>(false);
     const {searchTerm, dispatch: searchDispatch} = useContext(SearchContext);

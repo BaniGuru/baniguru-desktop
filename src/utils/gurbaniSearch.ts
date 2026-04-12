@@ -1,6 +1,5 @@
 import Fuse from "fuse.js";
 import { DB } from "../utils/DB";
-import { get } from "fast-levenshtein";
 import { removeMatras } from "../components/SoundSearch/SpeechHelper";
 
 type PanktiRow = {
@@ -8,43 +7,6 @@ type PanktiRow = {
   gurmukhi_speech: string;
   normalized?: string;
 };
-
-const GURMUKHI_PHONETIC: Record<string, string> = {
-  "ਣ": "ਨ",
-  "ਵ": "ਬ",
-  "ਭ": "ਪ",
-};
-
-function normalizePhonetic(str: string) {
-  return str
-    .split("")
-    .map(ch => GURMUKHI_PHONETIC[ch] || ch)
-    .join("");
-}
-
-function isOrderedFuzzyMatch(query: string, text: string, maxDistance = 1) {
-  const queryWords = query.split(" ");
-  const textWords = text.split(" ");
-
-  let qIndex = 0;
-  let mismatches = 0;
-
-  for (let i = 0; i < textWords.length && qIndex < queryWords.length; i++) {
-    const qNorm = normalizePhonetic(queryWords[qIndex]);
-    const tNorm = normalizePhonetic(textWords[i]);
-
-    if (get(tNorm, qNorm) <= maxDistance) {
-      qIndex++;
-    } else {
-      if (qIndex > 0) {
-        mismatches++;
-        if (mismatches > maxDistance) return false;
-      }
-    }
-  }
-
-  return qIndex === queryWords.length;
-}
 
 class GurbaniSearch {
   private fuse: Fuse<PanktiRow> | null = null;
