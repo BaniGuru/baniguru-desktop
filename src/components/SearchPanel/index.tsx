@@ -74,8 +74,6 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ apiClient }) => {
                 setSearchTerm(newValue);
 
                 if (searchInputRef.current) {
-                    searchInputRef.current.value = newValue;
-
                     setTimeout(() => {
                         searchInputRef.current?.setSelectionRange(start + 1, start + 1);
                     }, 0);
@@ -86,7 +84,12 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ apiClient }) => {
 
 
         if (event.key === 'c' && event.ctrlKey && searchInputRef?.current?.value) {
-            searchInputRef.current.value = "";
+            setSearchTerm('');
+            event.preventDefault();
+        }
+
+        if (event.key === 'a' && event.ctrlKey && searchInputRef.current) {
+            searchInputRef.current.select();
             event.preventDefault();
         }
 
@@ -214,12 +217,12 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ apiClient }) => {
     }
 
     const clearSearch = useCallback(() => {
-        setSearchTerm("");
-
         if (searchInputRef.current !== null) {
             searchInputRef.current.value = "";
             searchInputRef.current.focus();
         }
+
+        setSearchTerm("");
     }, [searchInputRef]);
 
     const displayShabad = useCallback((pankti: Pankti) => {

@@ -55,6 +55,9 @@ export const apiClient = (shabadDispatch: React.Dispatch<any>, appDispatch: Reac
             },
           });
         } else if (data.type === "page") {
+          if (data.p  === 'search') {
+            setSearchTerm('');
+          }
           appDispatch({
               type: SET_APP_PAGE,
               payload: {
@@ -83,6 +86,8 @@ export const apiClient = (shabadDispatch: React.Dispatch<any>, appDispatch: Reac
 
     socket.onclose = () => {
       console.log("WebSocket disconnected");
+      // check reconnection
+      // setTimeout(connect, 1000);
     };
 
     socket.onerror = (err) => {

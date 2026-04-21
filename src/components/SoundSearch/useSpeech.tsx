@@ -13,6 +13,8 @@ import { ENV } from "../../utils/env";
 import { ApiClient } from "../../utils/apiClient";
 
 const API_KEY = ENV.speechToken;
+const API_URL = ENV.apiUrl;
+const API_TOKEN = ENV.apiToken;
 
 type TranscriptionError = {
   status: ErrorStatus;
@@ -41,6 +43,22 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const [nonFinalText, setNonFinalText] = useState("");
   const [lastTokenTime, setLastTokenTime] = useState(0);
   const { autoSearch } = useSettings();
+
+  const startSpeech = async() => {
+    setStarted(true);
+
+    await invoke('start_stream', {
+      micName: micName,
+      apiUrl: API_URL,
+      apiToken: API_TOKEN,
+    });
+  };
+
+  const stopSpeech = async () => {
+    setStarted(false);
+
+    await invoke('stop_stream');
+  };
 
   useEffect(() => {
 
@@ -313,7 +331,8 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
 
   return {
     started,
-    setStarted,
+    startSpeech,
+    stopSpeech,
     speechTokens,
     status,
     terms,

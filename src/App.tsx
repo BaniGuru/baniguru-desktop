@@ -221,14 +221,15 @@ function App() {
                 
               case "/":
                 if (ev.ctrlKey) {
-                    appContext.dispatch({
-                        type: SET_APP_PAGE,
-                        payload: {
-                            page: "search",
-                            show_panel: true,
-                        },
-                    });
-                    ev.preventDefault();
+                  setSearchTerm('');
+                  appContext.dispatch({
+                      type: SET_APP_PAGE,
+                      payload: {
+                          page: "search",
+                          show_panel: true,
+                      },
+                  });
+                  ev.preventDefault();
                 }
                 break;
 
@@ -320,7 +321,7 @@ function App() {
                   <div className="ml-2 flex-shrink-0 p-2">
                     {speech.started ? (
                       <button
-                        onClick={() => speech.setStarted(false)}
+                        onClick={() => speech.stopSpeech()}
                       >
                       <FaStopCircle
                         className="text-red-700"
@@ -329,7 +330,7 @@ function App() {
                       </button>
                     ) : (
                       <button
-                        onClick={() => speech.setStarted(true)}
+                        onClick={() => speech.startSpeech()}
                       >
                       <FaPlayCircle
                         title="Start Bani Pilot"
