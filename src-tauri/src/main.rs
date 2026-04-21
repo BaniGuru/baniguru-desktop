@@ -7,6 +7,8 @@ mod commands;
 mod server;
 mod settings;
 mod soniox;
+mod audio_bus;
+mod webrtc;
 
 use futures_util::StreamExt;
 use serde::Serialize;
@@ -17,7 +19,17 @@ use crate::commands::Pankti;
 use crate::commands::update_pankti;
 use tokio::sync::Mutex;
 use crate::server::start_web_server;
-use crate::commands::{start_soniox, stop_soniox, restart_soniox, StreamState};
+use crate::audio_bus::AudioBus;
+use crate::commands::{
+    start_soniox,
+    stop_soniox,
+    restart_soniox,
+    start_stream,
+    stop_stream,
+    StreamState,
+    AudioState,
+    RawStreamState,
+};
 use crate::commands::list_mics;
 
 #[derive(Clone, Serialize)]
@@ -129,6 +141,8 @@ fn main() {
             start_soniox,
             stop_soniox,
             restart_soniox,
+            start_stream,
+            stop_stream,
             list_mics
         ])
         .setup(|app| {
@@ -151,6 +165,16 @@ fn main() {
             app.manage(config_path);
             app.manage(StreamState {
                 stream: Mutex::new(None),
+            });
+            app.manage(AudioState {
+                bus: AudioBus::new(),
+                mic_stream: Mutex::new(None),
+                mic_config: Mutex::new(None),
+                users: Mutex::new(0),
+            });
+            app.manage(RawStreamState {
+                running: Mutex::new(false),
+                task: Mutex::new(None),
             });
 
             // Spawn async task with cloned Arc<Mutex<Pankti>>

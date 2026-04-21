@@ -1,3 +1,4 @@
+// src/soniox.rs
 use tokio::sync::{mpsc, watch};
 use tauri::async_runtime::JoinHandle;
 
@@ -6,7 +7,7 @@ use tungstenite::Message;
 
 use futures_util::{SinkExt, StreamExt};
 
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use cpal::traits::{DeviceTrait, StreamTrait};
 
 use serde::{Deserialize};
 use serde_json::json;
@@ -15,7 +16,9 @@ use bytemuck;
 
 use tauri::{AppHandle, Emitter};
 
-const SONIOX_URL: &str = "wss://stt-rt.soniox.com/transcribe-websocket";
+use crate::audio_bus::AudioBus;
+
+const SONIOX_URL: &str = "wss://stt-rt.jp.soniox.com/transcribe-websocket";
 
 #[derive(Debug, Deserialize)]
 struct SonioxToken {
@@ -37,7 +40,6 @@ struct SonioxMessage {
 pub struct SonioxStream {
     shutdown: watch::Sender<bool>,
     task: JoinHandle<()>,
-    mic_stream: cpal::Stream,
 }
 
 //
@@ -72,52 +74,20 @@ fn resample_to_16k(input: &[f32], input_rate: u32) -> Vec<f32> {
         .collect()
 }
 
-//
-// ==============================
-// Start Soniox Stream
-// ==============================
-//
 pub async fn start_soniox_stream(
     app: AppHandle,
     api_key: String,
-    mic_name: String,
     panktis: Vec<String>,
+    input_rate: u32,
+    channels: u16,
+    bus: AudioBus,
 ) -> Result<SonioxStream, String> {
 
     println!("Starting Soniox streaming...");
 
     //
-    // Select microphone
-    //
-    let host = cpal::default_host();
-
-    let device = host
-        .input_devices()
-        .map_err(|e| format!("Failed to list devices: {}", e))?
-        .find(|d| {
-            d.name()
-                .map(|name| name.contains(&mic_name))
-                .unwrap_or(false)
-        })
-        .ok_or("Microphone not found")?;
-
-    println!("Selected microphone: {}", device.name().unwrap());
-
-    let config = device.default_input_config().map_err(|e| e.to_string())?;
-
-    let sample_rate = config.sample_rate();
-    let channels = config.channels() as usize;
-
-    println!(
-        "Mic config -> sample_rate: {} Hz | channels: {}",
-        sample_rate, channels
-    );
-
-    //
     // Connect websocket
     //
-    println!("Connecting to Soniox...");
-
     let (ws_stream, _) = connect_async(SONIOX_URL)
         .await
         .map_err(|e| e.to_string())?;
@@ -163,16 +133,11 @@ pub async fn start_soniox_stream(
     }
 
     //
-    // Audio channel
+    // Subscribe to shared audio bus
     //
-    let (audio_tx, mut audio_rx) = mpsc::channel::<Vec<f32>>(32);
+    let mut audio_rx = bus.subscribe();
 
-    //
-    // Start microphone
-    //
-    let mic_stream = start_microphone(&device, config.clone(), audio_tx)?;
-
-    println!("Microphone stream started");
+    println!("Soniox pipeline started");
 
     //
     // Shutdown signal
@@ -184,13 +149,9 @@ pub async fn start_soniox_stream(
     //
     let task = tauri::async_runtime::spawn(async move {
 
-        println!("Soniox pipeline started");
-
         let mut buffer: Vec<i16> = Vec::new();
-
-        // let mut sent_final_count = 0usize;
         let mut last_partial = String::new();
-        let mut total_audio_proc_ms: u64;
+        let mut total_audio_proc_ms: u64 = 0;
 
         loop {
 
@@ -200,11 +161,7 @@ pub async fn start_soniox_stream(
                 // Shutdown
                 //
                 _ = shutdown_rx.changed() => {
-
                     println!("Soniox shutdown received");
-
-                    buffer.clear();
-
                     break;
                 }
 
@@ -214,11 +171,11 @@ pub async fn start_soniox_stream(
                 Some(chunk) = audio_rx.recv() => {
 
                     let mono: Vec<f32> = chunk
-                        .chunks(channels)
-                        .map(|f| f.iter().sum::<f32>() / channels as f32)
+                        .chunks(channels.into())
+                        .map(|f| f.iter().sum::<f32>())
                         .collect();
 
-                    let resampled = resample_to_16k(&mono, sample_rate);
+                    let resampled = resample_to_16k(&mono, input_rate);
 
                     let pcm16: Vec<i16> = resampled
                         .iter()
@@ -227,8 +184,7 @@ pub async fn start_soniox_stream(
 
                     buffer.extend_from_slice(&pcm16);
 
-                    let frame_ms = 5;
-                    let frame_size = (16000 as usize * frame_ms) / 1000;
+                    let frame_size = 16000 * 5 / 1000;
 
                     while buffer.len() >= frame_size {
 
@@ -237,9 +193,7 @@ pub async fn start_soniox_stream(
                         let bytes = bytemuck::cast_slice(&frame);
 
                         if write.send(Message::Binary(bytes.to_vec())).await.is_err() {
-
                             println!("WebSocket send failed");
-
                             return;
                         }
                     }
@@ -254,43 +208,21 @@ pub async fn start_soniox_stream(
 
                         if let Ok(sx_msg) = serde_json::from_str::<SonioxMessage>(&text) {
 
+                            total_audio_proc_ms = sx_msg.total_audio_proc_ms;
+
                             let tokens = sx_msg.tokens;
 
-                            // update persistent timestamp
-                            // if let Some(last_token) = tokens.last() {
-                            total_audio_proc_ms = sx_msg.total_audio_proc_ms;
-                            // }
-
                             let mut stable_final = Vec::new();
-                            let mut first_non_final = 0;
+                            let mut first_non_final = tokens.len();
 
                             for (i, token) in tokens.iter().enumerate() {
-
                                 if token.is_final {
-
                                     stable_final.push(token.text.clone());
-
                                 } else {
-
                                     first_non_final = i;
                                     break;
                                 }
-
-                                first_non_final = i + 1;
                             }
-
-                            // let stable_count = stable_final.len();
-
-                            // let new_final = if stable_count > sent_final_count {
-
-                            //     stable_final[sent_final_count..].join("")
-
-                            // } else {
-
-                            //     String::new()
-                            // };
-
-                            // sent_final_count = stable_count;
 
                             let partial = tokens[first_non_final..]
                                 .iter()
@@ -322,7 +254,6 @@ pub async fn start_soniox_stream(
     Ok(SonioxStream {
         shutdown: shutdown_tx,
         task,
-        mic_stream,
     })
 }
 
@@ -332,14 +263,10 @@ pub async fn start_soniox_stream(
 // ==============================
 //
 pub async fn stop_soniox_stream(stream: SonioxStream) {
-
     println!("Stopping Soniox stream");
 
     let _ = stream.shutdown.send(true);
-
     stream.task.abort();
-
-    drop(stream.mic_stream);
 
     println!("Soniox stream stopped");
 }
@@ -349,10 +276,10 @@ pub async fn stop_soniox_stream(stream: SonioxStream) {
 // Microphone
 // ==============================
 //
-fn start_microphone(
+pub fn start_microphone(
     device: &cpal::Device,
     config: cpal::SupportedStreamConfig,
-    tx: mpsc::Sender<Vec<f32>>,
+    bus: AudioBus,
 ) -> Result<cpal::Stream, String> {
 
     let err_fn = |err| println!("Mic error: {:?}", err);
@@ -370,7 +297,7 @@ fn start_microphone(
             &stream_config,
             move |data: &[f32], _| {
 
-                let _ = tx.try_send(data.to_vec());
+                let _ = bus.publish(data.to_vec());
 
             },
             err_fn,
@@ -386,7 +313,7 @@ fn start_microphone(
                     .map(|s| *s as f32 / i16::MAX as f32)
                     .collect();
 
-                let _ = tx.try_send(buffer);
+                let _ = bus.publish(buffer);
             },
             err_fn,
             None,
@@ -401,7 +328,7 @@ fn start_microphone(
                     .map(|s| (*s as f32 / u16::MAX as f32) * 2.0 - 1.0)
                     .collect();
 
-                let _ = tx.try_send(buffer);
+                let _ = bus.publish(buffer);
             },
             err_fn,
             None,
