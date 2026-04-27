@@ -11,7 +11,16 @@ const languages = ["ਗੁਰਮੁਖੀ", "ਪੰਜਾਬੀ", "English", "Ne
 export const SettingPanel = () => {
   const [ip, setIP] = useState<string | null>(null);
   const [mics, setMics] = useState<string[]>([]);
-  const {micName, setMicName, autoSearch, setAutoSearch} = useSettings();
+  const {
+    micName,
+    setMicName,
+    autoSearch,
+    setAutoSearch,
+    audioStream,
+    setAudioStream,
+    autoNext,
+    setAutoNext,
+  } = useSettings();
   
   const { visibility, setVisibility } = useSettings();
 
@@ -95,11 +104,27 @@ export const SettingPanel = () => {
           </option>
         ))}
       </select>
-      <div className="flex flex-row items-center w-full px-4">
+      <div className="flex flex-row items-center w-full px-4 pt-2">
         <div className={`flex-1 text-xl`}>Auto search</div>
         <div className="flex text-xl" onClick={() => setAutoSearch(!autoSearch)}>
           {
-            autoSearch ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-black-400" />
+            autoSearch ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-700" />
+          }
+        </div>
+      </div>
+      <div className="flex flex-row items-center w-full px-4 pt-2">
+        <div className={`flex-1 text-xl`}>Auto Next</div>
+        <div className="flex text-xl" onClick={() => setAutoNext(!autoNext)}>
+          {
+            autoNext ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-700" />
+          }
+        </div>
+      </div>
+      <div className="flex flex-row items-center w-full px-4 pt-2">
+        <div className={`flex-1 text-xl`}>Audio Stream</div>
+        <div className="flex text-xl" onClick={() => setAudioStream(!audioStream)}>
+          {
+            audioStream ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-700" />
           }
         </div>
       </div>

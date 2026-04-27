@@ -13,6 +13,8 @@ type Settings = {
     panelHeight: number;
   };
   autoSearch: boolean;
+  audioStream: boolean;
+  autoNext: boolean;
   panelLocation: string;
   width: number;
   height: number;
@@ -35,6 +37,8 @@ type Settings = {
   settingVersion: string;
   setPanelLocation: (location: string) => void;
   setAutoSearch: (autoSearch: boolean) => void;
+  setAudioStream: (audioStream: boolean) => void;
+  setAutoNext: (autoNext: boolean) => void;
 };
 
 const defaultVisibility: Record<LangType, boolean> = {
@@ -82,6 +86,8 @@ const getDefaultSettings = (): Settings => ({
   visibility: defaultVisibility,
   micName: "",
   autoSearch: false,
+  audioStream: false,
+  autoNext: false,
 
   setPanelLocation: () => { },
   updateSetting: () => { },
@@ -93,6 +99,8 @@ const getDefaultSettings = (): Settings => ({
   setMicName: () => { },
   settingVersion: settingVersion,
   setAutoSearch: () => { },
+  setAudioStream: () => { },
+  setAutoNext: () => { },
 });
 
 const getInitialSettings = () => {
@@ -162,6 +170,8 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
   const [micName, setMicName] = useState(initial.micName);
   const [panelLocation, setPanelLocation] = useState(initial.panelLocation);
   const [autoSearch, setAutoSearch] = useState(initial.autoSearch);
+  const [audioStream, setAudioStream] = useState(false);
+  const [autoNext, setAutoNext] = useState(true);
 
   const themes = initial.themes;
   const [activeThemeName, setActiveThemeName] = useState<string>(initial.activeThemeName);
@@ -233,6 +243,10 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
         micName,
         autoSearch,
         setAutoSearch,
+        audioStream,
+        setAudioStream,
+        autoNext,
+        setAutoNext,
       }}
     >
       {children}
