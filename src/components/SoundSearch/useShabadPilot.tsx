@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { Pankti } from "../../models/Pankti";
 import { findMatchingPankti, getUnvisitedIdx } from "./SpeechHelper";
@@ -8,6 +8,7 @@ import { AppContext, PAGE_ANNOUNCEMENT, PAGE_SEARCH, PAGE_SHABAD } from "../../s
 import { useContext as useCtxSelector } from "use-context-selector";
 import { RecordState } from "./useSpeech";
 import { postProcessText } from "./NoiseFilter";
+import { useSettings } from "../../state/providers/SettingContext";
 
 function isSimran(tokenText: string) {
     const tokens = tokenText.trim().split(/[\s,]+/);
@@ -38,6 +39,8 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
     const searchContext = useContext(SearchContext);
     const appContext = useContext(AppContext);
     const [simran, setSimran] = useState(false);
+    const autoNextTrigger = useRef(false);
+    const {autoNext} = useSettings();
 
     const getTerms = useCallback((panktis: Pankti[]) => {
         if (panktis.length > 30) {
@@ -115,6 +118,10 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
         // wait for matching pankti
         if (speechText.trim().endsWith('<no_match>।') || speechText.trim().endsWith('<multi-match>।')) {
             return;
+        }
+
+        if (autoNextTrigger.current) {
+            autoNextTrigger.current = false;
         }
 
         const speechParts = speechText.replace(/[,।\s]+$/g, '').split('।');
@@ -217,16 +224,20 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
         }
 
         // auto navigate when home pankti
-        if (shabadContext.state.current === shabadContext.state.home) {
+        if (shabadContext.state.current === shabadContext.state.home &&
+            !autoNextTrigger.current &&
+            autoNext
+        ) {
             shabadContext.dispatch({
                 type: SHABAD_PANKTI_NO_VISITED,
                 payload: {
                     current: firstUnvisitedIndex,
                 }
             });
+            autoNextTrigger.current = true;
         }
 
-    }, [silenceSeconds, shabadContext.dispatch]);
+    }, [silenceSeconds, shabadContext.dispatch, autoNext]);
 
     return {
         setActive

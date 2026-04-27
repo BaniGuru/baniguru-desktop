@@ -42,23 +42,30 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const [newFinalToken, setNewFinalToken] = useState<string>("");
   const [nonFinalText, setNonFinalText] = useState("");
   const [lastTokenTime, setLastTokenTime] = useState(0);
-  const { autoSearch } = useSettings();
+  const { autoSearch, audioStream, micName } = useSettings();
+  const [silenceSeconds, setSilenceSeconds] = useState(0);
+  const [silenceStart, setSilenceStart] = useState<number|null>(null);
+  const prevLastEndMsRef = useRef<number|null>(null);
 
-  const startSpeech = async() => {
+  const startSpeech = useCallback(async() => {
     setStarted(true);
 
-    await invoke('start_stream', {
-      micName: micName,
-      apiUrl: API_URL,
-      apiToken: API_TOKEN,
-    });
-  };
+    if (audioStream) {
+      await invoke('start_stream', {
+        micName: micName,
+        apiUrl: API_URL,
+        apiToken: API_TOKEN,
+      });
+    }
+  }, [audioStream, micName, API_URL, API_TOKEN]);
 
-  const stopSpeech = async () => {
+  const stopSpeech = useCallback(async () => {
     setStarted(false);
 
-    await invoke('stop_stream');
-  };
+    if (audioStream) {
+      await invoke('stop_stream');
+    }
+  }, [audioStream]);
 
   useEffect(() => {
 
@@ -121,11 +128,6 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
       delete (window as any).addToken;
     };
   }, []);
-
-  const [silenceSeconds, setSilenceSeconds] = useState(0);
-  const [silenceStart, setSilenceStart] = useState<number|null>(null);
-  const prevLastEndMsRef = useRef<number|null>(null);
-  const {micName} = useSettings();
 
   if (sonioxClient.current == null) {
     sonioxClient.current = new SonioxClient({
