@@ -78,6 +78,11 @@
     src: url('/static/riyasti-naveen.ttf') format('truetype');
 }
 
+@font-face {
+    font-family: 'Roboto-Regular';
+    src: url('/static/Roboto-Regular.ttf') format('truetype');
+}
+
 html, body {
     margin: 0;
     background: transparent;

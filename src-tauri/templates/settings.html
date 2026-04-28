@@ -11,13 +11,13 @@
 </head>
 
 <body style="display: flex; height: 100%;">
-    <section class="top-aligned-container" id="container" style="position: fixed; z-index: 999; height: auto;">
+    <section class="top-aligned-container" id="container" style="position: fixed; z-index: 999; height: 300px; overflow-x: auto;">
         <p class="gurmukhi-1" id="gurmukhi"></p>
-        <p class="" id="punjabi"></p>
-        <p class="" id="english"></p>
+        <p class="" id="punjabi" style="font-family: 'anmolunibaniheavy'"></p>
+        <p class="" id="english" style="font-family: 'Roboto-Regular', sans-serif"></p>
     </section>
 
-    <section class="section column" style="overflow: auto; height: 100%; flex-basis: auto; padding-top: 100px;">
+    <section class="section column" style="overflow: auto; height: 100%; flex-basis: auto; padding-top: 300px;">
         <h3 class="title">Overlay Settings</h3>
         <form method="post" action="/save_settings">
             <div class="fixed-grid">
@@ -113,7 +113,7 @@
                         <label class="label">Gurmukhi Font Size</label>
                         <div class="field has-addons">
                             <p class="control">
-                                <button class="button" type="button" onclick="changeValue('gurmukhi_font_size', -1)">
+                                <button class="button" type="button" onclick="changeValue('gurmukhi_font_size', -10)">
                                     <span class="icon is-small">
                                         <i class="fas fa-minus"></i>
                                     </span>
@@ -149,7 +149,7 @@
                         <label class="label">Punjabi Font Size</label>
                         <div class="field has-addons">
                             <p class="control">
-                                <button class="button" type="button" onclick="changeValue('punjabi_font_size', -1)">
+                                <button class="button" type="button" onclick="changeValue('punjabi_font_size', -10)">
                                     <span class="icon is-small">
                                         <i class="fas fa-minus"></i>
                                     </span>
@@ -185,7 +185,7 @@
                         <label class="label">English Font Size</label>
                         <div class="field has-addons">
                             <p class="control">
-                                <button class="button" type="button" onclick="changeValue('english_font_size', -1)">
+                                <button class="button" type="button" onclick="changeValue('english_font_size', -10)">
                                     <span class="icon is-small">
                                         <i class="fas fa-minus"></i>
                                     </span>
@@ -221,7 +221,7 @@
                         <label class="label">Panel Gap X</label>
                         <div class="field has-addons">
                             <p class="control">
-                                <button class="button" type="button" onclick="changeValue('panel_gap_x', -1)">
+                                <button class="button" type="button" onclick="changeValue('panel_gap_x', -40)">
                                     <span class="icon is-small">
                                         <i class="fas fa-minus"></i>
                                     </span>
@@ -242,7 +242,7 @@
                         <label class="label">Panel Gap Y</label>
                         <div class="field has-addons">
                             <p class="control">
-                                <button class="button" type="button" onclick="changeValue('panel_gap_y', -1)">
+                                <button class="button" type="button" onclick="changeValue('panel_gap_y', -40)">
                                     <span class="icon is-small">
                                         <i class="fas fa-minus"></i>
                                     </span>
@@ -263,7 +263,7 @@
                         <label class="label">Punjabi Gap</label>
                         <div class="field has-addons">
                             <p class="control">
-                                <button class="button" type="button" onclick="changeValue('punjabi_gap', -1, -10)">
+                                <button class="button" type="button" onclick="changeValue('punjabi_gap', -1, -40)">
                                     <span class="icon is-small">
                                         <i class="fas fa-minus"></i>
                                     </span>
@@ -272,7 +272,7 @@
                             <input class="input" type="number" name="punjabi_gap" id="punjabi_gap"
                                 value="{{ punjabi_gap }}">
                             <p class="control">
-                                <button class="button" type="button" onclick="changeValue('punjabi_gap', 1, -10)">
+                                <button class="button" type="button" onclick="changeValue('punjabi_gap', 1, -40)">
                                     <span class="icon is-small">
                                         <i class="fas fa-plus"></i>
                                     </span>
@@ -285,7 +285,7 @@
                         <label class="label">English Gap</label>
                         <div class="field has-addons">
                             <p class="control">
-                                <button class="button" type="button" onclick="changeValue('english_gap', -1, -10)">
+                                <button class="button" type="button" onclick="changeValue('english_gap', -1, -40)">
                                     <span class="icon is-small">
                                         <i class="fas fa-minus"></i>
                                     </span>
@@ -294,7 +294,7 @@
                             <input class="input" type="number" name="english_gap" id="english_gap"
                                 value="{{ english_gap }}">
                             <p class="control">
-                                <button class="button" type="button" onclick="changeValue('english_gap', 1, -10)">
+                                <button class="button" type="button" onclick="changeValue('english_gap', 1, -40)">
                                     <span class="icon is-small">
                                         <i class="fas fa-plus"></i>
                                     </span>
