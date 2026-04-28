@@ -67,8 +67,8 @@ pub async fn start_web_server(app_handle: AppHandle) {
             let settings = load_settings(&path);
 
             let mut context = Context::new();
-            let rounded_opacity = (settings.background_opacity * 10.0).round() / 10.0;
-            let rounded_opacity_str = format!("{:.1}", rounded_opacity);
+            let rounded_opacity = (settings.background_opacity * 100.0).round() / 100.0;
+            let rounded_opacity_str = format!("{:.2}", rounded_opacity);
             context.insert("title", "Settings");
             context.insert("theme", &settings.theme);
             context.insert("font", &settings.font);
