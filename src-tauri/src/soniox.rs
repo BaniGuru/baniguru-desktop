@@ -1,7 +1,6 @@
 // src/soniox.rs
 use tokio::sync::{mpsc, watch};
 use tauri::async_runtime::JoinHandle;
-
 use tokio_tungstenite::connect_async;
 use tungstenite::Message;
 
@@ -17,8 +16,6 @@ use bytemuck;
 use tauri::{AppHandle, Emitter};
 
 use crate::audio_bus::AudioBus;
-
-const SONIOX_URL: &str = "wss://stt-rt.jp.soniox.com/transcribe-websocket";
 
 #[derive(Debug, Deserialize)]
 struct SonioxToken {
@@ -76,6 +73,7 @@ fn resample_to_16k(input: &[f32], input_rate: u32) -> Vec<f32> {
 
 pub async fn start_soniox_stream(
     app: AppHandle,
+    soniox_url: String,
     api_key: String,
     panktis: Vec<String>,
     input_rate: u32,
@@ -88,7 +86,7 @@ pub async fn start_soniox_stream(
     //
     // Connect websocket
     //
-    let (ws_stream, _) = connect_async(SONIOX_URL)
+    let (ws_stream, _) = connect_async(soniox_url)
         .await
         .map_err(|e| e.to_string())?;
 
