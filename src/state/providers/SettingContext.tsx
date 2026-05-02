@@ -34,6 +34,8 @@ type Settings = {
   setVisibility: any;
   setMicName: (name: string) => void;
   micName: string | null;
+  speechRegion: string;
+  setSpeechRegion: (region: string) => void;
   settingVersion: string;
   setPanelLocation: (location: string) => void;
   setAutoSearch: (autoSearch: boolean) => void;
@@ -55,6 +57,7 @@ const defaultPanelSetting = {
   panelFontSize: 12,
 };
 
+const defaultRegion = "us";
 const defaultWidth = 800;
 const defaultHeight = 600;
 const settingVersion = "0.0.1.1";
@@ -97,6 +100,8 @@ const getDefaultSettings = (): Settings => ({
   getActiveTheme: () => defaultThemes[0],
   setVisibility: () => { },
   setMicName: () => { },
+  speechRegion: defaultRegion,
+  setSpeechRegion: () => {},
   settingVersion: settingVersion,
   setAutoSearch: () => { },
   setAudioStream: () => { },
@@ -122,6 +127,7 @@ const getInitialSettings = () => {
           themes: parsed.themes ?? defaultThemes,
           activeThemeName: parsed.activeThemeName ?? defaultThemes[0],
           micName: parsed.micName ?? "",
+          speechRegion: parsed.speechRegion ?? defaultRegion,
           autoSearch: parsed.autoSearch ?? false,
         };
         storageSettings = true;
@@ -155,6 +161,7 @@ const storeSettings = (settings: any) => {
       micName: settings.micName,
       settingVersion: settingVersion,
       autoSearch: settings.autoSearch,
+      speechRegion: settings.speechRegion,
     })
   );
 };
@@ -172,6 +179,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
   const [autoSearch, setAutoSearch] = useState(initial.autoSearch);
   const [audioStream, setAudioStream] = useState(false);
   const [autoNext, setAutoNext] = useState(true);
+  const [speechRegion, setSpeechRegion] = useState<string>(initial.speechRegion);
 
   const themes = initial.themes;
   const [activeThemeName, setActiveThemeName] = useState<string>(initial.activeThemeName);
@@ -192,11 +200,13 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
       activeThemeName,
       micName,
       panelLocation,
-      autoSearch
+      autoSearch,
+      speechRegion
     });
   }, [
     visibility, width, height, version, panelSetting, themes, activeThemeName, micName, panelLocation,
-    autoSearch
+    autoSearch,
+    speechRegion
   ]);
 
   const updateSetting = (key: "width" | "height", value: number) => {
@@ -247,6 +257,8 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
         setAudioStream,
         autoNext,
         setAutoNext,
+        speechRegion,
+        setSpeechRegion,
       }}
     >
       {children}

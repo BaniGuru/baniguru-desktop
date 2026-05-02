@@ -20,6 +20,8 @@ export const SettingPanel = () => {
     setAudioStream,
     autoNext,
     setAutoNext,
+    speechRegion,
+    setSpeechRegion,
   } = useSettings();
   
   const { visibility, setVisibility } = useSettings();
@@ -96,15 +98,31 @@ export const SettingPanel = () => {
         <div className="mr-2">Database: </div>
         <div>{DB.getDbPath()}</div>
       </div>
-      <select onChange={(e) => setMicName(e.target.value)} value={micName || ''}>
-        <option value='' disabled>Select a microphone</option>
-        {mics.map((mic, index) => (
-          <option key={index} value={mic}>
-            {mic}
-          </option>
-        ))}
-      </select>
-      <div className="flex flex-row items-center w-full px-4 pt-2">
+      <hr />
+      <div className="flex ml-4 pt-2">
+        <label className="mr-4">Mic</label>
+        <select onChange={(e) => setMicName(e.target.value)} value={micName || ''}>
+          <option value='' disabled>Select a microphone</option>
+          {mics.map((mic, index) => (
+            <option key={index} value={mic}>
+              {mic}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex ml-4 pt-2 pb-2">
+        <label className="mr-4">Region</label>
+        <select
+          onChange={(e) => setSpeechRegion(e.target.value)}
+          value={speechRegion || ''}
+        >
+          <option value='' disabled>Select Speech Region</option>
+          <option key="region_us" value="us">United State</option>
+          <option key="region_jp" value="jp">Japan</option>
+        </select>
+      </div>
+      <hr />
+      <div className="flex flex-row items-center w-full px-4">
         <div className={`flex-1 text-xl`}>Auto search</div>
         <div className="flex text-xl" onClick={() => setAutoSearch(!autoSearch)}>
           {
@@ -112,7 +130,8 @@ export const SettingPanel = () => {
           }
         </div>
       </div>
-      <div className="flex flex-row items-center w-full px-4 pt-2">
+      <hr />
+      <div className="flex flex-row items-center w-full px-4">
         <div className={`flex-1 text-xl`}>Auto Next</div>
         <div className="flex text-xl" onClick={() => setAutoNext(!autoNext)}>
           {
@@ -120,6 +139,7 @@ export const SettingPanel = () => {
           }
         </div>
       </div>
+      <hr />
       <div className="flex flex-row items-center w-full px-4 pt-2">
         <div className={`flex-1 text-xl`}>Audio Stream</div>
         <div className="flex text-xl" onClick={() => setAudioStream(!audioStream)}>

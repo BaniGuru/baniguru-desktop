@@ -1,4 +1,4 @@
-import { ErrorStatus, SonioxClient } from "@soniox/speech-to-text-web";
+import { ErrorStatus } from "@soniox/speech-to-text-web";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import useShabadPilot from "./useShabadPilot";
 import { AppContext, PAGE_ANNOUNCEMENT, PAGE_BANI, PAGE_RECENT, PAGE_SEARCH, PAGE_SHABAD } from "../../state/providers/AppProvider";
@@ -12,7 +12,10 @@ import useSearchPilot from "./useSearchPilot";
 import { ENV } from "../../utils/env";
 import { ApiClient } from "../../utils/apiClient";
 
-const API_KEY = ENV.speechToken;
+const SPEECH_API_US_URL = "wss://stt-rt.soniox.com/transcribe-websocket";
+const SPEECH_API_JP_URL = "wss://stt-rt.jp.soniox.com/transcribe-websocket";
+const SPEECH_API_US_KEY = ENV.speechUsToken;
+const SPEECH_API_JP_KEY = ENV.speechJpToken;
 const API_URL = ENV.apiUrl;
 const API_TOKEN = ENV.apiToken;
 
@@ -25,7 +28,6 @@ type TranscriptionError = {
 export type RecordState = "Init" | "Running" | "Starting" | "Restarting";
 
 const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
-  const sonioxClient = useRef<SonioxClient | null>(null);
 
   const status = useRef<RecordState>("Init");
   const startPage = useRef<string|null>(null);
@@ -40,9 +42,10 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const listenerRef = useRef(false);
   const [finalText, setFinalText] = useState("");
   const [newFinalToken, setNewFinalToken] = useState<string>("");
+  const [errorText, setErrorText] = useState("");
   const [nonFinalText, setNonFinalText] = useState("");
   const [lastTokenTime, setLastTokenTime] = useState(0);
-  const { autoSearch, audioStream, micName } = useSettings();
+  const { autoSearch, audioStream, micName, speechRegion } = useSettings();
   const [silenceSeconds, setSilenceSeconds] = useState(0);
   const [silenceStart, setSilenceStart] = useState<number|null>(null);
   const prevLastEndMsRef = useRef<number|null>(null);
@@ -129,15 +132,9 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     };
   }, []);
 
-  if (sonioxClient.current == null) {
-    sonioxClient.current = new SonioxClient({
-      apiKey: API_KEY,
-    });
-  }
-
   const startTranscription = useCallback(async (panktis: string[]) => {
     if (micName === "") {
-      setNonFinalText("Mic not selected.");
+      setErrorText("Mic not selected.");
       setStarted(false);
       return;
     }
@@ -149,6 +146,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
 
     status.current = 'Starting';
     transcriptRef.current = "";
+    setErrorText("");
     setFinalText("");
     setNonFinalText("");
     setSpeechTokens([]);
@@ -156,11 +154,23 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     setTerms(panktis);
     startPage.current = appContext.state.page;
 
+    let apiKey = SPEECH_API_US_KEY;
+    let speechUrl = SPEECH_API_US_URL;
+    if (speechRegion == "jp") {
+      apiKey = SPEECH_API_JP_KEY;
+      speechUrl = SPEECH_API_JP_URL;
+    }
+
     try {
-      await invoke('start_soniox', { micName: micName, apiKey: API_KEY, panktis });
+      await invoke('start_soniox', {
+        micName: micName,
+        sonioxUrl: speechUrl,
+        apiKey: apiKey,
+        panktis
+      });
     } catch (error) {
       setStarted(false);
-      setNonFinalText("Error: could not start.");
+      setErrorText("Api Error: " + error);
       console.error('Error starting Soniox:', error);
       return;
     }
@@ -169,13 +179,17 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     console.log('started');
   }, [
     micName,
-    API_KEY,
+    SPEECH_API_US_URL,
+    SPEECH_API_US_KEY,
+    SPEECH_API_JP_KEY,
+    SPEECH_API_JP_URL,
     setFinalText,
     setNonFinalText,
     setSpeechTokens,
     setError,
     setTerms,
     appContext.state.page,
+    speechRegion,
   ]);
 
   const stopTranscription = useCallback(async () => {
@@ -204,8 +218,20 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     startPage.current = appContext.state.page;
     status.current = "Restarting";
 
+    let apiKey = SPEECH_API_US_KEY;
+    let speechUrl = SPEECH_API_US_URL;
+    if (speechRegion == "jp") {
+      apiKey = SPEECH_API_JP_KEY;
+      speechUrl = SPEECH_API_JP_URL;
+    }
+
     try {
-      await invoke('restart_soniox', { micName: micName, apiKey: API_KEY, panktis });
+      await invoke('restart_soniox', {
+        micName: micName,
+        sonioxUrl: speechUrl,
+        apiKey: apiKey,
+        panktis
+      });
     } catch (error) {
       setStarted(false);
       status.current = 'Init';
@@ -223,6 +249,10 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     console.log('Restrated');
   }, [
     appContext.state.page,
+    SPEECH_API_US_URL,
+    SPEECH_API_US_KEY,
+    SPEECH_API_JP_KEY,
+    SPEECH_API_JP_URL,
   ]);
 
   const shabadPilot = useShabadPilot(finalText, nonFinalText, status.current, startPage.current, startTranscription, restartTranscript, silenceSeconds);
@@ -339,7 +369,8 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     status,
     terms,
     nonFinalText,
-    error
+    error,
+    errorText
   };
 }
 

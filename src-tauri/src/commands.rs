@@ -172,6 +172,7 @@ pub async fn stop_stream(
 #[tauri::command]
 pub async fn start_soniox(
     app: AppHandle,
+    soniox_url: String,
     api_key: String,
     mic_name: String,
     panktis: Vec<String>,
@@ -194,14 +195,25 @@ pub async fn start_soniox(
         .await
         .ok_or("Mic config missing")?;
 
-    let stream = start_soniox_stream(
+    let stream_result = start_soniox_stream(
         app,
+        soniox_url,
         api_key,
         panktis,
         mic_config.sample_rate,
         mic_config.channels,
         audio.bus.clone(),
-    ).await?;
+    ).await;
+
+    let stream = match stream_result {
+        Ok(stream) => stream,
+        Err(e) => {
+            println!("Soniox stream failed, releasing mic: {}", e);
+
+            release_mic(&audio).await;
+            return Err(e);
+        }
+    };
 
     *guard = Some(stream);
 
@@ -247,6 +259,7 @@ pub async fn stop_soniox(
 #[tauri::command]
 pub async fn restart_soniox(
     app: AppHandle,
+    soniox_url: String,
     api_key: String,
     mic_name: String,
     panktis: Vec<String>,
@@ -271,6 +284,7 @@ pub async fn restart_soniox(
 
     let new_stream = start_soniox_stream(
         app,
+        soniox_url,
         api_key,
         panktis,
         mic_config.sample_rate,
