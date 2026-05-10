@@ -40,6 +40,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
 
   const transcriptRef = useRef("");
   const listenerRef = useRef(false);
+  const audioStreaming = useRef(false);
   const [finalText, setFinalText] = useState("");
   const [newFinalToken, setNewFinalToken] = useState<string>("");
   const [errorText, setErrorText] = useState("");
@@ -50,24 +51,34 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const [silenceStart, setSilenceStart] = useState<number|null>(null);
   const prevLastEndMsRef = useRef<number|null>(null);
 
+  useEffect(() => {
+    if (!audioStreaming.current && audioStream) {
+      audioStreaming.current = true;
+      startAudioStream();
+    } else if (audioStreaming.current && !audioStream) {
+      audioStreaming.current = false;
+      stopAudioStream();
+    }
+  }, [audioStream]);
+
+  const startAudioStream = useCallback(async() => {
+    await invoke('start_stream', {
+      micName: micName,
+      apiUrl: API_URL,
+      apiToken: API_TOKEN,
+    });
+  }, [micName, API_URL, API_TOKEN]);
+
+  const stopAudioStream = useCallback(async() => {
+    await invoke('stop_stream');
+  }, [micName, API_URL, API_TOKEN]);
+
   const startSpeech = useCallback(async() => {
     setStarted(true);
-
-    if (audioStream) {
-      await invoke('start_stream', {
-        micName: micName,
-        apiUrl: API_URL,
-        apiToken: API_TOKEN,
-      });
-    }
   }, [audioStream, micName, API_URL, API_TOKEN]);
 
   const stopSpeech = useCallback(async () => {
     setStarted(false);
-
-    if (audioStream) {
-      await invoke('stop_stream');
-    }
   }, [audioStream]);
 
   useEffect(() => {
