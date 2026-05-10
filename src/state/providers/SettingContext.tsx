@@ -129,6 +129,7 @@ const getInitialSettings = () => {
           micName: parsed.micName ?? "",
           speechRegion: parsed.speechRegion ?? defaultRegion,
           autoSearch: parsed.autoSearch ?? false,
+          audioStream: parsed.audioStream ?? false,
         };
         storageSettings = true;
       }
@@ -162,6 +163,7 @@ const storeSettings = (settings: any) => {
       settingVersion: settingVersion,
       autoSearch: settings.autoSearch,
       speechRegion: settings.speechRegion,
+      audioStream: settings.audioStream,
     })
   );
 };
@@ -177,7 +179,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
   const [micName, setMicName] = useState(initial.micName);
   const [panelLocation, setPanelLocation] = useState(initial.panelLocation);
   const [autoSearch, setAutoSearch] = useState(initial.autoSearch);
-  const [audioStream, setAudioStream] = useState(false);
+  const [audioStream, setAudioStream] = useState(initial.audioStream);
   const [autoNext, setAutoNext] = useState(true);
   const [speechRegion, setSpeechRegion] = useState<string>(initial.speechRegion);
 
@@ -201,12 +203,14 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
       micName,
       panelLocation,
       autoSearch,
-      speechRegion
+      speechRegion,
+      audioStream
     });
   }, [
     visibility, width, height, version, panelSetting, themes, activeThemeName, micName, panelLocation,
     autoSearch,
-    speechRegion
+    speechRegion,
+    audioStream,
   ]);
 
   const updateSetting = (key: "width" | "height", value: number) => {

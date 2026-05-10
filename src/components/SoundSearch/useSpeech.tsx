@@ -50,6 +50,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const [silenceSeconds, setSilenceSeconds] = useState(0);
   const [silenceStart, setSilenceStart] = useState<number|null>(null);
   const prevLastEndMsRef = useRef<number|null>(null);
+  const [pauseSpeech, setPauseSpeech] = useState<boolean>(false);
 
   useEffect(() => {
     if (!audioStreaming.current && audioStream) {
@@ -75,10 +76,16 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
 
   const startSpeech = useCallback(async() => {
     setStarted(true);
+    setPauseSpeech(false);
   }, [audioStream, micName, API_URL, API_TOKEN]);
+
+  const togglePauseSpeech = useCallback((status: boolean) => {
+    setPauseSpeech(status)
+  }, []);
 
   const stopSpeech = useCallback(async () => {
     setStarted(false);
+    setPauseSpeech(false);
   }, [audioStream]);
 
   useEffect(() => {
@@ -266,7 +273,16 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     SPEECH_API_JP_URL,
   ]);
 
-  const shabadPilot = useShabadPilot(finalText, nonFinalText, status.current, startPage.current, startTranscription, restartTranscript, silenceSeconds);
+  const shabadPilot = useShabadPilot(
+    finalText,
+    nonFinalText,
+    status.current,
+    startPage.current,
+    startTranscription,
+    restartTranscript,
+    silenceSeconds,
+    pauseSpeech
+  );
   const baniPilot = useBaniPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript, silenceSeconds);
   const searchPilot = useSearchPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript);
 
@@ -376,6 +392,8 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     started,
     startSpeech,
     stopSpeech,
+    togglePauseSpeech,
+    pauseSpeech,
     speechTokens,
     status,
     terms,
