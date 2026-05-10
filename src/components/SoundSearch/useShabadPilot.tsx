@@ -30,7 +30,7 @@ function isSimran(tokenText: string) {
     return count >= 4;
 }
 
-const useShabadPilot = (finalText: string, partialText: string, status: RecordState, startPage: string|null, startTranscription: any, restartTranscript: any, silenceSeconds: number) => {
+const useShabadPilot = (finalText: string, partialText: string, status: RecordState, startPage: string|null, startTranscription: any, restartTranscript: any, silenceSeconds: number, pauseSpeech: boolean) => {
 
     const [lastCheckIdx, setLastCheckIdx] = useState(0);
     const [prevText, setPrevText] = useState("");
@@ -88,7 +88,7 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
         //     return;
         // }
 
-        if (silenceSeconds > 0) {
+        if (silenceSeconds > 0 || pauseSpeech) {
             return;
         }
 
@@ -199,10 +199,11 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
         shabadContext.state.panktis,
         shabadContext.state.current,
         getTerms,
+        pauseSpeech,
     ]);
 
     useEffect(() => {
-        if (silenceSeconds < 5 || simran) return;
+        if (silenceSeconds < 5 || simran || pauseSpeech) return;
 
         const panktis = shabadContext.state.panktis
         const firstUnvisitedIndex = getUnvisitedIdx(panktis, shabadContext.state.current);
@@ -237,7 +238,7 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
             autoNextTrigger.current = true;
         }
 
-    }, [silenceSeconds, shabadContext.dispatch, autoNext]);
+    }, [silenceSeconds, shabadContext.dispatch, autoNext, pauseSpeech]);
 
     return {
         setActive
