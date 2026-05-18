@@ -271,7 +271,15 @@ const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
     }, [nextPankti, fontSize]);
 
     useEffect(() => {
-        apiClient?.sendPankti(state.shabadId ?? "", state.current ?? 0, state.home ?? 0, state.baniId);
+        apiClient?.sendPankti(
+            state.shabadId ?? "",
+            state.current ?? 0,
+            state.home ?? 0,
+            state.baniId,
+            state.panktis
+                .map((p, index) => p.visited ? index : null)
+                .filter((index): index is number => index !== null)
+        );
 
         if (state.baniId !== null) {
             return;

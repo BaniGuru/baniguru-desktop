@@ -7,9 +7,9 @@ use tokio::sync::Mutex;
 use cpal::traits::{DeviceTrait, HostTrait};
 
 use crate::soniox::{start_soniox_stream, stop_soniox_stream, SonioxStream};
-use crate::webrtc::start_audio_stream;
+use crate::p2p_audio_sender::start_p2p_audio_stream_with_signaling;
+use crate::p2p_audio_sender::ApiConfig;
 use crate::audio_bus::AudioBus;
-use crate::webrtc::ApiConfig;
 use tauri::async_runtime::JoinHandle;
 
 use cpal::SampleFormat;
@@ -91,6 +91,7 @@ pub async fn update_pankti(
 pub async fn start_stream(
     app: AppHandle,
     mic_name: String,
+    wss_api_url: String,
     api_url: String,
     api_token: String,
     state: State<'_, RawStreamState>,
@@ -111,20 +112,20 @@ pub async fn start_stream(
         .lock()
         .await
         .ok_or("Mic config missing")?;
-    
-    let api_config = ApiConfig {
-        url: api_url,
-        token: api_token,
-    };
 
-    // Start streaming using shared bus
-    let handle = start_audio_stream(
+    // Start audio sender
+    let handle = start_p2p_audio_stream_with_signaling(
         app,
         mic_config.sample_rate,
         mic_config.channels,
         audio.bus.clone(),
-        api_config,
+        ApiConfig {
+            wss_url: wss_api_url,
+            url: api_url,
+            token: api_token,
+        },
     );
+
     *state.task.lock().await = Some(handle);
 
     *running = true;

@@ -26,9 +26,19 @@ tungstenite = { version = "0.21", features = ["rustls-tls-native-roots"] }
 base64 = "0.21"
 bytemuck = "1"
 crossbeam-channel = "0.5"
-rubato = "0.13"
+# rubato = "0.13"
+rubato = "0.16"
 futures = "0.3"
 url = "2"
+
+# WebRTC audio
+webrtc = "0.13"
+
+# Opus encoder
+opus = "0.3"
+
+# Error handling
+anyhow = "1"
 
 # Serde for JSON serialization
 serde = { version = "1.0", features = ["derive"] }

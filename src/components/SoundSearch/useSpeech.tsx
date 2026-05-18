@@ -16,6 +16,7 @@ const SPEECH_API_US_URL = "wss://stt-rt.soniox.com/transcribe-websocket";
 const SPEECH_API_JP_URL = "wss://stt-rt.jp.soniox.com/transcribe-websocket";
 const SPEECH_API_US_KEY = ENV.speechUsToken;
 const SPEECH_API_JP_KEY = ENV.speechJpToken;
+const WSS_API_URL = ENV.wssApiUrl;
 const API_URL = ENV.apiUrl;
 const API_TOKEN = ENV.apiToken;
 
@@ -65,19 +66,20 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const startAudioStream = useCallback(async() => {
     await invoke('start_stream', {
       micName: micName,
+      wssApiUrl: WSS_API_URL,
       apiUrl: API_URL,
       apiToken: API_TOKEN,
     });
-  }, [micName, API_URL, API_TOKEN]);
+  }, [micName, API_URL, WSS_API_URL, API_TOKEN]);
 
   const stopAudioStream = useCallback(async() => {
     await invoke('stop_stream');
-  }, [micName, API_URL, API_TOKEN]);
+  }, []);
 
   const startSpeech = useCallback(async() => {
     setStarted(true);
     setPauseSpeech(false);
-  }, [audioStream, micName, API_URL, API_TOKEN]);
+  }, []);
 
   const togglePauseSpeech = useCallback((status: boolean) => {
     setPauseSpeech(status)

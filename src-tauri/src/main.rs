@@ -9,6 +9,7 @@ mod settings;
 mod soniox;
 mod audio_bus;
 mod webrtc;
+mod p2p_audio_sender;
 
 use futures_util::StreamExt;
 use serde::Serialize;

@@ -17,7 +17,7 @@ export interface ApiClient {
   isOpen: () => boolean;
   sendToken: (token: ApiToken) => void;
   sendPage: (page: string) => void;
-  sendPankti: (shabadId: string, current: number, home: number, baniId: number|null) => void;
+  sendPankti: (shabadId: string, current: number, home: number, baniId: number|null, visited: number[]) => void;
   sendSearchPanktis: (ids: string[]) => void;
 }
 
@@ -34,7 +34,7 @@ export const apiClient = (shabadDispatch: React.Dispatch<any>, appDispatch: Reac
     if (socket && socket.readyState === WebSocket.OPEN) return;
 
     socket = new WebSocket(
-      `${ENV.apiUrl}?token=${ENV.apiToken}&appid=gurbani-explorer`
+      `${ENV.wssApiUrl}?token=${ENV.apiToken}&appid=gurbani-explorer`
     );
 
     socket.onopen = () => {
@@ -134,7 +134,7 @@ export const apiClient = (shabadDispatch: React.Dispatch<any>, appDispatch: Reac
     socket.send(JSON.stringify({ type: "page", p: page }));
   };
 
-  const sendPankti = (shabadId: string, current: number, home: number, baniId: number|null) => {
+  const sendPankti = (shabadId: string, current: number, home: number, baniId: number|null, visited: number[]) => {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       console.warn("WebSocket not connected");
       return;
@@ -146,6 +146,7 @@ export const apiClient = (shabadDispatch: React.Dispatch<any>, appDispatch: Reac
       c: current,
       h: home,
       b: baniId,
+      visited: visited,
     }));
   }
 
