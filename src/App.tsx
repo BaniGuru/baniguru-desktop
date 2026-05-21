@@ -19,7 +19,6 @@ import { appVersion, useSettings } from "./state/providers/SettingContext";
 import { closeWindow, minimizeWindow, useAutoHideCursor } from "./utils/useAutoHideCursor";
 import { useThemeColors } from "./utils/useTheme";
 import useSpeech from "./components/SoundSearch/useSpeech";
-import BaniDisplay from "./components/BaniDisplay";
 import { ShabadContext } from "./state/providers/ShabadProvider";
 import { useContextSelector } from "use-context-selector";
 import AnnouncementPanel from "./components/AnnouncementPanel";
@@ -27,6 +26,7 @@ import { AnnouncementDisplay } from "./components/AnnouncementDisplay";
 import { gurbaniSearch } from "./utils/gurbaniSearch";
 import { apiClient, ApiClient } from "./utils/apiClient";
 import { SearchContext } from "./state/providers/SearchProvider";
+import BaniGroupDisplay from "./components/BaniDisplay/BaniGroupDisplay";
 
 
 type DownloadEvent =
@@ -50,6 +50,7 @@ const TabPanel = styled.div<TabPanelProps>`
     width: ${({ width }) => `${width}%`};
     height: ${({ height }) => `${height}%`};
     font-size: ${({ fontSize }) => `${fontSize*0.24}px`};
+    z-index: 100;
 `;
 
 function App() {
@@ -333,8 +334,8 @@ function App() {
             <AnnouncementDisplay />
         }
 
-        {speechStarted && baniId === 13
-            ? <BaniDisplay />
+        {(baniId == 13 || baniId == 12)
+            ? <BaniGroupDisplay />
             : <ShabadDisplay apiClient={apiClientRef.current ?? null} />
         }
           {appContext.state.show_panel &&
