@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="80" viewBox="0 0 1000 80">
+<line x1="20" y1="40" x2="430" y2="40" stroke="#D9A14A" stroke-width="2"/>
+<line x1="570" y1="40" x2="980" y2="40" stroke="#D9A14A" stroke-width="2"/>
+<text x="500" y="53" text-anchor="middle" font-size="38" fill="#DF6B00">☬</text>
+</svg>
