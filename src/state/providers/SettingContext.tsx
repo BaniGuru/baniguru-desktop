@@ -1,74 +1,46 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-/* =========================
-   Types
-   ========================= */
-type FontType = "ਗੁਰਮੁਖੀ" | "ਪੰਜਾਬੀ" | "English" | "Next Pankti" | "Search";
-
 export type LangType = "ਗੁਰਮੁਖੀ" | "ਪੰਜਾਬੀ" | "English" | "Next Pankti" | "Akhand Paath";
-
-type Margin = [top: number, left: number, right: number, bottom: number];
 
 type Theme = {
   name: string;
-  margin: Margin;
 };
 
 type Settings = {
-  fontSizes: Record<FontType, number>;
   visibility: Record<LangType, boolean>;
   panelSetting: {
     panelWidth: number;
     panelHeight: number;
-    panelFontSize: number;
   };
-  displaySpacing: {
-    startSpace: number;
-    endSpace: number;
-    leftSpace: number;
-    rightSpace: number,
-    gurmukhiSpace: number;
-    translationSpace: number;
-  };
+  autoSearch: boolean;
+  audioStream: boolean;
+  autoNext: boolean;
+  panelLocation: string;
   width: number;
   height: number;
   version: string;
 
-  /** Multi-theme support */
   themes: Theme[];
   activeThemeName: string;
 
-  /** Existing updaters */
-  updateFontSize: (font: FontType, size: number) => void;
-  updateSpacing: (key: keyof Settings["displaySpacing"], value: number) => void;
   updateSetting: (key: "width" | "height", value: number) => void;
-  updatePanelSetting: (key: keyof Settings["panelSetting"], value: number) => void;
+  updatePanelSetting: (key: "panelWidth" | "panelHeight", value: number) => void;
   updateVersion: (version: string) => void;
 
-  /** Theme CRUD + selection */
-  addTheme: (theme: Theme) => void;
-  updateTheme: (name: string, patch: Partial<Omit<Theme, "name">> & { name?: string }) => void;
-  removeTheme: (name: string) => void;
   setActiveTheme: (name: string) => void;
 
-  /** Helpers */
   getActiveTheme: () => Theme;
-  getThemeMarginBaseline: (name?: string) => Margin;
-  isThemeMarginDefault: (name?: string) => boolean;
-  setThemeMarginToDefault: (name?: string) => void;
 
   setVisibility: any;
-};
-
-/* =========================
-   Defaults
-   ========================= */
-const defaultFontSizes: Record<FontType, number> = {
-  "ਗੁਰਮੁਖੀ": 90,
-  "ਪੰਜਾਬੀ": 50,
-  "English": 45,
-  "Next Pankti": 70,
-  "Search": 20,
+  setMicName: (name: string) => void;
+  micName: string | null;
+  speechRegion: string;
+  setSpeechRegion: (region: string) => void;
+  settingVersion: string;
+  setPanelLocation: (location: string) => void;
+  setAutoSearch: (autoSearch: boolean) => void;
+  setAudioStream: (audioStream: boolean) => void;
+  setAutoNext: (autoNext: boolean) => void;
 };
 
 const defaultVisibility: Record<LangType, boolean> = {
@@ -79,230 +51,183 @@ const defaultVisibility: Record<LangType, boolean> = {
   "Akhand Paath": false,
 };
 
-const defaultDisplaySpacing = {
-  startSpace: 10,
-  endSpace: 10,
-  leftSpace: 10,
-  rightSpace: 10,
-  gurmukhiSpace: 12,
-  translationSpace: 10,
-};
-
 const defaultPanelSetting = {
   panelWidth: 33,
   panelHeight: 33,
   panelFontSize: 12,
 };
 
+const defaultRegion = "us";
 const defaultWidth = 800;
 const defaultHeight = 600;
+const settingVersion = "0.0.1.2";
 export const appVersion = "0.0.1";
 
 const defaultThemes: Theme[] = [
-  { name: "Light", margin: [0, 0, 0, 0] },
-  { name: "Blue",  margin: [0, 0, 0, 0] },
-  { name: "Dark",  margin: [0, 0, 0, 0] },
-  { name: "Sepia",  margin: [0, 0, 0, 0] },
-  { name: "ShabadOs1", margin: [0, 0, 0, 0] },
-  { name: "ShabadOs2", margin: [0, 0, 0, 0] },
-  { name: "Bandi Chorh Diwas", margin: [0, 0, 0, 0] },
-  { name: "Guru Nanak Dev Ji", margin: [0, 0, 0, 0] }
+  {name: "BaniGuru"},
+  { name: "Light" },
+  { name: "Blue" },
+  { name: "Dark" },
+  { name: "Darker" },
+  { name: "Sepia" },
+  { name: "ShabadOs1" },
+  { name: "ShabadOs2" },
+  { name: "Bandi Chorh Diwas" },
+  { name: "Guru Nanak Dev Ji" }
 ];
 
 const LOCAL_STORAGE_KEY = "settings";
+const defaultPanelLocation = "right";
 
-/** Global fallback baseline margin if a theme has no entry in defaultThemes */
-const GLOBAL_DEFAULT_MARGIN: Margin = [0, 0, 0, 0];
+const getDefaultSettings = (): Settings => ({
+  panelSetting: defaultPanelSetting,
+  panelLocation: defaultPanelLocation,
+  width: defaultWidth,
+  height: defaultHeight,
+  version: "",
+  themes: defaultThemes,
+  activeThemeName: defaultThemes[0].name,
+  visibility: defaultVisibility,
+  micName: "",
+  autoSearch: false,
+  audioStream: false,
+  autoNext: false,
 
-/* =========================
-   Utils
-   ========================= */
-const marginsEqual = (a: Margin, b: Margin) =>
-  a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
+  setPanelLocation: () => { },
+  updateSetting: () => { },
+  updatePanelSetting: () => { },
+  updateVersion: () => { },
+  setActiveTheme: () => { },
+  getActiveTheme: () => defaultThemes[0],
+  setVisibility: () => { },
+  setMicName: () => { },
+  speechRegion: defaultRegion,
+  setSpeechRegion: () => {},
+  settingVersion: settingVersion,
+  setAutoSearch: () => { },
+  setAudioStream: () => { },
+  setAutoNext: () => { },
+});
 
-/* =========================
-   Load (with migration & reconciliation)
-   ========================= */
 const getInitialSettings = () => {
+  let settings = getDefaultSettings();
+  let storageSettings = false;
+
   try {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-
-      // 1) Gather saved themes (support old single-theme saves)
-      let savedThemes: Theme[] | undefined = parsed.themes;
-      let savedActiveThemeName: string | undefined = parsed.activeThemeName;
-
-      if (!savedThemes) {
-        // Old shape: { theme: { name } }
-        if (parsed.theme?.name) {
-          savedThemes = [{ name: parsed.theme.name, margin: GLOBAL_DEFAULT_MARGIN }];
-          savedActiveThemeName = parsed.theme.name;
-        }
+      if (parsed.settingVersion && parsed.settingVersion === settingVersion) {
+        settings = {
+          ...settings,
+          visibility: { ...(parsed.visibility ?? defaultVisibility), "Akhand Paath": false },
+          panelSetting: { ...defaultPanelSetting, ...parsed.panelSetting },
+          width: parsed.width ?? defaultWidth,
+          height: parsed.height ?? defaultHeight,
+          version: parsed.version ?? "",
+          themes: parsed.themes ?? defaultThemes,
+          activeThemeName: parsed.activeThemeName ?? defaultThemes[0],
+          micName: parsed.micName ?? "",
+          speechRegion: parsed.speechRegion ?? defaultRegion,
+          autoSearch: parsed.autoSearch ?? false,
+          audioStream: parsed.audioStream ?? false,
+        };
+        storageSettings = true;
       }
-
-      // Normalize: ensure array
-      if (!Array.isArray(savedThemes) || savedThemes.length === 0) {
-        savedThemes = [];
-      }
-
-      // 2) Reconcile with defaultThemes:
-      //    - Keep themes that exist in defaultThemes (preserve saved margins)
-      //    - Add any default themes missing from saved
-      //    - Drop any saved themes not present in defaultThemes
-      const savedMap = new Map<string, Theme>(savedThemes.map(t => [t.name, t]));
-      const reconciledThemes: Theme[] = defaultThemes.map(def =>
-        savedMap.get(def.name) ?? def
-      );
-
-      // 3) Active theme validation/fallback
-      let activeThemeName = savedActiveThemeName ?? defaultThemes[0].name;
-      if (!reconciledThemes.some(t => t.name === activeThemeName)) {
-        activeThemeName = defaultThemes[0].name;
-      }
-
-      return {
-        fontSizes: { ...defaultFontSizes, ...parsed.fontSizes },
-        visibility: {...(parsed.visibility ?? defaultVisibility), "Akhand Paath": false},
-        displaySpacing: { ...defaultDisplaySpacing, ...parsed.displaySpacing },
-        panelSetting: { ...defaultPanelSetting, ...parsed.panelSetting },
-        width: parsed.width ?? defaultWidth,
-        height: parsed.height ?? defaultHeight,
-        version: parsed.version ?? "",
-        themes: reconciledThemes,
-        activeThemeName,
-      };
     }
+
+    if (!storageSettings) {
+      storeSettings(settings);
+    }
+
   } catch (e) {
     console.warn("Error loading settings from localStorage:", e);
   }
 
-  // Fresh install defaults
-  return {
-    fontSizes: defaultFontSizes,
-    displaySpacing: defaultDisplaySpacing,
-    panelSetting: defaultPanelSetting,
-    width: defaultWidth,
-    height: defaultHeight,
-    version: "",
-    themes: defaultThemes,
-    activeThemeName: defaultThemes[0].name,
-  };
+  return settings;
 };
 
-/* =========================
-   Context
-   ========================= */
 const SettingContext = createContext<Settings | undefined>(undefined);
 
-/* =========================
-   Provider
-   ========================= */
+const storeSettings = (settings: any) => {
+  localStorage.setItem(
+    LOCAL_STORAGE_KEY,
+    JSON.stringify({
+      visibility: settings.visibility,
+      width: settings.width,
+      height: settings.height,
+      version: settings.version,
+      panelSetting: settings.panelSetting,
+      themes: settings.themes,
+      activeThemeName: settings.activeThemeName,
+      micName: settings.micName,
+      settingVersion: settingVersion,
+      autoSearch: settings.autoSearch,
+      speechRegion: settings.speechRegion,
+      audioStream: settings.audioStream,
+    })
+  );
+};
+
 export const SettingProvider = ({ children }: { children: React.ReactNode }) => {
   const initial = getInitialSettings();
 
-  const [fontSizes, setFontSizes] = useState<Record<FontType, number>>(initial.fontSizes);
   const [visibility, setVisibility] = useState<Record<LangType, boolean>>(initial.visibility);
-  const [displaySpacing, setDisplaySpacing] = useState(initial.displaySpacing);
   const [panelSetting, setPanelSetting] = useState(initial.panelSetting);
   const [width, setWidth] = useState(initial.width);
   const [height, setHeight] = useState(initial.height);
   const [version, setVersion] = useState(initial.version);
+  const [micName, setMicName] = useState(initial.micName);
+  const [panelLocation, setPanelLocation] = useState(initial.panelLocation);
+  const [autoSearch, setAutoSearch] = useState(initial.autoSearch);
+  const [audioStream, setAudioStream] = useState(initial.audioStream);
+  const [autoNext, setAutoNext] = useState(true);
+  const [speechRegion, setSpeechRegion] = useState<string>(initial.speechRegion);
 
-  // Themes
-  const [themes, setThemes] = useState<Theme[]>(initial.themes);
+  const themes = initial.themes;
   const [activeThemeName, setActiveThemeName] = useState<string>(initial.activeThemeName);
 
-  // Derived: active theme object (always valid)
   const activeTheme = useMemo<Theme>(() => {
     const found = themes.find(t => t.name === activeThemeName);
     return found ?? themes[0];
   }, [themes, activeThemeName]);
 
-  // Persist everything
   useEffect(() => {
-    localStorage.setItem(
-      LOCAL_STORAGE_KEY,
-      JSON.stringify({
-        fontSizes,
-        visibility,
-        displaySpacing,
-        width,
-        height,
-        version,
-        panelSetting,
-        themes,
-        activeThemeName,
-      })
-    );
-  }, [fontSizes, visibility, displaySpacing, width, height, version, panelSetting, themes, activeThemeName]);
-
-  /* ----- Existing updaters ----- */
-  const updateFontSize = (font: FontType, size: number) => {
-    setFontSizes(prev => ({ ...prev, [font]: size }));
-  };
-
-  const updateSpacing = (key: keyof Settings["displaySpacing"], value: number) => {
-    setDisplaySpacing((prev: any) => ({ ...prev, [key]: value }));
-  };
+    storeSettings({
+      visibility,
+      width,
+      height,
+      version,
+      panelSetting,
+      themes,
+      activeThemeName,
+      micName,
+      panelLocation,
+      autoSearch,
+      speechRegion,
+      audioStream
+    });
+  }, [
+    visibility, width, height, version, panelSetting, themes, activeThemeName, micName, panelLocation,
+    autoSearch,
+    speechRegion,
+    audioStream,
+  ]);
 
   const updateSetting = (key: "width" | "height", value: number) => {
     if (key === "width") setWidth(value);
     else setHeight(value);
   };
 
-  const updatePanelSetting = (key: keyof Settings["panelSetting"], value: number) => {
-    setPanelSetting((prev: any) => ({ ...prev, [key]: value }));
-  };
+  const updatePanelSetting = (key: "panelWidth" | "panelHeight", value: number) => {
+    if (key === "panelWidth") {
+      setPanelSetting(prev => ({...prev, 'panelWidth': value}));
+    } else {
+      setPanelSetting(prev => ({...prev, 'panelHeight': value}));
+    }
+  }
 
   const updateVersion = (v: string) => setVersion(v);
-
-  /* ----- Theme CRUD + selection ----- */
-  const addTheme = (theme: Theme) => {
-    setThemes(prev => {
-      if (prev.some(t => t.name === theme.name)) return prev; // prevent dup names
-      return [...prev, theme];
-    });
-  };
-
-  const updateTheme = (name: string, patch: Partial<Omit<Theme, "name">> & { name?: string }) => {
-    setThemes(prev => {
-      const idx = prev.findIndex(t => t.name === name);
-      if (idx === -1) return prev;
-
-      const nextName = patch.name ?? prev[idx].name;
-      // Prevent renaming to an existing name
-      if (nextName !== name && prev.some((t, i) => i !== idx && t.name === nextName)) {
-        return prev;
-      }
-
-      const updated = { ...prev[idx], ...patch, name: nextName };
-      const next = [...prev];
-      next[idx] = updated;
-
-      // Keep active selection in sync if renamed
-      if (activeThemeName === name && nextName !== name) {
-        setActiveThemeName(nextName);
-      }
-      return next;
-    });
-  };
-
-  const removeTheme = (name: string) => {
-    setThemes(prev => {
-      const filtered = prev.filter(t => t.name !== name);
-      if (filtered.length === 0) {
-        // Always keep at least one theme
-        const fallback = defaultThemes;
-        setActiveThemeName(fallback[0].name);
-        return fallback;
-      }
-      if (activeThemeName === name) {
-        setActiveThemeName(filtered[0].name);
-      }
-      return filtered;
-    });
-  };
 
   const setActiveTheme = (name: string) => {
     setActiveThemeName(prev => (themes.some(t => t.name === name) ? name : prev));
@@ -310,58 +235,35 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
 
   const getActiveTheme = () => activeTheme;
 
-  /* ----- Default vs custom margin helpers ----- */
-
-  // Returns the baseline/default margin for a theme name.
-  // If the theme exists in defaultThemes, use its margin; else return global fallback.
-  const getThemeMarginBaseline = (name?: string): Margin => {
-    const n = name ?? activeThemeName;
-    const inDefaults = defaultThemes.find(t => t.name === n);
-    return inDefaults?.margin ?? GLOBAL_DEFAULT_MARGIN;
-  };
-
-  // True if the theme's current margin matches its baseline/default.
-  const isThemeMarginDefault = (name?: string): boolean => {
-    const n = name ?? activeThemeName;
-    const theme = themes.find(t => t.name === n);
-    if (!theme) return true; // treat unknown as default
-    return marginsEqual(theme.margin, getThemeMarginBaseline(n));
-  };
-
-  // Reset a theme's margin back to its baseline/default.
-  const setThemeMarginToDefault = (name?: string) => {
-    const n = name ?? activeThemeName;
-    const baseline = getThemeMarginBaseline(n);
-    setThemes(prev => prev.map(t => (t.name === n ? { ...t, margin: baseline } : t)));
-  };
-
-  /* ----- Provide ----- */
   return (
     <SettingContext.Provider
       value={{
         visibility,
-        fontSizes,
-        displaySpacing,
         panelSetting,
+        panelLocation,
+        setPanelLocation,
         width,
         height,
         version,
         themes,
         activeThemeName,
-        updateFontSize,
-        updateSpacing,
+        settingVersion,
         updateSetting,
         updatePanelSetting,
         updateVersion,
-        addTheme,
-        updateTheme,
-        removeTheme,
         setActiveTheme,
         getActiveTheme,
-        getThemeMarginBaseline,
-        isThemeMarginDefault,
-        setThemeMarginToDefault,
         setVisibility,
+        setMicName,
+        micName,
+        autoSearch,
+        setAutoSearch,
+        audioStream,
+        setAudioStream,
+        autoNext,
+        setAutoNext,
+        speechRegion,
+        setSpeechRegion,
       }}
     >
       {children}
@@ -369,11 +271,13 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
   );
 };
 
-/* =========================
-   Hook
-   ========================= */
 export const useSettings = () => {
   const ctx = useContext(SettingContext);
-  if (!ctx) throw new Error("useSettings must be used within a SettingProvider");
+  if (!ctx) {
+    console.warn("useSettings() called outside SettingProvider, returning defaults");
+
+    return getDefaultSettings();
+  }
+
   return ctx;
 };

@@ -1,6 +1,6 @@
-import { ChangeEvent, FunctionComponent, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { SearchContext } from "../../state/providers/SearchProvider";
-import { GURBANI_SEARCH, SEARCH_SHABAD_PANKTI, SET_APP_PAGE } from "../../state/ActionTypes";
+import { GURBANI_SEARCH, SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SET_PANKTIS, SHABAD_RESET } from "../../state/ActionTypes";
 import styled from "styled-components";
 import { DB } from "../../utils/DB";
 import { Pankti } from "../../models/Pankti";
@@ -8,6 +8,9 @@ import { MdOutlineClear } from "react-icons/md";
 import { BsKeyboard } from "react-icons/bs";
 import SearchList from "./SearchList";
 import { AppContext } from "../../state/providers/AppProvider";
+import { useContextSelector } from "use-context-selector";
+import { ShabadContext } from "../../state/providers/ShabadProvider";
+import { ApiClient } from "../../utils/apiClient";
 
 const SearchButton = styled.button`
     font-size: 14px;
@@ -18,20 +21,33 @@ const SearchButton = styled.button`
 `;
 
 const SearchIcon = styled(MdOutlineClear)`
-    margin-top: 5px;
+    margin-top: -1px;
 `;
 
 const KeyboardButton = styled.button`
     color: #444;
 `;
 
-const SearchPanel: FunctionComponent = () => {
-    const {dispatch, searchInputRef, searchTerm, setSearchTerm, panktis, setPanktis} = useContext(SearchContext);
+interface SearchPanelProps {
+  apiClient: ApiClient | null;
+}
+
+const SearchPanel: React.FC<SearchPanelProps> = ({ apiClient }) => {
+    const {dispatch, searchInputRef, searchTerm, setSearchTerm, panktis} = useContext(SearchContext);
     const [focusIndex, setFocusIndex] = useState(0);
-    const appDispatch = useContext(AppContext).dispatch;
+    const {dispatch: appDispatch, fontSize} = useContext(AppContext);
+    const { dispatch: shabadDispatch, shabadId } = useContextSelector(
+        ShabadContext,
+        ctx => ({
+            dispatch: ctx.dispatch,
+            shabadId: ctx.state.shabadId,
+        })
+    );
     const appRef = useRef<number>(0);
     const listContainerRef = useRef<HTMLUListElement | null>(null);
     appRef.current++;
+
+    const searchRequestId = useRef(0);
 
     const handleSearchShortcuts = (event: React.KeyboardEvent<HTMLInputElement>) => {
         const blockedKeys: Record<string, string> = {
@@ -43,7 +59,7 @@ const SearchPanel: FunctionComponent = () => {
                 "M": "m",
             };
 
-            if (blockedKeys[event.key]) {
+            if (!event.ctrlKey && blockedKeys[event.key]) {
                 event.preventDefault();
 
                 const replacementChar = blockedKeys[event.key];
@@ -58,8 +74,6 @@ const SearchPanel: FunctionComponent = () => {
                 setSearchTerm(newValue);
 
                 if (searchInputRef.current) {
-                    searchInputRef.current.value = newValue;
-
                     setTimeout(() => {
                         searchInputRef.current?.setSelectionRange(start + 1, start + 1);
                     }, 0);
@@ -70,7 +84,12 @@ const SearchPanel: FunctionComponent = () => {
 
 
         if (event.key === 'c' && event.ctrlKey && searchInputRef?.current?.value) {
-            searchInputRef.current.value = "";
+            setSearchTerm('');
+            event.preventDefault();
+        }
+
+        if (event.key === 'a' && event.ctrlKey && searchInputRef.current) {
+            searchInputRef.current.select();
             event.preventDefault();
         }
 
@@ -92,7 +111,7 @@ const SearchPanel: FunctionComponent = () => {
         }
     };
 
-    const searchByFirstLetters = async (value: string) => {
+    const searchByFirstLetters = async (value: string, requestId: number) => {
         const db = await DB.getInstance();
         db.select(`
             SELECT
@@ -111,12 +130,18 @@ const SearchPanel: FunctionComponent = () => {
             ORDER BY shabads.source_id, rank
             LIMIT 100
         `).then((res: any) => {
+            // Ignore if not latest search request
+            if (requestId !== searchRequestId.current) return;
+
             if (!res) {
                 return;
             }
 
             const panktis: Pankti[] = res;
-            setPanktis(panktis);
+            dispatch({
+                type: SET_PANKTIS,
+                payload: panktis
+            });
             setFocusIndex(0);
             if (listContainerRef.current) {
                 listContainerRef.current.scrollTo({
@@ -126,7 +151,7 @@ const SearchPanel: FunctionComponent = () => {
         });
     }
 
-    const searchByWords = async (value: string) => {
+    const searchByWords = async (value: string, requestId: number) => {
         const searchValue = value.trim();
         const db = await DB.getInstance();
         db.select(`
@@ -149,12 +174,18 @@ const SearchPanel: FunctionComponent = () => {
             ORDER BY rank, shabads.source_id
             LIMIT 100
         `).then((res: any) => {
+            // Ignore if not latest search request
+            if (requestId !== searchRequestId.current) return;
+
             if (!res) {
                 return;
             }
 
             const panktis: Pankti[] = res;
-            setPanktis(panktis);
+            dispatch({
+                type: SET_PANKTIS,
+                payload: panktis
+            });
             setFocusIndex(0);
             if (listContainerRef.current) {
                 listContainerRef.current.scrollTo({
@@ -164,17 +195,17 @@ const SearchPanel: FunctionComponent = () => {
         });
     };
 
-    const handleSearch = async (e: ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value.trim();
-        setSearchTerm(value);
+    const handleSearch = async (value: string) => {
         if (value.length < 2) {
             return;
         }
 
+        const currentRequestId = ++searchRequestId.current;
+
         if (value.includes(' ')) {
-            searchByWords(value);
+            await searchByWords(value, currentRequestId);
         } else {
-            searchByFirstLetters(value);
+            await searchByFirstLetters(value, currentRequestId);
         }
 
         dispatch({
@@ -186,15 +217,25 @@ const SearchPanel: FunctionComponent = () => {
     }
 
     const clearSearch = useCallback(() => {
-        setSearchTerm("");
-
         if (searchInputRef.current !== null) {
             searchInputRef.current.value = "";
             searchInputRef.current.focus();
         }
+
+        setSearchTerm("");
     }, [searchInputRef]);
 
     const displayShabad = useCallback((pankti: Pankti) => {
+        // current shabad
+        if (pankti.shabad_id == shabadId) {
+            appDispatch({
+                type: SET_APP_PAGE,
+                payload: { page: "shabad" }
+            });
+            return;
+        }
+
+        shabadDispatch({ type: SHABAD_RESET });
         dispatch({
             type: SEARCH_SHABAD_PANKTI,
             payload: { pankti }
@@ -204,12 +245,33 @@ const SearchPanel: FunctionComponent = () => {
             type: SET_APP_PAGE,
             payload: { page: "shabad" }
         });
-    }, []);
+    }, [shabadDispatch, dispatch, appDispatch]);
 
     useEffect(() => {
         searchInputRef?.current?.focus();
         searchInputRef?.current?.select;
     }, []);
+
+    useEffect(() => {
+        if (! searchInputRef.current?.value) {
+            return;
+        }
+
+        handleSearch(searchTerm);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        if (!apiClient) {
+            return;
+        }
+
+        if (panktis.length > 20) {
+            return;
+        }
+
+        const ids = panktis.map(pankti => pankti.id);
+        apiClient.sendSearchPanktis(ids);
+    }, [panktis]);
 
     return (
         <>
@@ -217,15 +279,20 @@ const SearchPanel: FunctionComponent = () => {
                 <div className="flex flex-row my-2">
                     <input
                         ref={searchInputRef}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                         type="text"
-                        onChange={handleSearch}
-                        className="gurmukhi-font-1 flex-1 mx-2 px-4 py-2 border-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        className="gurmukhi-font-1 flex-1 mx-2 px-2 py-1 border-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
                         spellCheck="false"
                         autoComplete="off"
                         autoCorrect="off"
                         autoCapitalize="off"
                         inputMode="none"
                         onKeyDown={handleSearchShortcuts}
+                        style={{
+                            padding: `${fontSize*0.25*0.5*0.2}px`,
+                            paddingLeft: `${fontSize*0.25*0.5*0.8}px`,
+                        }}
                     />
                     { searchTerm.length > 0 &&
                         <SearchButton title="search" onClick={clearSearch}>
@@ -238,7 +305,7 @@ const SearchPanel: FunctionComponent = () => {
                     </KeyboardButton>
                 </div>
             </div>
-            <SearchList listContainerRef={listContainerRef} panktis={panktis} current={focusIndex} displayShabad={displayShabad} />
+            <SearchList searchTerm={searchTerm ?? ""} listContainerRef={listContainerRef} panktis={panktis} current={focusIndex} displayShabad={displayShabad} />
         </>
     );
 };

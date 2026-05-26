@@ -1,6 +1,7 @@
 export type Pankti = {
     first_letter: string;
     gurmukhi: string;
+    gurmukhi_unicode: string;
     id: string;
     order_id: number;
     pronuciation: string;
@@ -13,4 +14,16 @@ export type Pankti = {
     punjabi_translation: string;
     english_translation: string;
     bani_id?: number;
+    line_group: number;
+    gurmukhi_speech: string,
+    vishraam_idx: number | null,
+    vishraam_ridx: number | null,
+    gurmukhi_words: string[],
+    gurmukhi_rwords: string[],
+    group: number;
+    show_group: number;
+    speech_group: number;
+    show_translation :boolean;
+    join_next: boolean;
+    auto_next: boolean;
 };

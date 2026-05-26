@@ -9,9 +9,21 @@ import { ShabadProvider } from "./state/providers/ShabadProvider";
 import { SettingProvider } from "./state/providers/SettingContext";
 import { BaniProvider } from "./state/providers/BaniProvider";
 
+import * as Sentry from "@sentry/react";
+import { AnnouncementProvider } from "./state/providers/AnnouncementProvider";
+import { ENV } from "./utils/env";
+
+if (! ENV.isDev) {
+  Sentry.init({
+    dsn: ENV.sentryDsn,
+    environment: "production"
+  });
+}
+
 createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <AppProvider>
+      <AnnouncementProvider>
         <SearchProvider>
           <ShabadProvider>
             <SettingProvider>
@@ -21,6 +33,7 @@ createRoot(document.getElementById("root") as HTMLElement).render(
             </SettingProvider>
           </ShabadProvider>
         </SearchProvider>
+      </AnnouncementProvider>
     </AppProvider>
   </React.StrictMode>
 );

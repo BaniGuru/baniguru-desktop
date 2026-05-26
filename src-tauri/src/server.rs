@@ -1,18 +1,20 @@
-use warp::Filter;
 use crate::commands::Pankti;
-use tera::{Tera, Context};
-use tauri::{AppHandle, Manager};
-use std::sync::Arc;
-use std::path::PathBuf;
-use tokio::sync::Mutex;
-use std::collections::HashMap;
-use warp::http;
 use crate::settings::{load_settings, save_settings, UserSettings};
-use warp::reply::Json;
-use serde_json::json;
 use include_dir::{include_dir, Dir};
 use mime_guess::from_path;
-use warp::hyper::{Response, Body};
+use serde_json::json;
+use std::collections::HashMap;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::sync::Arc;
+use tauri::{AppHandle, Manager};
+use tera::{Context, Tera};
+use tokio::sync::Mutex;
+use tokio_stream::wrappers::TcpListenerStream;
+use warp::http;
+use warp::hyper::{Body, Response};
+use warp::reply::Json;
+use warp::Filter;
 
 static TEMPLATE_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/templates");
 static STATIC_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/static");
@@ -22,8 +24,9 @@ fn build_tera_from_embedded() -> Tera {
 
     for file in TEMPLATE_DIR.files() {
         if let Some(path) = file.path().to_str() {
-            tera.add_raw_template(path, file.contents_utf8().unwrap())
-                .unwrap_or_else(|e| panic!("Failed to add template {}: {}", path, e));
+            if let Err(e) = tera.add_raw_template(path, file.contents_utf8().unwrap_or("")) {
+                eprintln!("Failed to add template {}: {}", path, e);
+            }
         }
     }
 
@@ -40,9 +43,8 @@ pub async fn start_web_server(app_handle: AppHandle) {
     let tera_clone = tera.clone();
 
     let static_files = warp::path!("static" / String).and_then(|filename: String| async move {
-
-    match STATIC_DIR.get_file(&filename) {
-        Some(file) => {
+        match STATIC_DIR.get_file(&filename) {
+            Some(file) => {
                 let mime = from_path(&filename).first_or_octet_stream();
                 let contents = file.contents();
                 Ok::<_, warp::Rejection>(
@@ -52,9 +54,7 @@ pub async fn start_web_server(app_handle: AppHandle) {
                         .unwrap(),
                 )
             }
-            None => {
-                Err(warp::reject::not_found())
-            }
+            None => Err(warp::reject::not_found()),
         }
     });
 
@@ -67,29 +67,37 @@ pub async fn start_web_server(app_handle: AppHandle) {
             let settings = load_settings(&path);
 
             let mut context = Context::new();
-            let rounded_opacity = (settings.background_opacity * 10.0).round() / 10.0;
-            let rounded_opacity_str = format!("{:.1}", rounded_opacity);
+            let rounded_opacity = (settings.background_opacity * 100.0).round() / 100.0;
+            let rounded_opacity_str = format!("{:.2}", rounded_opacity);
             context.insert("title", "Settings");
             context.insert("theme", &settings.theme);
             context.insert("font", &settings.font);
-            context.insert("gurmukhi_font_size", &settings.gurmukhi_font_size);  // Removed unwrap_or
-            context.insert("punjabi_font_size", &settings.punjabi_font_size);    // Removed unwrap_or
-            context.insert("english_font_size", &settings.english_font_size);    // Removed unwrap_or
+            context.insert("gurmukhi_font_size", &settings.gurmukhi_font_size); // Removed unwrap_or
+            context.insert("punjabi_font_size", &settings.punjabi_font_size); // Removed unwrap_or
+            context.insert("english_font_size", &settings.english_font_size); // Removed unwrap_or
             context.insert("background_color", &settings.background_color.to_string()); // Converted integer to string
-            context.insert("gurmukhi_font_color", &settings.gurmukhi_font_color.to_string()); // Converted integer to string
-            context.insert("punjabi_font_color", &settings.punjabi_font_color.to_string()); // Converted integer to string
-            context.insert("english_font_color", &settings.english_font_color.to_string()); // Converted integer to string
+            context.insert(
+                "gurmukhi_font_color",
+                &settings.gurmukhi_font_color.to_string(),
+            ); // Converted integer to string
+            context.insert(
+                "punjabi_font_color",
+                &settings.punjabi_font_color.to_string(),
+            ); // Converted integer to string
+            context.insert(
+                "english_font_color",
+                &settings.english_font_color.to_string(),
+            ); // Converted integer to string
             context.insert("background_opacity", &rounded_opacity_str);
             context.insert("panel_gap_x", &settings.panel_gap_x);
             context.insert("panel_gap_y", &settings.panel_gap_y);
-            context.insert("punjabi_gap", &settings.punjabi_gap);  // No unwrap needed
-            context.insert("english_gap", &settings.english_gap);  // No unwrap needed
+            context.insert("punjabi_gap", &settings.punjabi_gap); // No unwrap needed
+            context.insert("english_gap", &settings.english_gap); // No unwrap needed
 
             let html = tera.render("settings.html", &context).unwrap();
             Ok::<_, std::convert::Infallible>(warp::reply::html(html))
         }
     });
-
 
     let save_settings_route = warp::path("save_settings")
         .and(warp::post())
@@ -98,79 +106,86 @@ pub async fn start_web_server(app_handle: AppHandle) {
             let settings = UserSettings {
                 theme: form.get("theme").cloned().unwrap_or_default(),
                 font: form.get("font").cloned().unwrap_or_default(),
-                gurmukhi_font_size: form.get("gurmukhi_font_size")
+                gurmukhi_font_size: form
+                    .get("gurmukhi_font_size")
                     .and_then(|v| v.parse::<i32>().ok())
                     .unwrap_or(16), // Default to 16 if not provided
-                punjabi_font_size: form.get("punjabi_font_size")
+                punjabi_font_size: form
+                    .get("punjabi_font_size")
                     .and_then(|v| v.parse::<i32>().ok())
                     .unwrap_or(16), // Default to 16 if not provided
-                english_font_size: form.get("english_font_size")
+                english_font_size: form
+                    .get("english_font_size")
                     .and_then(|v| v.parse::<i32>().ok())
                     .unwrap_or(16), // Default to 16 if not provided
-                background_color: form.get("background_color").cloned()
-                    .unwrap_or_default(), // Default to white color
-                gurmukhi_font_color: form.get("gurmukhi_font_color").cloned()
-                    .unwrap_or_default(), // Default to white color
-                punjabi_font_color: form.get("punjabi_font_color").cloned()
-                    .unwrap_or_default(), // Default to white color
-                english_font_color: form.get("english_font_color").cloned()
-                    .unwrap_or_default(), // Default to white color
-                background_opacity: form.get("background_opacity")
+                background_color: form.get("background_color").cloned().unwrap_or_default(), // Default to white color
+                gurmukhi_font_color: form.get("gurmukhi_font_color").cloned().unwrap_or_default(), // Default to white color
+                punjabi_font_color: form.get("punjabi_font_color").cloned().unwrap_or_default(), // Default to white color
+                english_font_color: form.get("english_font_color").cloned().unwrap_or_default(), // Default to white color
+                background_opacity: form
+                    .get("background_opacity")
                     .and_then(|v| v.parse::<f32>().ok())
                     .unwrap_or(1.0), // Default to 1.0 if not provided
-                panel_gap_x: form.get("panel_gap_x")
+                panel_gap_x: form
+                    .get("panel_gap_x")
                     .and_then(|v| v.parse::<i32>().ok())
                     .unwrap_or(2),
-                panel_gap_y: form.get("panel_gap_y")
+                panel_gap_y: form
+                    .get("panel_gap_y")
                     .and_then(|v| v.parse::<i32>().ok())
                     .unwrap_or(2),
-                punjabi_gap: form.get("punjabi_gap")
+                punjabi_gap: form
+                    .get("punjabi_gap")
                     .and_then(|v| v.parse::<i32>().ok())
                     .unwrap_or(2), // Default to 2 if not provided
-                english_gap: form.get("english_gap")
+                english_gap: form
+                    .get("english_gap")
                     .and_then(|v| v.parse::<i32>().ok())
                     .unwrap_or(2), // Default to 2 if not provided
             };
             let path = app_handle_clone_for_save.state::<PathBuf>();
-            save_settings(&path, &settings);
+            match save_settings(&path, &settings) {
+                Ok(_) => println!("Settings saved"),
+                Err(e) => eprintln!("Failed to save settings: {}", e),
+            }
             warp::redirect::see_other("/settings".parse::<http::Uri>().unwrap())
         });
-    
+
     let api_custom_data = warp::path("api")
-    .and(warp::path("custom_data"))
-    .and_then(move || {
-        let app_handle = app_handle_clone_for_api.clone();
-        async move {
-            // Get Pankti and settings
-            let state = app_handle.state::<Mutex<Pankti>>();
-            let locked = state.lock().await;
+        .and(warp::path("custom_data"))
+        .and_then(move || {
+            let app_handle = app_handle_clone_for_api.clone();
+            async move {
+                // Get Pankti and settings
+                let state = app_handle.state::<Mutex<Pankti>>();
+                let locked = state.lock().await;
 
-            let path = app_handle.state::<PathBuf>();
-            let settings = load_settings(&path);
+                let path = app_handle.state::<PathBuf>();
+                let settings = load_settings(&path);
 
-            let data = json!({
-                "gurmukhi": remove_vishraams(&locked.gurmukhi),
-                "punjabi": locked.punjabi,
-                "english": locked.english,
-                "theme": settings.theme,
-                "font": settings.font,
-                "gurmukhi_font_size": settings.gurmukhi_font_size,  // Removed clone and unwrap_or_default
-                "punjabi_font_size": settings.punjabi_font_size,    // Removed clone and unwrap_or_default
-                "english_font_size": settings.english_font_size,    // Removed clone and unwrap_or_default
-                "background_color": settings.background_color,
-                "gurmukhi_font_color": settings.gurmukhi_font_color,
-                "punjabi_font_color": settings.punjabi_font_color,
-                "english_font_color": settings.english_font_color,
-                "background_opacity": settings.background_opacity,  // No unwrap_or needed
-                "panel_gap_x": settings.panel_gap_x,
-                "panel_gap_y": settings.panel_gap_y,
-                "punjabi_gap": settings.punjabi_gap,  // No unwrap_or needed
-                "english_gap": settings.english_gap,  // No unwrap_or needed
-            });
+                let data = json!({
+                    "gurmukhi": remove_vishraams(&locked.gurmukhi),
+                    "punjabi": locked.punjabi,
+                    "english": locked.english,
+                    "theme": settings.theme,
+                    "font": settings.font,
+                    "gurmukhi_font_size": settings.gurmukhi_font_size,  // Removed clone and unwrap_or_default
+                    "punjabi_font_size": settings.punjabi_font_size,    // Removed clone and unwrap_or_default
+                    "english_font_size": settings.english_font_size,    // Removed clone and unwrap_or_default
+                    "background_color": settings.background_color,
+                    "gurmukhi_font_color": settings.gurmukhi_font_color,
+                    "punjabi_font_color": settings.punjabi_font_color,
+                    "english_font_color": settings.english_font_color,
+                    "background_opacity": settings.background_opacity,  // No unwrap_or needed
+                    "panel_gap_x": settings.panel_gap_x,
+                    "panel_gap_y": settings.panel_gap_y,
+                    "punjabi_gap": settings.punjabi_gap,  // No unwrap_or needed
+                    "english_gap": settings.english_gap,  // No unwrap_or needed
+                });
 
-            Ok::<Json, warp::Rejection>(warp::reply::json(&data))
-        }
-    });
+                Ok::<Json, warp::Rejection>(warp::reply::json(&data))
+            }
+        });
 
     let overlay_page = warp::path!("overlay").and_then(move || {
         let app_handle = app_handle_clone.clone();
@@ -188,9 +203,21 @@ pub async fn start_web_server(app_handle: AppHandle) {
         .or(api_custom_data)
         .or(static_files);
 
-    warp::serve(routes)
-        .run(([0, 0, 0, 0], 54321))
-        .await;
+    let addr: SocketAddr = ([0, 0, 0, 0], 54321).into();
+
+    match tokio::net::TcpListener::bind(addr).await {
+        Ok(listener) => {
+            println!("Web server running on {}", addr);
+
+            warp::serve(routes)
+                .run_incoming(TcpListenerStream::new(listener))
+                .await;
+        }
+
+        Err(e) => {
+            eprintln!("Failed to bind web server on {}: {}", addr, e);
+        }
+    }
 }
 
 fn remove_vishraams(text: &str) -> String {
@@ -201,10 +228,7 @@ fn remove_vishraams(text: &str) -> String {
     text.replace(&[';', '.', ','][..], "")
 }
 
-async fn render_overlay_page(
-    app_handle: AppHandle,
-    tera: Arc<Tera>,
-) -> String {
+async fn render_overlay_page(app_handle: AppHandle, tera: Arc<Tera>) -> String {
     let state = app_handle.state::<tokio::sync::Mutex<Pankti>>();
     let pankti = {
         let locked = state.lock().await;
@@ -221,18 +245,26 @@ async fn render_overlay_page(
     context.insert("english", &pankti.english);
     context.insert("theme", &settings.theme);
     context.insert("font", &settings.font);
-    context.insert("font_size", &settings.gurmukhi_font_size.to_string());  // Removed clone and unwrap_or
-    context.insert("background_color", &settings.background_color.to_string());  // Converted to string
-    context.insert("gurmukhi_font_color", &settings.gurmukhi_font_color.to_string()); // Converted integer to string
-    context.insert("punjabi_font_color", &settings.punjabi_font_color.to_string()); // Converted integer to string
-    context.insert("english_font_color", &settings.english_font_color.to_string()); // Converted integer to string
-    context.insert("background_opacity", &settings.background_opacity);  // No unwrap needed
+    context.insert("font_size", &settings.gurmukhi_font_size.to_string()); // Removed clone and unwrap_or
+    context.insert("background_color", &settings.background_color.to_string()); // Converted to string
+    context.insert(
+        "gurmukhi_font_color",
+        &settings.gurmukhi_font_color.to_string(),
+    ); // Converted integer to string
+    context.insert(
+        "punjabi_font_color",
+        &settings.punjabi_font_color.to_string(),
+    ); // Converted integer to string
+    context.insert(
+        "english_font_color",
+        &settings.english_font_color.to_string(),
+    ); // Converted integer to string
+    context.insert("background_opacity", &settings.background_opacity); // No unwrap needed
     context.insert("panel_gap_x", &settings.panel_gap_x.to_string());
     context.insert("panel_gap_y", &settings.panel_gap_y.to_string());
 
-    tera.render("overlay.html", &context)
-        .unwrap_or_else(|e| {
-            eprintln!("Template error: {}", e);
-            "Error rendering page.".to_string()
-        })
+    tera.render("overlay.html", &context).unwrap_or_else(|e| {
+        eprintln!("Template error: {}", e);
+        "Error rendering page.".to_string()
+    })
 }

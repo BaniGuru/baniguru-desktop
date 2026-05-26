@@ -3,19 +3,33 @@
     windows_subsystem = "windows"
 )]
 
+mod audio_bus;
 mod commands;
+mod p2p_audio_sender;
 mod server;
 mod settings;
+mod soniox;
+mod webrtc;
 
+use crate::audio_bus::AudioBus;
+use crate::commands::list_mics;
+use crate::commands::update_pankti;
+use crate::commands::Pankti;
+use crate::commands::{
+    restart_soniox, start_soniox, start_stream, stop_soniox, stop_stream, AudioState,
+    RawStreamState, StreamState,
+};
+use crate::server::start_web_server;
 use futures_util::StreamExt;
 use serde::Serialize;
+use std::env;
 use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::Write;
+use std::panic;
+use std::path::PathBuf;
 use tauri::{ipc::Channel, AppHandle, Manager};
-use crate::commands::Pankti;
-use crate::commands::update_pankti;
 use tokio::sync::Mutex;
-use crate::server::start_web_server;
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase", tag = "event", content = "data")]
@@ -34,7 +48,7 @@ enum DownloadEvent<'a> {
     },
     Skipped {
         db_path: &'a str,
-    }
+    },
 }
 
 #[tauri::command]
@@ -67,7 +81,7 @@ async fn download_sqlite_file_with_channel<'a>(
 
     if db_path.exists() {
         let _ = on_event.send(DownloadEvent::Skipped {
-            db_path: &db_path.to_string_lossy().to_string()
+            db_path: &db_path.to_string_lossy().to_string(),
         });
         return Ok(db_path.to_string_lossy().to_string());
     }
@@ -114,15 +128,87 @@ async fn download_sqlite_file_with_channel<'a>(
     Ok(db_path.to_string_lossy().to_string())
 }
 
+#[tauri::command]
+fn fake_fullscreen(app: AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or("Main window not found")?;
+
+    let monitor = window
+        .current_monitor()
+        .map_err(|e| e.to_string())?
+        .ok_or("No monitor found")?;
+
+    let position = monitor.position();
+    let size = monitor.size();
+
+    window.unmaximize().ok();
+    window.set_decorations(false).map_err(|e| e.to_string())?;
+    window.set_shadow(false).ok();
+
+    window.set_position(*position).map_err(|e| e.to_string())?;
+    window.set_size(*size).map_err(|e| e.to_string())?;
+
+    window.show().map_err(|e| e.to_string())?;
+    window.set_focus().map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+fn crash_log_path() -> PathBuf {
+    let home = env::var("USERPROFILE").unwrap_or_else(|_| ".".into());
+
+    PathBuf::from(home).join("gurbani-explorer-crash.log")
+}
+
+fn install_panic_logger() {
+    panic::set_hook(Box::new(|panic_info| {
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(crash_log_path())
+            .unwrap();
+
+        let location = panic_info
+            .location()
+            .map(|l| format!("{}:{}", l.file(), l.line()))
+            .unwrap_or_else(|| "unknown".into());
+
+        let payload = if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+            *s
+        } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
+            s.as_str()
+        } else {
+            "unknown panic"
+        };
+
+        let _ = writeln!(
+            file,
+            "\n=== PANIC ===\nLocation: {}\nMessage: {}\n",
+            location, payload
+        );
+    }));
+}
+
 fn main() {
+    install_panic_logger();
+
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_sql::Builder::new().build())
-        .plugin(tauri_plugin_sql::Builder::default().build())
+        .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             greet,
             download_sqlite_file_with_channel,
             update_pankti,
-            get_local_ip
+            get_local_ip,
+            start_soniox,
+            stop_soniox,
+            restart_soniox,
+            start_stream,
+            stop_stream,
+            list_mics,
+            fake_fullscreen,
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
@@ -130,7 +216,7 @@ fn main() {
             let config_path = app
                 .path()
                 .app_data_dir()
-                .expect("Failed to get app_data_dir")
+                .map_err(|e| format!("Failed to get app_data_dir: {e}"))?
                 .join("settings.json");
 
             // Create initial Pankti data
@@ -142,6 +228,19 @@ fn main() {
 
             app.manage(Mutex::new(pankti));
             app.manage(config_path);
+            app.manage(StreamState {
+                stream: Mutex::new(None),
+            });
+            app.manage(AudioState {
+                bus: AudioBus::new(),
+                mic_stream: Mutex::new(None),
+                mic_config: Mutex::new(None),
+                users: Mutex::new(0),
+            });
+            app.manage(RawStreamState {
+                running: Mutex::new(false),
+                task: Mutex::new(None),
+            });
 
             // Spawn async task with cloned Arc<Mutex<Pankti>>
             tauri::async_runtime::spawn(async move {
@@ -153,4 +252,3 @@ fn main() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-

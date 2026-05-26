@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { Pankti } from "../../models/Pankti";
 import Format from "../../utils/Format";
@@ -6,6 +6,7 @@ import styled from "styled-components";
 import { TiTick, TiTickOutline } from "react-icons/ti";
 import { TbHome } from "react-icons/tb";
 import { SHABAD_PANKTI, SHABAD_SET_HOME } from "../../state/ActionTypes";
+import { useContext as useCtxSelector } from "use-context-selector";
 
 type ListItemProps = {
     active: boolean;
@@ -65,7 +66,7 @@ function easeInOutQuad(t: number): number {
 }
 
 const ShabadPanel: React.FC = () => {
-    const { state, dispatch } = useContext(ShabadContext);
+    const { state, dispatch } = useCtxSelector(ShabadContext);
     const listRef = useRef<HTMLUListElement | null>(null);
     const itemRefs = useRef<Array<HTMLLIElement | null>>([]);
 
@@ -102,6 +103,7 @@ const ShabadPanel: React.FC = () => {
     }, [state.current]);
 
     return (
+        <>
         <ul className="flex-1 overflow-y-auto" ref={listRef}>
             {state.panktis.map((pankti: Pankti, index: number) => (
                 <ListItem
@@ -124,6 +126,7 @@ const ShabadPanel: React.FC = () => {
                 </ListItem>
             ))}
         </ul>
+        </>
     );
 };
 

@@ -1,12 +1,18 @@
 import { useContext } from "react";
-import { FaBook, FaBookOpen, FaClock, FaCog, FaSearch } from "react-icons/fa";
-import { AppContext } from "../state/providers/AppProvider";
+import { FaBook, FaBookOpen, FaClock, FaCog, FaComment, FaSearch } from "react-icons/fa";
+import { AppContext, PAGE_ANNOUNCEMENT } from "../state/providers/AppProvider";
 import { SET_APP_PAGE } from "../state/ActionTypes";
+import { SearchContext } from "../state/providers/SearchProvider";
 
 const TabIcons: React.FC = () => {
     const {state, dispatch} = useContext(AppContext);
+    const { setSearchTerm } = useContext(SearchContext);
 
     const switchTab = (tab: string) => {
+        if (tab === "search") {
+            setSearchTerm('');
+        }
+
         dispatch({
             type: SET_APP_PAGE,
             payload: {
@@ -42,6 +48,12 @@ const TabIcons: React.FC = () => {
                     onClick={() => switchTab('bani')}
                 >
                     <FaBook className="text-xl" />
+                </button>
+                <button
+                    className={`px-4 py-2 flex-none ${state.page === PAGE_ANNOUNCEMENT ? "bg-gray-200" : "bg-gray-300"}`}
+                    onClick={() => switchTab(PAGE_ANNOUNCEMENT)}
+                >
+                    <FaComment className="text-xl" />
                 </button>
                 <button
                     className={`px-4 py-2 flex-none ${state.page === "settings" ? "bg-gray-200" : "bg-gray-300"}`}

@@ -3,6 +3,86 @@
     src: url('/static/GurbaniAkharThick.ttf') format('truetype');
 }
 
+@font-face {
+    font-family: 'anmolunibaniheavy';
+    src: url('/static/anmolunibaniheavy.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'GurbaniAkhar';
+    src: url('/static/GurbaniAkhar.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'gurbaniwebthick';
+    src: url('/static/gurbaniwebthick.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'OpenAnmolUni-Bold';
+    src: url('/static/OpenAnmolUni-Bold.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'OpenGurbaniAkhar-Black';
+    src: url('/static/OpenGurbaniAkhar-Black.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'OpenGurbaniAkhar-Bold';
+    src: url('/static/OpenGurbaniAkhar-Bold.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'OpenGurbaniAkhar-Regular';
+    src: url('/static/OpenGurbaniAkhar-Regular.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'Prabhki';
+    src: url('/static/Prabhki.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'raaj1';
+    src: url('/static/raaj1.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'raaj2';
+    src: url('/static/raaj2.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'raaj3';
+    src: url('/static/raaj3.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'raaj4';
+    src: url('/static/raaj4.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'raaj5';
+    src: url('/static/raaj5.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'raaj6';
+    src: url('/static/raaj6.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'riyasti-naveen';
+    src: url('/static/riyasti-naveen.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'Roboto-Regular';
+    src: url('/static/Roboto-Regular.ttf') format('truetype');
+}
+
 html, body {
     margin: 0;
     background: transparent;
