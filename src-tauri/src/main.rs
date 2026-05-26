@@ -3,39 +3,33 @@
     windows_subsystem = "windows"
 )]
 
+mod audio_bus;
 mod commands;
+mod p2p_audio_sender;
 mod server;
 mod settings;
 mod soniox;
-mod audio_bus;
 mod webrtc;
-mod p2p_audio_sender;
 
-use std::env;
-use std::path::PathBuf;
-use std::panic;
-use std::fs::OpenOptions;
+use crate::audio_bus::AudioBus;
+use crate::commands::list_mics;
+use crate::commands::update_pankti;
+use crate::commands::Pankti;
+use crate::commands::{
+    restart_soniox, start_soniox, start_stream, stop_soniox, stop_stream, AudioState,
+    RawStreamState, StreamState,
+};
+use crate::server::start_web_server;
 use futures_util::StreamExt;
 use serde::Serialize;
+use std::env;
 use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::Write;
+use std::panic;
+use std::path::PathBuf;
 use tauri::{ipc::Channel, AppHandle, Manager};
-use crate::commands::Pankti;
-use crate::commands::update_pankti;
 use tokio::sync::Mutex;
-use crate::server::start_web_server;
-use crate::audio_bus::AudioBus;
-use crate::commands::{
-    start_soniox,
-    stop_soniox,
-    restart_soniox,
-    start_stream,
-    stop_stream,
-    StreamState,
-    AudioState,
-    RawStreamState,
-};
-use crate::commands::list_mics;
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase", tag = "event", content = "data")]
@@ -54,7 +48,7 @@ enum DownloadEvent<'a> {
     },
     Skipped {
         db_path: &'a str,
-    }
+    },
 }
 
 #[tauri::command]
@@ -87,7 +81,7 @@ async fn download_sqlite_file_with_channel<'a>(
 
     if db_path.exists() {
         let _ = on_event.send(DownloadEvent::Skipped {
-            db_path: &db_path.to_string_lossy().to_string()
+            db_path: &db_path.to_string_lossy().to_string(),
         });
         return Ok(db_path.to_string_lossy().to_string());
     }
@@ -162,24 +156,21 @@ fn fake_fullscreen(app: AppHandle) -> Result<(), String> {
 }
 
 fn crash_log_path() -> PathBuf {
+    let home = env::var("USERPROFILE").unwrap_or_else(|_| ".".into());
 
-    let home = env::var("USERPROFILE")
-        .unwrap_or_else(|_| ".".into());
-
-    PathBuf::from(home)
-        .join("gurbani-explorer-crash.log")
+    PathBuf::from(home).join("gurbani-explorer-crash.log")
 }
 
 fn install_panic_logger() {
     panic::set_hook(Box::new(|panic_info| {
-
         let mut file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(crash_log_path())
             .unwrap();
 
-        let location = panic_info.location()
+        let location = panic_info
+            .location()
             .map(|l| format!("{}:{}", l.file(), l.line()))
             .unwrap_or_else(|| "unknown".into());
 
@@ -194,8 +185,7 @@ fn install_panic_logger() {
         let _ = writeln!(
             file,
             "\n=== PANIC ===\nLocation: {}\nMessage: {}\n",
-            location,
-            payload
+            location, payload
         );
     }));
 }
@@ -204,7 +194,9 @@ fn main() {
     install_panic_logger();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_sql::Builder::new().build())
+        .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             greet,
             download_sqlite_file_with_channel,
@@ -260,4 +252,3 @@ fn main() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-

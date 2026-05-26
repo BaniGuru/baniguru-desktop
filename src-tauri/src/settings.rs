@@ -8,15 +8,15 @@ pub struct UserSettings {
     pub gurmukhi_font_size: i32,  // Changed Integer to i32
     pub punjabi_font_size: i32,   // Changed Integer to i32
     pub english_font_size: i32,   // Changed Integer to i32
-    pub background_color: String,    // Changed Integer to i32
+    pub background_color: String, // Changed Integer to i32
     pub gurmukhi_font_color: String,
     pub punjabi_font_color: String,
     pub english_font_color: String,
     pub background_opacity: f32,
     pub panel_gap_x: i32,
     pub panel_gap_y: i32,
-    pub punjabi_gap: i32,         // Changed Integer to i32
-    pub english_gap: i32,         // Changed Integer to i32
+    pub punjabi_gap: i32, // Changed Integer to i32
+    pub english_gap: i32, // Changed Integer to i32
 }
 
 impl Default for UserSettings {

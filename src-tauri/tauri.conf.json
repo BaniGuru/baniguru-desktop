@@ -49,9 +49,31 @@
             "core:window:allow-set-size",
             "core:window:allow-set-position",
             "core:window:allow-set-decorations",
+            "core:window:allow-destroy",
 
             "core:event:allow-listen",
-            "core:event:allow-emit"
+            "core:event:allow-emit",
+
+            "core:path:default",
+            "core:path:allow-resolve-directory",
+            "fs:default",
+            "fs:allow-mkdir",
+            "fs:allow-appdata-write",
+            "fs:allow-appdata-write-recursive",
+
+            "shell:default",
+            "shell:allow-kill",
+            "shell:allow-spawn",
+            {
+              "identifier": "shell:allow-spawn",
+              "allow": [
+                {
+                  "name": "binaries/meilisearch",
+                  "sidecar": true,
+                  "args": true
+                }
+              ]
+            }
           ]
         }
       ]
@@ -66,6 +88,9 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "externalBin": [
+      "binaries/meilisearch"
     ]
   },
   "plugins": {

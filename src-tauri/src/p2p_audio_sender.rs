@@ -18,8 +18,8 @@ use url::Url;
 
 use webrtc::api::media_engine::MediaEngine;
 use webrtc::api::APIBuilder;
-use webrtc::ice_transport::ice_server::RTCIceServer;
 use webrtc::ice_transport::ice_candidate::RTCIceCandidateInit;
+use webrtc::ice_transport::ice_server::RTCIceServer;
 use webrtc::media::Sample;
 use webrtc::peer_connection::configuration::RTCConfiguration;
 use webrtc::peer_connection::policy::ice_transport_policy::RTCIceTransportPolicy;
@@ -140,24 +140,12 @@ pub fn start_p2p_audio_stream_with_signaling(
         let audio_track_ref = active_track.clone();
 
         tauri::async_runtime::spawn(async move {
-            if let Err(err) = audio_loop(
-                bus,
-                audio_track_ref,
-                input_rate,
-                channel_count,
-            )
-            .await
-            {
+            if let Err(err) = audio_loop(bus, audio_track_ref, input_rate, channel_count).await {
                 eprintln!("P2P audio loop failed: {:?}", err);
             }
         });
 
-        if let Err(e) = run_reconnectable_signaling(
-            active_track,
-            api_config,
-        )
-        .await
-        {
+        if let Err(e) = run_reconnectable_signaling(active_track, api_config).await {
             eprintln!("WebRTC signaling failed: {:?}", e);
         }
     })
@@ -167,10 +155,7 @@ async fn make_offer(config: WebRtcConfig) -> Result<(SharedP2pAudioSender, Signa
     let sender = create_p2p_audio_sender(config).await?;
     let offer = create_offer(sender.clone()).await?;
 
-    Ok((
-        sender,
-        SignalMessage::Offer { sdp: offer.sdp },
-    ))
+    Ok((sender, SignalMessage::Offer { sdp: offer.sdp }))
 }
 
 // ==============================
@@ -230,9 +215,7 @@ async fn run_reconnectable_signaling(
                     SignalMessage::IceCandidate { candidate } => {
                         let candidate: RTCIceCandidateInit = serde_json::from_value(candidate)?;
 
-                        let sender = pending_sender
-                            .as_ref()
-                            .or(current_sender.as_ref());
+                        let sender = pending_sender.as_ref().or(current_sender.as_ref());
 
                         if let Some(sender) = sender {
                             let locked = sender.lock().await;
@@ -341,9 +324,7 @@ pub async fn create_p2p_audio_sender(config: WebRtcConfig) -> Result<SharedP2pAu
     let mut media_engine = MediaEngine::default();
     media_engine.register_default_codecs()?;
 
-    let api = APIBuilder::new()
-        .with_media_engine(media_engine)
-        .build();
+    let api = APIBuilder::new().with_media_engine(media_engine).build();
 
     let ice_policy = match config.ice_transport_policy.as_str() {
         "relay" => RTCIceTransportPolicy::Relay,
@@ -416,10 +397,7 @@ pub async fn create_offer(sender: SharedP2pAudioSender) -> Result<SignalSdp> {
 // ==============================
 // Rust accepts JS answer
 // ==============================
-pub async fn accept_answer(
-    sender: SharedP2pAudioSender,
-    answer_from_js: SignalSdp,
-) -> Result<()> {
+pub async fn accept_answer(sender: SharedP2pAudioSender, answer_from_js: SignalSdp) -> Result<()> {
     let sender = sender.lock().await;
 
     let answer = RTCSessionDescription::answer(answer_from_js.sdp)?;
@@ -465,11 +443,7 @@ async fn audio_loop(
         None
     };
 
-    let mut opus_encoder = Encoder::new(
-        TARGET_RATE,
-        Channels::Mono,
-        Application::Voip,
-    )?;
+    let mut opus_encoder = Encoder::new(TARGET_RATE, Channels::Mono, Application::Voip)?;
 
     opus_encoder.set_bitrate(Bitrate::Bits(32_000))?;
     opus_encoder.set_inband_fec(true)?;
@@ -497,16 +471,11 @@ async fn audio_loop(
         }
 
         while resampled_buffer.len() >= target_frame_size {
-            let frame: Vec<f32> = resampled_buffer
-                .drain(..target_frame_size)
-                .collect();
+            let frame: Vec<f32> = resampled_buffer.drain(..target_frame_size).collect();
 
             let pcm_i16 = f32_to_i16_vec(&frame);
 
-            let packet_len = opus_encoder.encode(
-                &pcm_i16,
-                &mut opus_packet_buffer,
-            )?;
+            let packet_len = opus_encoder.encode(&pcm_i16, &mut opus_packet_buffer)?;
 
             let opus_packet = opus_packet_buffer[..packet_len].to_vec();
 
