@@ -13,6 +13,8 @@ use serde_json::json;
 use include_dir::{include_dir, Dir};
 use mime_guess::from_path;
 use warp::hyper::{Response, Body};
+use std::net::SocketAddr;
+use tokio_stream::wrappers::TcpListenerStream;
 
 static TEMPLATE_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/templates");
 static STATIC_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/static");
@@ -22,8 +24,9 @@ fn build_tera_from_embedded() -> Tera {
 
     for file in TEMPLATE_DIR.files() {
         if let Some(path) = file.path().to_str() {
-            tera.add_raw_template(path, file.contents_utf8().unwrap())
-                .unwrap_or_else(|e| panic!("Failed to add template {}: {}", path, e));
+            if let Err(e) = tera.add_raw_template(path, file.contents_utf8().unwrap_or("")) {
+                eprintln!("Failed to add template {}: {}", path, e);
+            }
         }
     }
 
@@ -67,8 +70,8 @@ pub async fn start_web_server(app_handle: AppHandle) {
             let settings = load_settings(&path);
 
             let mut context = Context::new();
-            let rounded_opacity = (settings.background_opacity * 10.0).round() / 10.0;
-            let rounded_opacity_str = format!("{:.1}", rounded_opacity);
+            let rounded_opacity = (settings.background_opacity * 100.0).round() / 100.0;
+            let rounded_opacity_str = format!("{:.2}", rounded_opacity);
             context.insert("title", "Settings");
             context.insert("theme", &settings.theme);
             context.insert("font", &settings.font);
@@ -132,7 +135,10 @@ pub async fn start_web_server(app_handle: AppHandle) {
                     .unwrap_or(2), // Default to 2 if not provided
             };
             let path = app_handle_clone_for_save.state::<PathBuf>();
-            save_settings(&path, &settings);
+            match save_settings(&path, &settings) {
+                Ok(_) => println!("Settings saved"),
+                Err(e) => eprintln!("Failed to save settings: {}", e),
+            }
             warp::redirect::see_other("/settings".parse::<http::Uri>().unwrap())
         });
     
@@ -188,9 +194,21 @@ pub async fn start_web_server(app_handle: AppHandle) {
         .or(api_custom_data)
         .or(static_files);
 
-    warp::serve(routes)
-        .run(([0, 0, 0, 0], 54321))
-        .await;
+    let addr: SocketAddr = ([0, 0, 0, 0], 54321).into();
+
+    match tokio::net::TcpListener::bind(addr).await {
+        Ok(listener) => {
+            println!("Web server running on {}", addr);
+
+            warp::serve(routes)
+                .run_incoming(TcpListenerStream::new(listener))
+                .await;
+        }
+
+        Err(e) => {
+            eprintln!("Failed to bind web server on {}: {}", addr, e);
+        }
+    }
 }
 
 fn remove_vishraams(text: &str) -> String {

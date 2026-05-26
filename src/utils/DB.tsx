@@ -3,19 +3,26 @@ import Database from "@tauri-apps/plugin-sql";
 
 let instance: Database | void;
 
-let dbPath: String;
+let dbPath: string;
 
 const DB = {
     schemaExists: false,
+
+    getDbPath: () => {
+        return dbPath;
+    },
 
     setDbPath: (path: string) => {
         dbPath = path;
     },
 
     getInstance: async () => {
+        if (!dbPath) {
+            throw new Error('Database path is not set.');
+        }
+
         if (!instance) {
             instance = await Database.load("sqlite:" + dbPath);
-            await DB.addSchema(instance);            
         }
 
         return instance;
@@ -81,7 +88,7 @@ const DB = {
     downloadDb: async () => {
         try {
             await invoke<string>('download_sqlite_file', {
-                url: 'https://github.com/shabados/database/releases/download/4.8.7/database.sqlite',
+                url: 'https://github.com/singhecloud/database/releases/download/v1.0.0/bani.db',
             });
         } catch (error) {
             console.error('Failed to download SQLite DB:', error);

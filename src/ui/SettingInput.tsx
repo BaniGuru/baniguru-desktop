@@ -1,12 +1,7 @@
 import { FaMinus, FaPlus } from "react-icons/fa";
 import { useSettings } from "../state/providers/SettingContext";
 
-const fontLanguages = ["ਗੁਰਮੁਖੀ", "ਪੰਜਾਬੀ", "English", "Next Pankti"];
-const spacingKeys = ["Start Space", "End Space", "Left Space", "Right Space", "Gurmukhi Space", "Translation Space"];
-const panelSettingKeys = ["panelWidth", "panelHeight", "panelFontSize"];
-
-const normalizeSpacingKey = (label: string) =>
-  label.replace(" ", "").charAt(0).toLowerCase() + label.replace(" ", "").slice(1);
+const panelSettingKeys = ["panelWidth", "panelHeight"];
 
 const SettingInput = ({
   lang,
@@ -18,30 +13,17 @@ const SettingInput = ({
   name?: string;
 }) => {
   const {
-    fontSizes,
-    displaySpacing,
     panelSetting,
-    updateFontSize,
-    updateSpacing,
     updatePanelSetting,
     visibility,
     setVisibility
   } = useSettings();
 
-  const isFont = fontLanguages.includes(lang);
-  const isSpacing = spacingKeys.includes(lang);
   const isSettingPanel = panelSettingKeys.includes(name ?? '');
 
   const getValue = () => {
     if (isSettingPanel && name) {
       return panelSetting[name as keyof typeof panelSetting];
-    }
-    if (isFont) {
-      return fontSizes[lang as keyof typeof fontSizes];
-    }
-    if (isSpacing) {
-      const key = normalizeSpacingKey(lang) as keyof typeof displaySpacing;
-      return displaySpacing[key];
     }
     return "";
   };
@@ -56,12 +38,6 @@ const SettingInput = ({
     if (isSettingPanel) {
       updatePanelSetting(name as keyof typeof panelSetting, newValue);
       return;
-    }
-    if (isFont) {
-      updateFontSize(lang as keyof typeof fontSizes, newValue);
-    } else if (isSpacing) {
-      const key = normalizeSpacingKey(lang) as keyof typeof displaySpacing;
-      updateSpacing(key, newValue);
     }
   };
 
@@ -80,18 +56,20 @@ const SettingInput = ({
   };
 
   const toggleVisible = () => {
-    if (isFont) {
-      if (lang === "Next Pankti" || lang === "ਪੰਜਾਬੀ" || lang === "English") {
-        setVisibility({...visibility, [lang]: !visibility[lang]});
-      }
+    if (lang === "Next Pankti" || lang === "ਪੰਜਾਬੀ" || lang === "English") {
+      setVisibility({...visibility, [lang]: !visibility[lang]});
     }
   };
+
+  if (lang === "ਗੁਰਮੁਖੀ") return null;
 
   return (
     <div className="flex flex-row items-center w-full">
       {Icon && <Icon className="mx-4 flex-none text-xl" onClick={toggleVisible} />}
       <div className={`flex-1 text-xl ${!Icon ? 'ml-4' : ''}`}>{lang}</div>
 
+      {!Icon && (
+        <>
       <button
         className="w-10 h-10 flex-none flex items-center justify-center rounded bg-gray-200 hover:bg-gray-300"
         onClick={decrement}
@@ -114,6 +92,7 @@ const SettingInput = ({
       >
         <FaPlus />
       </button>
+      </>)}
     </div>
   );
 };

@@ -1,20 +1,55 @@
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaCheckCircle, FaEye, FaEyeSlash, FaTimesCircle } from "react-icons/fa";
 import SettingInput from "../../ui/SettingInput";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ShabadTheme } from "../../ui/ShabadTheme";
 import { LangType, useSettings } from "../../state/providers/SettingContext";
+import { DB } from "../../utils/DB";
 
 const languages = ["ਗੁਰਮੁਖੀ", "ਪੰਜਾਬੀ", "English", "Next Pankti"];
 
 export const SettingPanel = () => {
   const [ip, setIP] = useState<string | null>(null);
-
+  const [mics, setMics] = useState<string[]>([]);
+  const {
+    micName,
+    setMicName,
+    autoSearch,
+    setAutoSearch,
+    audioStream,
+    setAudioStream,
+    autoNext,
+    setAutoNext,
+    speechRegion,
+    setSpeechRegion,
+  } = useSettings();
+  
   const { visibility, setVisibility } = useSettings();
 
   useEffect(() => {
-    invoke<string>('get_local_ip')
-      .then(setIP);
+    const fetchMics = async () => {
+      try {
+        const availableMics: any = await invoke<{ name: string }[]>("list_mics");
+        setMics(availableMics);
+      } catch (error) {
+        console.error('Error fetching microphones:', error);
+      }
+    };
+
+    fetchMics();
+  }, []);
+
+  useEffect(() => {
+    const loadIP = async () => {
+      try {
+        const ip = await invoke<string>('get_local_ip');
+        setIP(ip);
+      } catch (err) {
+        console.error('Failed to get local IP:', err);
+      }
+    };
+
+    loadIP();
   }, []);
 
   return (
@@ -28,21 +63,15 @@ export const SettingPanel = () => {
       <div className="text-xl ml-4">Search Panel</div>
       <SettingInput lang="Width" name="panelWidth" />
       <SettingInput lang="Height" name="panelHeight" />
-      <SettingInput lang="Font Size" name="panelFontSize" />
 
       <hr />
-      <div className="text-2xl ml-4">Display</div>
-      <SettingInput lang="Start Space" />
-      <SettingInput lang="End Space" />
-      <SettingInput lang="Left Space" />
-      <SettingInput lang="Right Space" />
-      <SettingInput lang="Gurmukhi Space" />
-      <SettingInput lang="Translation Space" />
 
       <div className="text-2xl ml-4">Themes</div>
+      <ShabadTheme name="BaniGuru" />
       <ShabadTheme name="Light" />
       <ShabadTheme name="Blue" />
       <ShabadTheme name="Dark" />
+      <ShabadTheme name="Darker" />
       <ShabadTheme name="Sepia" />
       <ShabadTheme name="ShabadOs1" />
       <ShabadTheme name="ShabadOs2" />
@@ -73,6 +102,60 @@ export const SettingPanel = () => {
       <div className="text-lg ml-4 flex">
         <div className="mr-2">Settings: </div>
         <div>http://{ip}:54321/settings</div>
+      </div>
+      <div className="text-lg ml-4 flex">
+        <div className="mr-2">Database: </div>
+        <div>{DB.getDbPath()}</div>
+      </div>
+      <hr />
+      <div className="flex ml-4 pt-2">
+        <label className="mr-4">Mic</label>
+        <select onChange={(e) => setMicName(e.target.value)} value={micName || ''}>
+          <option value='' disabled>Select a microphone</option>
+          {mics.map((mic, index) => (
+            <option key={index} value={mic}>
+              {mic}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex ml-4 pt-2 pb-2">
+        <label className="mr-4">Region</label>
+        <select
+          onChange={(e) => setSpeechRegion(e.target.value)}
+          value={speechRegion || ''}
+        >
+          <option value='' disabled>Select Speech Region</option>
+          <option key="region_us" value="us">United State</option>
+          <option key="region_jp" value="jp">Japan</option>
+        </select>
+      </div>
+      <hr />
+      <div className="flex flex-row items-center w-full px-4">
+        <div className={`flex-1 text-xl`}>Auto search</div>
+        <div className="flex text-xl" onClick={() => setAutoSearch(!autoSearch)}>
+          {
+            autoSearch ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-700" />
+          }
+        </div>
+      </div>
+      <hr />
+      <div className="flex flex-row items-center w-full px-4">
+        <div className={`flex-1 text-xl`}>Auto Next</div>
+        <div className="flex text-xl" onClick={() => setAutoNext(!autoNext)}>
+          {
+            autoNext ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-700" />
+          }
+        </div>
+      </div>
+      <hr />
+      <div className="flex flex-row items-center w-full px-4 pt-2">
+        <div className={`flex-1 text-xl`}>Audio Stream</div>
+        <div className="flex text-xl" onClick={() => setAudioStream(!audioStream)}>
+          {
+            audioStream ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-700" />
+          }
+        </div>
       </div>
     </div>
   );

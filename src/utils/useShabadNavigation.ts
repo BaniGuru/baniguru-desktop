@@ -7,9 +7,10 @@ import { Pankti } from "../models/Pankti";
 import { DB } from "./DB";
 import { SearchContext } from "../state/providers/SearchProvider";
 import { useSettings } from "../state/providers/SettingContext";
+import { useContext as useCtxSelector } from "use-context-selector";
 
 const useShabadNavigation = () => {
-    const shabadContext: {state: ShabadState, dispatch: any} = useContext(ShabadContext);
+    const shabadContext: {state: ShabadState, dispatch: any} = useCtxSelector(ShabadContext);
     const appContext: {dispatch: any, state: AppState} = useContext(AppContext);
     const searchContext: {dispatch: any} = useContext(SearchContext);
     const { visibility } = useSettings();
@@ -20,7 +21,7 @@ const useShabadNavigation = () => {
         }
 
         if (ev.key == "Control") {
-            ev.preventDefault();
+        //     ev.preventDefault();
             return;
         }
 
@@ -80,7 +81,7 @@ const useShabadNavigation = () => {
             case "ArrowLeft":
                 ev.preventDefault();
 
-                const prevIndex = shabadContext.state.current - 1;
+                let prevIndex = shabadContext.state.current - 1;
 
 
                 if (visibility["Akhand Paath"] && prevIndex < 0) {
@@ -130,7 +131,7 @@ const useShabadNavigation = () => {
             case "PageDown":
                 ev.preventDefault();
 
-                const nextIndex = shabadContext.state.current + 1;
+                let nextIndex = shabadContext.state.current + 1;
                 if (nextIndex < shabadContext.state.panktis.length) {
                     shabadContext.dispatch({
                         type: SHABAD_AUTO_NEXT,
