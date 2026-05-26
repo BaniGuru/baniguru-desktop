@@ -60,10 +60,11 @@ const defaultPanelSetting = {
 const defaultRegion = "us";
 const defaultWidth = 800;
 const defaultHeight = 600;
-const settingVersion = "0.0.1.1";
+const settingVersion = "0.0.1.2";
 export const appVersion = "0.0.1";
 
 const defaultThemes: Theme[] = [
+  {name: "BaniGuru"},
   { name: "Light" },
   { name: "Blue" },
   { name: "Dark" },

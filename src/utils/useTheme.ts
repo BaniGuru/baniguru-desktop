@@ -2,6 +2,8 @@
 import { useEffect, useMemo } from "react";
 import { useSettings } from "../state/providers/SettingContext";
 
+import baniGuruBgClassic from "./../assets/images/bg-bani-guru-classic.png";
+import baniGuruBg from "./../assets/images/bg-bani-guru-classic.png";
 import bandiChorDiwas from './../assets/images/bandi_chor_diwas.jpg';
 import guruNanakDevJi from './../assets/images/guru-nanak-dev-ji.png';
 import bg2 from './../assets/images/guru-granth-sahib-ji-theme2.png';
@@ -24,6 +26,18 @@ export type ThemeColors = {
  *  Make sure keys match the theme names you ship in defaultThemes (e.g., "Light", "Blue", "Dark" …)
  */
 const THEME_CATALOG: Record<string, ThemeColors> = {
+  BaniGuruClassic: {
+    "gurmukhi": "#1A191A",
+    "punjabi": "#302E2C",
+    "english": "#413F3E",
+    background: `url(${baniGuruBgClassic}) center center / 100% 100% no-repeat`
+  },
+  BaniGuru: {
+    "gurmukhi": "#1A191A",
+    "punjabi": "#302E2C",
+    "english": "#413F3E",
+    background: `url(${baniGuruBg}) center center / 100% 100% no-repeat`
+  },
   Light: {
     gurmukhi: "#000000",
     punjabi: "#111827",   // gray-900

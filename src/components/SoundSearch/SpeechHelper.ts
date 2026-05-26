@@ -18,6 +18,7 @@ export type PanktiScore = {
     vishraamFull: boolean,
     fullMatch: boolean,
     panktiIdx: number;
+    panktiId: string;
     shabadId: string;
     panktiStartIdx: number;
     panktiEndIdx: number;
@@ -27,6 +28,59 @@ export type PanktiScore = {
 
 // const RAHAOH_PANKTI_TYPE_ID = 3;
 // const SHABAD_PANKTI_TYPE_ID = 4;
+
+export function getAdjacentShabadPanktis(statePanktis: Pankti[], currentIndex: number) {
+  const currentPankti = statePanktis[currentIndex];
+
+  if (!currentPankti) return [];
+
+  const currentShabadId = currentPankti.shabad_id;
+
+  let start = currentIndex;
+  let end = currentIndex;
+
+  // move left while still current shabad
+  while (
+    start > 0 &&
+    statePanktis[start - 1].shabad_id === currentShabadId
+  ) {
+    start--;
+  }
+
+  // move right while still current shabad
+  while (
+    end < statePanktis.length - 1 &&
+    statePanktis[end + 1].shabad_id === currentShabadId
+  ) {
+    end++;
+  }
+
+  // include previous shabad block
+  if (start > 0) {
+    const prevShabadId = statePanktis[start - 1].shabad_id;
+
+    while (
+      start > 0 &&
+      statePanktis[start - 1].shabad_id === prevShabadId
+    ) {
+      start--;
+    }
+  }
+
+  // include next shabad block
+  if (end < statePanktis.length - 1) {
+    const nextShabadId = statePanktis[end + 1].shabad_id;
+
+    while (
+      end < statePanktis.length - 1 &&
+      statePanktis[end + 1].shabad_id === nextShabadId
+    ) {
+      end++;
+    }
+  }
+
+  return statePanktis.slice(start, end + 1);
+}
 
 export const getLatestPanktiPart = (token: string) => {
     if (token.trim() === '') {
@@ -276,15 +330,16 @@ export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], curr
         return [];
     }
 
-    let nextPanktiIdxs = [currentIdx, currentIdx+1];
+    const relativeCurrentIdx = currentIdx - prefixIdx;
+    let nextPanktiIdxs = [relativeCurrentIdx, relativeCurrentIdx+1];
 
     let i = 1;
-    while (panktis[currentIdx+i]?.type_id <= 2 && i <= 5) {
-        nextPanktiIdxs.push(currentIdx+i);
+    while (panktis[relativeCurrentIdx+i]?.type_id <= 2 && i <= 5) {
+        nextPanktiIdxs.push(relativeCurrentIdx+i);
         i++;
     }
 
-    let matchScores: PanktiScore[] = getPanktiScores(panktis, tokens, prefixIdx, true);
+    let matchScores: PanktiScore[] = getPanktiScores(panktis, tokens, 0, true);
 
     if (matchScores.length === 0) {
         return [];
@@ -304,7 +359,12 @@ export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], curr
         )
     );
     if (fullMatchScores.length === 1) {
-        return fullMatchScores;
+        return [
+            {
+                ...fullMatchScores[0],
+                panktiIdx: fullMatchScores[0].panktiIdx + prefixIdx
+            }
+        ];
     }
 
     // filter full start or vishraam
@@ -316,7 +376,12 @@ export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], curr
         )
     );
     if (fullStartOrVishraam.length === 1) {
-        return fullStartOrVishraam;
+        return [
+            {
+                ...fullStartOrVishraam[0],
+                panktiIdx: fullStartOrVishraam[0].panktiIdx + prefixIdx
+            }
+        ];
     }
 
     // allow next possible panktis only non visited
@@ -325,11 +390,16 @@ export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], curr
             nextPanktiIdxs.includes(panktiScore.panktiIdx)) &&
             (
                 panktiScore.panktiStarted ||
-                panktiScore.panktiIdx === currentIdx
+                panktiScore.panktiIdx === relativeCurrentIdx
             )
     );
     if (matchScores.length === 1) {
-        return matchScores;
+        return [
+            {
+                ...matchScores[0],
+                panktiIdx: matchScores[0].panktiIdx + prefixIdx
+            }
+        ];
     }
 
     return [];
@@ -523,6 +593,7 @@ export const getPanktiScore = (pankti: Pankti, tokens: string[], strictMatch: bo
                     vishraamFull: vishraamStarted && panktiFinished,
                     fullMatch: k === words.length,
                     panktiIdx: -1,
+                    panktiId: pankti.id,
                     shabadId: '',
                     panktiStartIdx: i,
                     panktiEndIdx: wordIdxs[wordIdxs.length - 1],

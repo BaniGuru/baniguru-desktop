@@ -242,6 +242,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
+name = "baniguru"
+version = "0.0.2"
+dependencies = [
+ "anyhow",
+ "base64 0.21.7",
+ "bytemuck",
+ "cpal",
+ "crossbeam-channel",
+ "futures",
+ "futures-util",
+ "include_dir",
+ "local-ip-address",
+ "mime_guess",
+ "opus",
+ "reqwest 0.11.27",
+ "rubato",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-sql",
+ "tauri-plugin-store",
+ "tera",
+ "tokio",
+ "tokio-stream",
+ "tokio-tungstenite",
+ "tungstenite",
+ "url",
+ "warp",
+ "webrtc",
+]
+
+[[package]]
 name = "base16ct"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5675,38 +5708,6 @@ dependencies = [
  "webview2-com",
  "window-vibrancy",
  "windows 0.61.3",
-]
-
-[[package]]
-name = "tauri-app"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "base64 0.21.7",
- "bytemuck",
- "cpal",
- "crossbeam-channel",
- "futures",
- "futures-util",
- "include_dir",
- "local-ip-address",
- "mime_guess",
- "opus",
- "reqwest 0.11.27",
- "rubato",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-sql",
- "tauri-plugin-store",
- "tera",
- "tokio",
- "tokio-tungstenite",
- "tungstenite",
- "url",
- "warp",
- "webrtc",
 ]
 
 [[package]]
