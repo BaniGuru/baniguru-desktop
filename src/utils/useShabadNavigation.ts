@@ -25,8 +25,6 @@ const useShabadNavigation = () => {
             return;
         }
 
-        const currentIndex = shabadContext.state.current;
-
         switch (ev.key) {
             case " ":
             case "Escape":
@@ -120,14 +118,6 @@ const useShabadNavigation = () => {
                     break;
                 }
 
-                if (shabadContext.state.panktis[currentIndex] && (shabadContext.state.baniId == 12 || shabadContext.state.baniId == 13)) {
-                    prevIndex = shabadContext.state.current-1;
-                    while (prevIndex > 0 && shabadContext.state.panktis[prevIndex].show_group === shabadContext.state.panktis[currentIndex-1].show_group) {
-                        prevIndex--;
-                    }
-                    prevIndex++;
-                }
-
                 shabadContext.dispatch({
                     type: SHABAD_AUTO_NEXT,
                     payload: {
@@ -142,12 +132,6 @@ const useShabadNavigation = () => {
                 ev.preventDefault();
 
                 let nextIndex = shabadContext.state.current + 1;
-                if (shabadContext.state.panktis[currentIndex] && (shabadContext.state.baniId == 12 || shabadContext.state.baniId == 13)) {
-                    nextIndex = shabadContext.state.current;
-                    while (shabadContext.state.panktis[nextIndex].show_group === shabadContext.state.panktis[currentIndex].show_group) {
-                        nextIndex++;
-                    }
-                }
                 if (nextIndex < shabadContext.state.panktis.length) {
                     shabadContext.dispatch({
                         type: SHABAD_AUTO_NEXT,

@@ -15,6 +15,7 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecordStat
     const appContext = useContext(AppContext);
     const [_panktiFinished, setPanktiFinished] = useState(false);
     const lastTerm = useRef(0);
+    const lastPanktiIdxRef = useRef(0);
 
     const [part, setPart] = useState(1);
     const [panktis, setPanktis] = useState<Pankti[]>([]);
@@ -40,9 +41,15 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecordStat
                 ...shabadContext.state.panktis.filter(pankti => pankti.speech_group >= line_group_start &&  pankti.speech_group <= line_group_end)
             ];
 
+            const firstPanktiId = newPanktis[0].id;
+            const currentIndex = shabadContext.state.panktis.findIndex(
+                pankti => pankti.id === firstPanktiId
+            );
+
+            lastPanktiIdxRef.current = currentIndex > 0 ? currentIndex : 0;
+            lastTerm.current = line_group_end;
             setPanktis(newPanktis);
             terms = newPanktis.map((pankti: Pankti) => pankti.gurmukhi_speech);
-            lastTerm.current = line_group_end;
         } else if (shabadContext.state.baniId === 12) {
             const line_group_start = termPart;
             const line_group_end = termPart + 2;
@@ -51,10 +58,32 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecordStat
             let prevPanktis = shabadContext.state.panktis.filter(pankti => pankti.shabad_id == lastShabadId);
             let newPanktis = [
                 ...prevPanktis,
-                ...shabadContext.state.panktis.filter(pankti => pankti.line_group >= line_group_start &&  pankti.line_group <= line_group_end)
+                ...shabadContext.state.panktis.filter(pankti => pankti.speech_group >= line_group_start &&  pankti.speech_group <= line_group_end)
             ];
 
             terms = newPanktis.map((pankti: Pankti) => pankti.gurmukhi_speech);
+            const firstPanktiId = newPanktis[0].id;
+            const currentIndex = shabadContext.state.panktis.findIndex(
+                pankti => pankti.id === firstPanktiId
+            );
+
+            lastPanktiIdxRef.current = currentIndex > 0 ? currentIndex : 0;
+            lastTerm.current = line_group_end;
+            setPanktis(newPanktis);
+        } else if (shabadContext.state.baniId === 7) {
+            const lastShabadId = panktis.slice(-1)[0]?.shabad_id;
+            let prevPanktis: Pankti[] = [];
+            if (lastShabadId) {
+                prevPanktis = shabadContext.state.panktis.filter(pankti => pankti.shabad_id == lastShabadId);
+            }
+
+            console.log(shabadContext.state.panktis);
+            let newPanktis = [
+                ...prevPanktis,
+                ...shabadContext.state.panktis.filter(pankti => pankti.speech_group = termPart)
+            ]
+            terms = newPanktis.map((pankti: Pankti) => pankti.gurmukhi_speech);
+            console.log('terms: ', terms);
             setPanktis(newPanktis);
         } else {
             setPanktis(shabadContext.state.panktis);
@@ -103,22 +132,41 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecordStat
             }
         } else  if (shabadContext.state.baniId === 12) {
             const lastShabadId = panktis.slice(-1)[0].shabad_id;
-            const lastLineGroup = panktis.slice(-1)[0].line_group;
+            const lastSpeechGroup = panktis.slice(-1)[0].speech_group;
             const currentShabadId = shabadContext.state.panktis[shabadContext.state.current].shabad_id;
-            const currentLineGroup = shabadContext.state.panktis[shabadContext.state.current].line_group;
+            const currentSpeechGroup = shabadContext.state.panktis[shabadContext.state.current].speech_group;
 
-            if (!lastLineGroup || !lastShabadId || (
+            if (!lastSpeechGroup || !lastShabadId || (
                 currentShabadId !== lastShabadId &&
-                currentLineGroup <= lastLineGroup
+                currentSpeechGroup <= lastSpeechGroup
             )) {
                 return;
             }
 
-            const nextLineGroup = lastLineGroup + 1;
-            if ( nextLineGroup % 3 === 1 && nextLineGroup < 24 && nextLineGroup > 1) {
-                restartTranscript(getTerms(nextLineGroup));
+            const nextSpeechGroup = lastSpeechGroup + 1;
+            if ( nextSpeechGroup % 3 === 1 && nextSpeechGroup < 24 && nextSpeechGroup > 1) {
+                restartTranscript(getTerms(nextSpeechGroup));
 
-                setPart(nextLineGroup);
+                setPart(nextSpeechGroup);
+                setLastCheckIdx(0);
+            }
+        } else if (shabadContext.state.baniId === 7) {
+            const lastShabadId = panktis.slice(-1)[0].shabad_id;
+            const lastSpeechGroup = panktis.slice(-1)[0].speech_group;
+            const currentShabadId = shabadContext.state.panktis[shabadContext.state.current].shabad_id;
+            const currentSpeechGroup = shabadContext.state.panktis[shabadContext.state.current].speech_group;
+
+            if (!lastSpeechGroup || !lastShabadId || (
+                currentShabadId !== lastShabadId &&
+                currentSpeechGroup <= lastSpeechGroup
+            )) {
+                return;
+            }
+
+            const nextSpeechGroup = currentSpeechGroup+1;
+            if (nextSpeechGroup <= 2) {
+                restartTranscript(getTerms(nextSpeechGroup));
+                setPart(nextSpeechGroup);
             }
         }
     }, [
@@ -141,27 +189,19 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecordStat
 
         const finalAndPartialText = (finalText ?? "") + (partialText ?? "");
         const tokenText = finalAndPartialText.slice(lastCheckIdx)
-            .replaceAll('।', ',')
+            // .replaceAll('।', ',')
             .replaceAll('.', ',');
 
+        const lastPanktiIdx = lastPanktiIdxRef.current;
         const speechText = unifySpeechText(tokenText);
 
-        const tokens = speechText.split(' ');
+        const speechParts = speechText.replace(/[,।\s]+$/g, '').split('।');
+        const lastPart = speechParts[speechParts.length-1].replaceAll(',', '')
+            .replaceAll('.', '')
+            .replaceAll('<multi-match>', '');
 
-        if (tokens.length < 1) return;
-
-        let lastPanktiIdx = 0;
-
-        for (let i = shabadContext.state.panktis.length - 1; i >= 0; i--) {
-            if (shabadContext.state.panktis[i].speech_group === part - 1) {
-                lastPanktiIdx = i;
-                break;
-            }
-        }
-
-        if (lastPanktiIdx > 0) {
-            lastPanktiIdx = lastPanktiIdx - 6 + 1;
-        }
+        const tokens = lastPart.split(' ').filter(part => part.length > 0);
+        if (tokens.length < 1 || speechText.trim().endsWith('<no_match>।') || speechText.trim().endsWith('<multi-match>।')) return;
 
         const matchingPanktis = findBaniMatchingPankti(panktis, tokens, shabadContext.state.current, lastPanktiIdx);
 
@@ -222,21 +262,22 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecordStat
     useEffect(() => {
         if (!active) return;
 
-        if (![6,9,12,13,15].includes(shabadContext.state.baniId ?? -1)) {
+        if (![6,7,9,12,13,15].includes(shabadContext.state.baniId ?? -1)) {
             return;
         }
 
         if (status === 'Init') {
-            const shabadId = shabadContext.state.panktis[shabadContext.state.current].shabad_id;
-            const speechGroup = shabadContext.state.panktis[shabadContext.state.current].speech_group;
-            const groupPanktis = shabadContext.state.panktis.filter(pankti => pankti.speech_group === speechGroup)
-            const lastShabadId = groupPanktis.slice(-1)[0].shabad_id;
+            // const shabadId = shabadContext.state.panktis[shabadContext.state.current].shabad_id;
+            // const speechGroup = shabadContext.state.panktis[shabadContext.state.current].speech_group;
+            // const groupPanktis = shabadContext.state.panktis.filter(pankti => pankti.speech_group === speechGroup)
+            // const lastShabadId = groupPanktis.slice(-1)[0].shabad_id;
 
             let starPart = shabadContext.state.panktis[shabadContext.state.current].speech_group;
-            if (shabadId === lastShabadId) {
-                starPart++;
-            }
+            // if (shabadId === lastShabadId) {
+            //     starPart++;
+            // }
 
+            lastTerm.current = 0;
             setPart(starPart);
             setLastCheckIdx(0);
             startTranscription(

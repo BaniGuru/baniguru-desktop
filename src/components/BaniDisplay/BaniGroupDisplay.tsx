@@ -8,6 +8,7 @@ import { useThemeColors } from "../../utils/useTheme";
 import { useContext as useCtxSelector } from "use-context-selector";
 import { AppContext } from "../../state/providers/AppProvider";
 
+// import backgroundDesign from "../../assets/images/logo-shabados-2.png";
 import backgroundDesign from "./background_design.png";
 
 interface PanktiLike {
@@ -47,22 +48,19 @@ const Content = styled.div`
     z-index: 2;
 
     width: 90vw;
-    height: 78vh;
+    height: 100vh;
 
     margin: 0 auto;
+    box-sizing: border-box;
 
-    padding-top: clamp(140px, 15vh, 185px);
-    padding-bottom: clamp(80px, 8vh, 120px);
+    padding-top: clamp(100px, 8vh, 140px);
+    padding-bottom: clamp(120px, 13vh, 180px);
 
-    display: grid;
-    grid-template-rows:
-        minmax(0, 1fr)
-        auto
-        minmax(0, 1fr)
-        auto
-        auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
 
-    row-gap: clamp(18px, 2.2vh, 32px);
+    gap: clamp(16px, 2vh, 28px);
 `;
 
 const VerseCard = styled.div`
@@ -73,15 +71,14 @@ const VerseCard = styled.div`
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
 
     text-align: center;
 `;
 
 const VerseRow = styled.div<{ single?: boolean }>`
-    min-height: 0;
-
     display: grid;
+
     grid-template-columns: ${({ single }) =>
         single ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))"};
 
@@ -90,8 +87,7 @@ const VerseRow = styled.div<{ single?: boolean }>`
     align-items: start;
     justify-items: center;
 
-    margin-top: 1.2vh;
-    padding-bottom: clamp(10px, 1.4vh, 22px);
+    width: 100%;
 `;
 
 const GurmukhiLine = styled.div<{ fontSize: number }>`
@@ -170,37 +166,12 @@ const NextPanktiLine = styled.div<{ fontSize: number }>`
 `;
 
 const DividerRow = styled.div`
-    position: relative;
+    width: min(42vw, 640px);
+    height: 1px;
 
-    width: min(48vw, 760px);
-    height: 28px;
+    margin: 0 auto;
 
-    margin: clamp(20px, 3vh, 42px) auto auto;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    &::before,
-    &::after {
-        content: "";
-        flex: 1;
-        height: 1px;
-
-        background: linear-gradient(
-            to right,
-            rgba(217,154,68,0),
-            rgba(217,154,68,0.85)
-        );
-    }
-
-    &::after {
-        background: linear-gradient(
-            to left,
-            rgba(217,154,68,0),
-            rgba(217,154,68,0.85)
-        );
-    }
+    background: rgba(217,154,68,0.35);
 `;
 
 const HiddenMeasureCard = styled(VerseCard)`
@@ -310,7 +281,7 @@ const BaniGroupDisplay: FC = () => {
             if (!panktis.length) return;
 
             const maxSize = appFontSize;
-            const minSize = 20;
+            const minSize = 16;
 
             let bestSize = minSize;
 
@@ -495,9 +466,7 @@ const BaniGroupDisplay: FC = () => {
                         )}
                     </VerseRow>
 
-                    <DividerRow />
-                        {/* <DividerKhanda>☬</DividerKhanda> */}
-                    {/* </DividerRow> */}
+                    {panktis.length > 1 && <DividerRow />}
 
                     <VerseRow single={isSingleColumn}>
                         {panktis.length > 1 &&

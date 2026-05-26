@@ -200,11 +200,11 @@ const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
                 INNER JOIN shabads ON lines.shabad_id = shabads.id
                 LEFT JOIN translations AS punjabi ON lines.id = punjabi.line_id AND (
                     (shabads.source_id = 1 AND punjabi.translation_source_id = 6) OR
-                    (shabads.source_id != 1 AND punjabi.translation_source_id IN (8, 11, 13, 15, 17, 19, 21))
+                    (shabads.source_id != 1 AND punjabi.translation_source_id IN (8, 11, 13, 15, 17, 19, 21, 23))
                 )
                 LEFT JOIN translations AS english ON lines.id = english.line_id AND (
                     (shabads.source_id = 1 AND english.translation_source_id = 1) OR
-                    (shabads.source_id != 1 AND english.translation_source_id IN (7, 9, 10, 12, 14, 16, 18, 20, 22))
+                    (shabads.source_id != 1 AND english.translation_source_id IN (7, 9, 10, 12, 14, 16, 18, 20, 22, 24))
                 )
                 WHERE lines.shabad_id = '${searchPankti.shabad_id}'
             `).then((panktis: any) => {

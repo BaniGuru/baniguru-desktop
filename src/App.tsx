@@ -11,7 +11,14 @@ import TabIcons from "./ui/TabIcons";
 import { SettingPanel } from "./components/SettingPanel";
 import { RecentPanel } from "./components/RecentPanel";
 import BaniPanel from "./components/BaniPanel";
-import { FaPauseCircle, FaPlayCircle, FaStopCircle, FaTimes, FaWindowMaximize, FaWindowMinimize } from "react-icons/fa";
+import {
+  FaPauseCircle,
+  FaPlayCircle,
+  FaStopCircle,
+  FaTimes,
+  FaWindowMaximize,
+  FaWindowMinimize,
+} from "react-icons/fa";
 import { SET_APP_PAGE, TOGGLE_PANEL } from "./state/ActionTypes";
 import useShabadNavigation from "./utils/useShabadNavigation";
 import styled from "styled-components";
@@ -27,6 +34,7 @@ import { gurbaniSearch } from "./utils/gurbaniSearch";
 import { apiClient, ApiClient } from "./utils/apiClient";
 import { SearchContext } from "./state/providers/SearchProvider";
 import BaniGroupDisplay from "./components/BaniDisplay/BaniGroupDisplay";
+import splash from "./assets/images/splash.png";
 
 
 type DownloadEvent =
@@ -60,6 +68,7 @@ function App() {
   const appRef = useRef<number>(0);
   const {panelSetting, version, updateVersion, panelLocation, setPanelLocation} = useSettings();
   const { palette } = useThemeColors();
+  const [splashVisible, setSplashVisible] = useState(true);
   
   const contentLengthRef = useRef<number>(0);
   const downloadedRef = useRef<number>(0);
@@ -69,6 +78,22 @@ function App() {
   const baniId = useContextSelector(ShabadContext, (ctx) => ctx.state.baniId);
 
   const {dispatch: searchDispatch, setSearchTerm} = useContext(SearchContext);
+
+  useEffect(() => {
+    const startFakeFullscreen = async () => {
+      try {
+        await invoke("fake_fullscreen");
+
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      } finally {
+        setSplashVisible(false);
+      }
+    };
+
+    startFakeFullscreen();
+  }, []);
 
   const shabadDispatch = useContextSelector(
     ShabadContext,
@@ -168,7 +193,7 @@ function App() {
 
       try {
         const path = await invoke<string>("download_sqlite_file_with_channel", {
-          url: "https://github.com/shabados/database/releases/download/4.8.7/database.sqlite",
+          url: "https://github.com/singhecloud/database/releases/download/v1.0.0/bani.db",
           onEvent: channel,
         });
 
@@ -301,6 +326,18 @@ function App() {
     });
   }
 
+  if (splashVisible || (downloadingRef.current === false && !ready)) {
+    return (
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center overflow-hidden bg-[#dbeafe]">
+        <img
+          src={splash}
+          alt="Loading Splash"
+          className="h-[32vh] max-h-[420px] w-auto rounded-[32px] object-contain select-none pointer-events-none shadow-2xl"
+        />
+      </div>
+    );
+  }
+
   if (downloadingRef.current === true) {
     return <LoadingScreen progress={progress} />;
   }
@@ -310,7 +347,7 @@ function App() {
   }
 
   return (
-    <AppPanel className="w-full h-full"
+    <AppPanel className="fixed inset-0 w-screen h-screen overflow-hidden"
       style={ { background: palette.background, cursor: mouseVisible ? "default" : "none" }}
     >
           {mouseVisible && showTitleBar && (
@@ -320,10 +357,16 @@ function App() {
             >
               <div className="ml-4 text-lg">ਬਾਣੀ ਗੁਰੂ ਗੁਰੂ ਹੈ ਬਾਣੀ - BaniGuru.com</div>
               <div>
-                <button onClick={minimizeWindow} className="border-2 p-1 m-1 border-gray-800 mx-2 bg-gray-500 hover:bg-green-700">
+                <button
+                  onClick={minimizeWindow}
+                  className="border-2 p-1 m-1 border-gray-800 mx-2 bg-gray-500 hover:bg-green-700"
+                >
                   <FaWindowMinimize />
                 </button>
-                <button onClick={closeWindow} className="border-2 p-1 m-1 border-gray-800 mx-2 bg-gray-500 hover:bg-red-700">
+                <button
+                  onClick={closeWindow}
+                  className="border-2 p-1 m-1 border-gray-800 mx-2 bg-gray-500 hover:bg-red-700"
+                >
                   <FaTimes />
                 </button>
               </div>
@@ -334,7 +377,7 @@ function App() {
             <AnnouncementDisplay />
         }
 
-        {(baniId == 13 || baniId == 12)
+        {speechStarted && (baniId == 13 || baniId == 12)
             ? <BaniGroupDisplay />
             : <ShabadDisplay apiClient={apiClientRef.current ?? null} />
         }

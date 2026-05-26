@@ -40,8 +40,16 @@ export const SettingPanel = () => {
   }, []);
 
   useEffect(() => {
-    invoke<string>('get_local_ip')
-      .then(setIP);
+    const loadIP = async () => {
+      try {
+        const ip = await invoke<string>('get_local_ip');
+        setIP(ip);
+      } catch (err) {
+        console.error('Failed to get local IP:', err);
+      }
+    };
+
+    loadIP();
   }, []);
 
   return (
@@ -59,6 +67,7 @@ export const SettingPanel = () => {
       <hr />
 
       <div className="text-2xl ml-4">Themes</div>
+      <ShabadTheme name="BaniGuru" />
       <ShabadTheme name="Light" />
       <ShabadTheme name="Blue" />
       <ShabadTheme name="Dark" />

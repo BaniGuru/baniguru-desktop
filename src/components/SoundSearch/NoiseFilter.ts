@@ -526,7 +526,7 @@ export function postProcessText(
             prevText = "";
             data = defaultMatchData();
             lastSpeechText = rawFrag + rawFragments[i].delimiter;
-            processedText += "<multi-match>। ";
+            processedText += lastSpeechText + "<multi-match>। ";
             continue;
         }
 
