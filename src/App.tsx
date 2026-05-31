@@ -35,6 +35,8 @@ import { apiClient, ApiClient } from "./utils/apiClient";
 import { SearchContext } from "./state/providers/SearchProvider";
 import BaniGroupDisplay from "./components/BaniDisplay/BaniGroupDisplay";
 import splash from "./assets/images/splash.png";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { stopMeilisearch } from "./utils/meili";
 
 
 type DownloadEvent =
@@ -93,6 +95,18 @@ function App() {
     };
 
     startFakeFullscreen();
+  }, []);
+
+  useEffect(() => {
+    const setup = async () => {
+      const appWindow = getCurrentWindow();
+
+      await appWindow.onCloseRequested(async () => {
+        await stopMeilisearch();
+      });
+    };
+  
+    setup();
   }, []);
 
   const shabadDispatch = useContextSelector(

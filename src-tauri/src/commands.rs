@@ -1,15 +1,15 @@
 // src/commands.rs
 
-use serde::{Serialize, Deserialize};
-use tauri::{State, AppHandle};
+use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, State};
 use tokio::sync::Mutex;
 
 use cpal::traits::{DeviceTrait, HostTrait};
 
-use crate::soniox::{start_soniox_stream, stop_soniox_stream, SonioxStream};
+use crate::audio_bus::AudioBus;
 use crate::p2p_audio_sender::start_p2p_audio_stream_with_signaling;
 use crate::p2p_audio_sender::ApiConfig;
-use crate::audio_bus::AudioBus;
+use crate::soniox::{start_soniox_stream, stop_soniox_stream, SonioxStream};
 use tauri::async_runtime::JoinHandle;
 
 use cpal::SampleFormat;
@@ -72,9 +72,8 @@ pub struct Pankti {
 #[tauri::command]
 pub async fn update_pankti(
     pankti: Pankti,
-    state: State<'_, Mutex<Pankti>>
+    state: State<'_, Mutex<Pankti>>,
 ) -> Result<Pankti, String> {
-
     let mut s = state.lock().await;
 
     *s = pankti.clone();

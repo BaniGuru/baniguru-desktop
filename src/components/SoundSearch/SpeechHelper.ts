@@ -432,12 +432,12 @@ export const findMatchTowardEnd = (scores: PanktiScore[]) => {
     });
 }
 
-export const getPanktiScores = (panktis: Pankti[], tokens: string[], prefixIdx = 0, strictMatch: boolean = true) => {
+export const getPanktiScores = (panktis: Pankti[], tokens: string[], prefixIdx = 0, strictMatch: boolean = true, strictLevel: number = 1) => {
     const rTokens = tokens.join(' ').split(' ').reverse();
 
     const matches = [];
     for (let i = 0; i < panktis.length; i++) {
-        const matchScore = getPanktiScore(panktis[i], rTokens, strictMatch);
+        const matchScore = getPanktiScore(panktis[i], rTokens, strictMatch, strictLevel);
 
         if (matchScore == null) continue;
 
@@ -450,7 +450,7 @@ export const getPanktiScores = (panktis: Pankti[], tokens: string[], prefixIdx =
     return matches;
 }
 
-const isMatching = (word: string, token: string, strictMatch: boolean): boolean => {
+const isMatching = (word: string, token: string, strictMatch: boolean, strictLevel: number = 1): boolean => {
     if (!word || !token) return false;
 
     word = word.replace('ਂ', '');
@@ -465,7 +465,7 @@ const isMatching = (word: string, token: string, strictMatch: boolean): boolean 
     }
 
     if (!strictMatch) {
-        return get(word, token) <= 1;
+        return get(word, token) <= strictLevel;
     }
 
     // allow last ੁ missing
@@ -537,7 +537,7 @@ const isMatching = (word: string, token: string, strictMatch: boolean): boolean 
     return false;
 };
 
-export const getPanktiScore = (pankti: Pankti, tokens: string[], strictMatch: boolean) => {
+export const getPanktiScore = (pankti: Pankti, tokens: string[], strictMatch: boolean, strictLevel: number = 1) => {
     let matches: PanktiScore[] = [];
     const words = pankti.gurmukhi_rwords;
     const vishraam_idx = pankti.vishraam_ridx ? (pankti.vishraam_ridx - 1) : -1;
@@ -552,12 +552,12 @@ export const getPanktiScore = (pankti: Pankti, tokens: string[], strictMatch: bo
                 i + k < words.length &&
                 j + k < tokens.length &&
                 (
-                    isMatching(words[i + k], tokens[j + k], strictMatch) ||
+                    isMatching(words[i + k], tokens[j + k], strictMatch, strictLevel) ||
                     (
                         words[i+k].startsWith(tokens[j+k]) &&
                         (i+k+1) < words.length &&
                         (j+k+1) < tokens.length &&
-                        isMatching(words[i + k + 1], tokens[j + k + 1], strictMatch)
+                        isMatching(words[i + k + 1], tokens[j + k + 1], strictMatch, strictLevel)
                     )
                 )
             ) {

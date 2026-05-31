@@ -52,6 +52,8 @@ tokio = { version = "1.38", features = ["full"] }
 tokio-stream = { version = "0.1", features = ["net"] }
 futures-util = "0.3.30"
 tauri-plugin-store = "2.3.0"
+tauri-plugin-shell = "2"
+tauri-plugin-fs = "2"
 
 [features]
 default = ["custom-protocol"]

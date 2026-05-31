@@ -1,13 +1,15 @@
-use tauri::AppHandle;
 use crate::audio_bus::AudioBus;
+use tauri::AppHandle;
 
+use futures_util::{SinkExt, StreamExt};
+use tauri::async_runtime::JoinHandle;
 use tokio::sync::mpsc;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
-use futures_util::{SinkExt, StreamExt};
 use url::Url;
-use tauri::async_runtime::JoinHandle;
 
-use rubato::{Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction};
+use rubato::{
+    Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
+};
 
 const TARGET_RATE: u32 = 8000; // or 16000 if you want better quality
 
@@ -16,7 +18,6 @@ pub struct ApiConfig {
     pub url: String,
     pub token: String,
 }
-
 
 // ==============================
 // Start audio stream (RAW PCM)
@@ -63,7 +64,9 @@ pub fn start_audio_stream(
 // ==============================
 async fn ws_connect_and_auth(
     api_config: ApiConfig,
-) -> Option<tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>> {
+) -> Option<
+    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
+> {
     let mut url = Url::parse(&api_config.url).unwrap();
 
     url.query_pairs_mut()
@@ -125,7 +128,6 @@ async fn audio_pcm_loop(
     };
 
     while let Some(chunk) = rx.recv().await {
-
         input_buffer.extend_from_slice(&chunk);
 
         while input_buffer.len() >= input_block {
@@ -150,7 +152,6 @@ async fn audio_pcm_loop(
         }
 
         while resampled_buffer.len() >= target_frame_size {
-
             let frame: Vec<f32> = resampled_buffer.drain(..target_frame_size).collect();
 
             let pcm16 = f32_to_i16_bytes(&frame);
@@ -182,7 +183,9 @@ fn f32_to_i16_bytes(input: &[f32]) -> Vec<u8> {
 // ==============================
 async fn ws_sender_loop(
     mut rx: mpsc::Receiver<Vec<u8>>,
-    mut ws: tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
+    mut ws: tokio_tungstenite::WebSocketStream<
+        tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+    >,
 ) {
     loop {
         tokio::select! {

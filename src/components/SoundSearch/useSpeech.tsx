@@ -11,6 +11,8 @@ import { useContext as useCtxSelector } from "use-context-selector";
 import useSearchPilot from "./useSearchPilot";
 import { ENV } from "../../utils/env";
 import { ApiClient } from "../../utils/apiClient";
+import { ensurePanktiIndex } from "../../utils/meili";
+import { DB } from "../../utils/DB";
 
 const SPEECH_API_US_URL = "wss://stt-rt.soniox.com/transcribe-websocket";
 const SPEECH_API_JP_URL = "wss://stt-rt.jp.soniox.com/transcribe-websocket";
@@ -42,6 +44,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const transcriptRef = useRef("");
   const listenerRef = useRef(false);
   const audioStreaming = useRef(false);
+  const searchReady = useRef(false);
   const [finalText, setFinalText] = useState("");
   const [newFinalToken, setNewFinalToken] = useState<string>("");
   const [errorText, setErrorText] = useState("");
@@ -153,6 +156,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   }, []);
 
   const startTranscription = useCallback(async (panktis: string[]) => {
+    // return;
     if (micName === "") {
       setErrorText("Mic not selected.");
       setStarted(false);
@@ -213,6 +217,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   ]);
 
   const stopTranscription = useCallback(async () => {
+    // return;
     try {
         await invoke('stop_soniox');
       } catch (error) {
@@ -352,6 +357,13 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     resetText,
     autoSearch
   ]);
+
+  useEffect(() => {
+    if (!searchReady.current && autoSearch && DB.getDbPath()) {
+      ensurePanktiIndex();
+      searchReady.current = true;
+    }
+  }, [autoSearch]);
 
   const updateLastTokenElapse = useCallback((finalText: string, nonFinalText: string) => {
     // Silence begins when:

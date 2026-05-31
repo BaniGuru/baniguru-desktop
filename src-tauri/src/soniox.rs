@@ -1,6 +1,6 @@
 // src/soniox.rs
-use tokio::sync::{mpsc, watch};
 use tauri::async_runtime::JoinHandle;
+use tokio::sync::{mpsc, watch};
 use tokio_tungstenite::connect_async;
 use tungstenite::Message;
 
@@ -8,7 +8,7 @@ use futures_util::{SinkExt, StreamExt};
 
 use cpal::traits::{DeviceTrait, StreamTrait};
 
-use serde::{Deserialize};
+use serde::Deserialize;
 use serde_json::json;
 
 use bytemuck;
@@ -45,7 +45,6 @@ pub struct SonioxStream {
 // ==============================
 //
 fn resample_to_16k(input: &[f32], input_rate: u32) -> Vec<f32> {
-
     let target_rate = 16000;
 
     if input_rate == target_rate {
@@ -57,7 +56,6 @@ fn resample_to_16k(input: &[f32], input_rate: u32) -> Vec<f32> {
 
     (0..output_len)
         .map(|i| {
-
             let pos = i as f32 / ratio;
             let idx = pos.floor() as usize;
             let frac = pos - idx as f32;
@@ -66,7 +64,6 @@ fn resample_to_16k(input: &[f32], input_rate: u32) -> Vec<f32> {
             let s1 = *input.get(idx + 1).unwrap_or(&s0);
 
             s0 * (1.0 - frac) + s1 * frac
-
         })
         .collect()
 }
@@ -80,15 +77,12 @@ pub async fn start_soniox_stream(
     channels: u16,
     bus: AudioBus,
 ) -> Result<SonioxStream, String> {
-
     println!("Starting Soniox streaming...");
 
     //
     // Connect websocket
     //
-    let (ws_stream, _) = connect_async(soniox_url)
-        .await
-        .map_err(|e| e.to_string())?;
+    let (ws_stream, _) = connect_async(soniox_url).await.map_err(|e| e.to_string())?;
 
     println!("Connected to Soniox");
 
@@ -110,7 +104,7 @@ pub async fn start_soniox_stream(
         "target_language": "pa",
         "keepAlive": true,
         "enable_endpoint_detection": true,
-        "max_endpoint_delay_ms": 2000,
+        "max_endpoint_delay_ms": 2500,
         "context": {
             "terms": panktis
         }
@@ -146,13 +140,11 @@ pub async fn start_soniox_stream(
     // Processing pipeline
     //
     let task = tauri::async_runtime::spawn(async move {
-
         let mut buffer: Vec<i16> = Vec::new();
         let mut last_partial = String::new();
         let mut total_audio_proc_ms: u64 = 0;
 
         loop {
-
             tokio::select! {
 
                 //
@@ -279,24 +271,19 @@ pub fn start_microphone(
     config: cpal::SupportedStreamConfig,
     bus: AudioBus,
 ) -> Result<cpal::Stream, String> {
-
     let err_fn = |err| println!("Mic error: {:?}", err);
 
     let stream_config = cpal::StreamConfig {
-
         channels: config.channels(),
         sample_rate: config.sample_rate(),
         buffer_size: cpal::BufferSize::Fixed(256),
     };
 
     let stream = match config.sample_format() {
-
         cpal::SampleFormat::F32 => device.build_input_stream(
             &stream_config,
             move |data: &[f32], _| {
-
                 let _ = bus.publish(data.to_vec());
-
             },
             err_fn,
             None,
@@ -305,11 +292,7 @@ pub fn start_microphone(
         cpal::SampleFormat::I16 => device.build_input_stream(
             &stream_config,
             move |data: &[i16], _| {
-
-                let buffer: Vec<f32> = data
-                    .iter()
-                    .map(|s| *s as f32 / i16::MAX as f32)
-                    .collect();
+                let buffer: Vec<f32> = data.iter().map(|s| *s as f32 / i16::MAX as f32).collect();
 
                 let _ = bus.publish(buffer);
             },
@@ -320,7 +303,6 @@ pub fn start_microphone(
         cpal::SampleFormat::U16 => device.build_input_stream(
             &stream_config,
             move |data: &[u16], _| {
-
                 let buffer: Vec<f32> = data
                     .iter()
                     .map(|s| (*s as f32 / u16::MAX as f32) * 2.0 - 1.0)
