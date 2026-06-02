@@ -12,7 +12,6 @@ import useSearchPilot from "./useSearchPilot";
 import { ENV } from "../../utils/env";
 import { ApiClient } from "../../utils/apiClient";
 import { ensurePanktiIndex } from "../../utils/meili";
-import { DB } from "../../utils/DB";
 
 const SPEECH_API_US_URL = "wss://stt-rt.soniox.com/transcribe-websocket";
 const SPEECH_API_JP_URL = "wss://stt-rt.jp.soniox.com/transcribe-websocket";
@@ -41,6 +40,9 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const appContext = useContext(AppContext);
   const shabadContext = useCtxSelector(ShabadContext);
 
+  const SEARCH_LIMIT_MS = 5 * 60 * 1000;
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const transcriptRef = useRef("");
   const listenerRef = useRef(false);
   const audioStreaming = useRef(false);
@@ -55,6 +57,8 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const [silenceStart, setSilenceStart] = useState<number|null>(null);
   const prevLastEndMsRef = useRef<number|null>(null);
   const [pauseSpeech, setPauseSpeech] = useState<boolean>(false);
+
+  const currentPageRef = useRef(appContext.state.page);
 
   useEffect(() => {
     if (!audioStreaming.current && audioStream) {
@@ -93,6 +97,45 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     setPauseSpeech(false);
   }, [audioStream]);
 
+  const clearSearchTimer = useCallback(() => {
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+      searchTimerRef.current = null;
+    }
+  }, []);
+
+  const startSearchTimer = useCallback(() => {
+    clearSearchTimer();
+
+    searchTimerRef.current = setTimeout(() => {
+      console.log("Search tab active for 5 minutes. Stopping speech.");
+      stopSpeech();
+    }, SEARCH_LIMIT_MS);
+  }, [clearSearchTimer, stopSpeech]);
+
+  useEffect(() => {
+    const shouldRunSearchTimer =
+      started &&
+      appContext.state.page === PAGE_SEARCH;
+
+    if (shouldRunSearchTimer) {
+      startSearchTimer();
+    } else {
+      clearSearchTimer();
+    }
+
+    return clearSearchTimer;
+  }, [
+    started,
+    appContext.state.page,
+    startSearchTimer,
+    clearSearchTimer,
+  ]);
+
+  useEffect(() => {
+    currentPageRef.current = appContext.state.page;
+  }, [appContext.state.page]);
+
   useEffect(() => {
 
     if (listenerRef.current) return;
@@ -113,9 +156,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
       }
 
       setNonFinalText(partial);
-
       setLastTokenTime(end_ms);
-
     }).then(fn => {
       unlistenFn = fn;
     });
@@ -283,6 +324,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const shabadPilot = useShabadPilot(
     finalText,
     nonFinalText,
+    newFinalToken,
     status.current,
     startPage.current,
     startTranscription,
@@ -359,11 +401,11 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   ]);
 
   useEffect(() => {
-    if (!searchReady.current && autoSearch && DB.getDbPath()) {
+    if (!searchReady.current && autoSearch && appContext.dbPath) {
       ensurePanktiIndex();
       searchReady.current = true;
     }
-  }, [autoSearch]);
+  }, [autoSearch, appContext.dbPath]);
 
   const updateLastTokenElapse = useCallback((finalText: string, nonFinalText: string) => {
     // Silence begins when:

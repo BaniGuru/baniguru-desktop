@@ -107,7 +107,6 @@ export const apiClient = (shabadDispatch: React.Dispatch<any>, appDispatch: Reac
     if (!final && !partial) return;
 
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      console.warn("WebSocket not connected");
       return;
     }
 
@@ -136,7 +135,6 @@ export const apiClient = (shabadDispatch: React.Dispatch<any>, appDispatch: Reac
 
   const sendPankti = (shabadId: string, current: number, home: number, baniId: number|null, visited: number[]) => {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      console.warn("WebSocket not connected");
       return;
     }
 

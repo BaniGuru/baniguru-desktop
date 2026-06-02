@@ -6,12 +6,12 @@ import { Pankti } from "../../models/Pankti";
 import { usePanktiSearch } from "../../hooks/usePanktiSearch";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { useContext as useCtxSelector } from "use-context-selector";
-import { SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SET_PANKTIS, SHABAD_RESET } from "../../state/ActionTypes";
+import { SET_PANKTIS } from "../../state/ActionTypes";
 import { AppContext } from "../../state/providers/AppProvider";
 import { RecordState } from "./useSpeech";
 import { getAutoNavigateMatch, searchPanktiHybrid } from "../../utils/meili";
 
-const useSearchPilot = (finalText: string, partialText: string, status: RecordState, startTranscription: any, restartTranscript: any) => {
+const useSearchPilot = (finalText: string, partialText: string, status: RecordState, startTranscription: any, _restartTranscript: any) => {
 
     const [active, setActive] = useState<boolean>(false);
     const {searchTerm, dispatch: searchDispatch} = useContext(SearchContext);
@@ -115,55 +115,84 @@ const useSearchPilot = (finalText: string, partialText: string, status: RecordSt
         const panktis = await getByLineIds(matchResults.map(matchResult => matchResult.id));
 
         const fullMatchPanktis = getAutoNavigateMatch(speechText, panktis);
-        console.log('full match: ', fullMatchPanktis);
 
         if (fullMatchPanktis.length === 1) {
             const pankti = fullMatchPanktis[0];
-            console.log('pankti: ', pankti);
-            shabadDispatch({ type: SHABAD_RESET });
-            searchDispatch({
-                type: SEARCH_SHABAD_PANKTI,
-                payload: { pankti }
-            });
-
-            appDispatch({
-                type: SET_APP_PAGE,
-                payload: {
-                    page: "shabad",
-                    prev_page: "search",
-                    show_panel: false,
-                }
-            });
-
+            showMatchingPanktis([pankti.id]);
             return;
         }
 
         const panktiIds = matchResults.map(matchRow => matchRow.id);
-        
-        const newShabadIds = panktis
-            .map(pankti => pankti.shabad_id)
-            .filter(Boolean);
-
-        let addedNewShabad = false;
-
-        newShabadIds.forEach(shabadId => {
-            if (!shabadIdsRef.current.has(shabadId)) {
-                shabadIdsRef.current.add(shabadId);
-                addedNewShabad = true;
-            }
-        });
-
-        if (addedNewShabad) {
-            if (!streamStartedRef.current) {
-                streamStartedRef.current = true;
-                const shabadPanktis: Pankti[] = await getByShabadIds(Array.from(shabadIdsRef.current));
-                const terms = shabadPanktis.map((pankti: Pankti) => pankti.gurmukhi_speech);
-                restartTranscript(terms);
-            }
-        }
 
         showMatchingPanktis(panktiIds);
     }
+
+    /**
+     * Navigate to full match pankti after search
+     * (not used at this stage)
+     */
+    // const navigateToFullMatchPankti = (pankti: Pankti) => {
+    //         shabadDispatch({ type: SHABAD_RESET });
+    //         searchDispatch({
+    //             type: SEARCH_SHABAD_PANKTI,
+    //             payload: { pankti }
+    //         });
+
+    //         appDispatch({
+    //             type: SET_APP_PAGE,
+    //             payload: {
+    //                 page: "shabad",
+    //                 prev_page: "search",
+    //                 show_panel: false,
+    //             }
+    //         });
+    // }
+
+    /**
+     * Restart stream with terms from last 10 pankti shabads
+     * (Not used at this stage)
+     * Should do after full match check and before showing all matching panktis
+     */
+    // const restartWithShabads = async (panktis: Pankti[], speechText: string) => {
+    //     const newShabadIds = panktis
+    //         .map(pankti => pankti.shabad_id)
+    //         .filter(Boolean);
+
+    //     let addedNewShabad = false;
+
+    //     newShabadIds.forEach(shabadId => {
+    //         if (!shabadIdsRef.current.has(shabadId)) {
+    //             shabadIdsRef.current.add(shabadId);
+    //             addedNewShabad = true;
+    //         }
+    //     });
+
+    //     if (addedNewShabad) {
+    //         if (!streamStartedRef.current && speechText.split(' ').length > 3) {
+    //             streamStartedRef.current = true;
+    //             const shabadPanktis: Pankti[] = await getByShabadIds(
+    //                 Array.from(shabadIdsRef.current)
+    //             );
+
+    //             // Count panktis per shabad
+    //             const panktiCounts = shabadPanktis.reduce((acc, pankti) => {
+    //                 acc[pankti.shabad_id] = (acc[pankti.shabad_id] || 0) + 1;
+    //                 return acc;
+    //             }, {} as Record<string, number>);
+
+    //             // Keep only panktis from shabads with <= 20 panktis
+    //             const filteredPanktis = shabadPanktis.filter(
+    //                 pankti => panktiCounts[pankti.shabad_id] <= 20
+    //             );
+
+    //             const terms = filteredPanktis.map(
+    //                 (pankti: Pankti) => pankti.gurmukhi_speech
+    //             );
+    //             restartTranscript(terms);
+    //             lastIdx.current = 0;
+    //         }
+    //     }
+    // }
 
     const showMatchingPanktis = async (lineIds: string[]) => {
         if (!lineIds.length) return;
@@ -204,10 +233,6 @@ const useSearchPilot = (finalText: string, partialText: string, status: RecordSt
                 type: SET_PANKTIS,
                 payload: panktis
             });
-            // const distinctShabadIds: string[] = [...new Set(panktis.map(p => p.shabad_id))];
-            // setMatchShabads(distinctShabadIds);
-            // const terms = res.map((pankti: any) => pankti.gurmukhi_speech);
-            // restartTranscript(terms);
         }
     }
 
@@ -252,46 +277,46 @@ const useSearchPilot = (finalText: string, partialText: string, status: RecordSt
         return resultPanktis;
     };
 
-    const getByShabadIds = async (shabadIds: string[]) => {
-        if (!shabadIds.length) return [];
+    // const getByShabadIds = async (shabadIds: string[]) => {
+    //     if (!shabadIds.length) return [];
 
-        const db = await DB.getInstance();
-        const query = `
-            SELECT
-            lines.*,
-            panktis.gurmukhi_speech,
-            panktis.vishraam_idx,
-            panktis.vishraam_ridx,
-            panktis.gurmukhi_words,
-            panktis.gurmukhi_rwords
-            FROM lines
-            INNER JOIN panktis ON lines.id = panktis.id
-            INNER JOIN shabads ON lines.shabad_id = shabads.id
-            WHERE lines.shabad_id IN ('${shabadIds.join("','")}')
-            ORDER BY shabads.source_id, shabads.order_id, lines.order_id
-        `;
+    //     const db = await DB.getInstance();
+    //     const query = `
+    //         SELECT
+    //         lines.*,
+    //         panktis.gurmukhi_speech,
+    //         panktis.vishraam_idx,
+    //         panktis.vishraam_ridx,
+    //         panktis.gurmukhi_words,
+    //         panktis.gurmukhi_rwords
+    //         FROM lines
+    //         INNER JOIN panktis ON lines.id = panktis.id
+    //         INNER JOIN shabads ON lines.shabad_id = shabads.id
+    //         WHERE lines.shabad_id IN ('${shabadIds.join("','")}')
+    //         ORDER BY shabads.source_id, shabads.order_id, lines.order_id
+    //     `;
 
-        let resultPanktis: Pankti[] = [];
-        try {
-            const res: any = await db.select(query);
+    //     let resultPanktis: Pankti[] = [];
+    //     try {
+    //         const res: any = await db.select(query);
 
-            if (res) {
-                resultPanktis = res.map(
-                    (pankti: any) => {
-                        return {
-                            ...pankti,
-                            gurmukhi_words: JSON.parse(pankti.gurmukhi_words),
-                            gurmukhi_rwords: JSON.parse(pankti.gurmukhi_rwords),
-                        };
-                    }
-                );
-            }
-        } catch (err) {
-            console.error("DB error:", err);
-        }
+    //         if (res) {
+    //             resultPanktis = res.map(
+    //                 (pankti: any) => {
+    //                     return {
+    //                         ...pankti,
+    //                         gurmukhi_words: JSON.parse(pankti.gurmukhi_words),
+    //                         gurmukhi_rwords: JSON.parse(pankti.gurmukhi_rwords),
+    //                     };
+    //                 }
+    //             );
+    //         }
+    //     } catch (err) {
+    //         console.error("DB error:", err);
+    //     }
 
-        return resultPanktis;
-    };
+    //     return resultPanktis;
+    // };
 
     return {
         setActive

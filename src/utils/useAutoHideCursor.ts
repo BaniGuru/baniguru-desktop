@@ -24,7 +24,7 @@ export function useAutoHideCursor({
 } = {}) {
   const [mouseVisible, setMouseVisible] = useState(true);
   const [showTitleBar, setShowTitleBar] = useState(false);
-  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {

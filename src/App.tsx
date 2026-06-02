@@ -64,7 +64,14 @@ const TabPanel = styled.div<TabPanelProps>`
 `;
 
 function App() {
-  const appContext: {state: AppState, setDbPath: any, dispatch: any, setFontSize: any, fontSize: number} = useContext(AppContext);
+  const appContext: {
+    state: AppState,
+    setDbPath: any,
+    dbPath: string,
+    dispatch: any,
+    setFontSize: any,
+    fontSize: number
+  } = useContext(AppContext);
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const appRef = useRef<number>(0);
@@ -189,7 +196,6 @@ function App() {
           case "finished":
             downloadingRef.current = false;
             setProgress(100);
-            setReady(true);
             break;
           
           case "skipped":
@@ -199,8 +205,6 @@ function App() {
             } else {
               DB.schemaExists = true;
             }
-
-            setReady(true);
             break;
         }
       });
@@ -339,6 +343,14 @@ function App() {
       type: TOGGLE_PANEL
     });
   }
+
+  useEffect(() => {
+    if (!appContext.dbPath || appContext.dbPath === "") {
+      return;
+    }
+
+    setReady(true);
+  }, [appContext.dbPath]);
 
   if (splashVisible || (downloadingRef.current === false && !ready)) {
     return (
