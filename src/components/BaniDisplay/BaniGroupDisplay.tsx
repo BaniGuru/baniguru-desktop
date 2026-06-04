@@ -191,7 +191,7 @@ const BaniGroupDisplay: FC = () => {
     const baniContext = useContext(BaniContext);
     const { state } = useCtxSelector(ShabadContext);
     const { visibility } = useSettings();
-    const { fontSize: appFontSize } = useContext(AppContext);
+    const { fontSize: appFontSize, state: appState } = useContext(AppContext);
     const { palette } = useThemeColors();
 
     const current = state.current;
@@ -207,11 +207,11 @@ const BaniGroupDisplay: FC = () => {
     useEffect(() => {
         const sendDataToBackend = async () => {
             if (state.current < 0) return;
-            await updateServerPankti(state.panktis[state.current]);
+            await updateServerPankti(state.panktis[state.current], appState.page);
         };
 
         sendDataToBackend();
-    }, [state.panktis, state.current]);
+    }, [state.panktis, state.current, appState.page]);
 
     useEffect(() => {
         if (state.baniId === null) return;

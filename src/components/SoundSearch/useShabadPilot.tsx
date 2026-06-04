@@ -208,13 +208,13 @@ const useShabadPilot = (finalText: string, partialText: string, newFinalToken: s
     ]);
 
     useEffect(() => {
-        if (silenceSeconds < 5 || simran || pauseSpeech) return;
+        if (silenceSeconds < 7 || simran || pauseSpeech) return;
 
         const panktis = shabadContext.state.panktis
         const firstUnvisitedIndex = getUnvisitedIdx(panktis, shabadContext.state.current);
 
         // all visited and on home
-        if (firstUnvisitedIndex === -1 && shabadContext.state.home === shabadContext.state.current && silenceSeconds > 20) {
+        if (firstUnvisitedIndex === -1 && shabadContext.state.home === shabadContext.state.current && silenceSeconds > 60) {
             appContext.dispatch({
                 type: SET_APP_PAGE,
                 payload: {

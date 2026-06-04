@@ -56,7 +56,7 @@ const BaniDisplay: React.FC = () => {
     const baniContext = useContext(BaniContext);
     const { state } = useCtxSelector(ShabadContext);
     const { activeThemeName, visibility } = useSettings();
-    const { fontSize: appFontSize } = useContext(AppContext);
+    const { fontSize: appFontSize, state: appState } = useContext(AppContext);
     const current = state.current;
 
     const nextPanktiRef = useRef<HTMLDivElement>(null);
@@ -67,11 +67,11 @@ const BaniDisplay: React.FC = () => {
         const sendDataToBackend = async () => {
             if (state.current < 0) return;
 
-            await updateServerPankti(state.panktis[state.current]);  // Call the utility function
+            await updateServerPankti(state.panktis[state.current], appState.page);  // Call the utility function
         };
 
         sendDataToBackend();
-    }, [state.panktis, state.current]);
+    }, [state.panktis, state.current, appState.page]);
 
     const showGroup = state.panktis[state.current]?.show_group;
     let groupPanktis = useMemo(() => {

@@ -62,6 +62,7 @@ pub struct Pankti {
     pub gurmukhi: String,
     pub punjabi: String,
     pub english: String,
+    pub page: String,
 }
 
 //

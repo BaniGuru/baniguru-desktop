@@ -12,6 +12,7 @@ import useSearchPilot from "./useSearchPilot";
 import { ENV } from "../../utils/env";
 import { ApiClient } from "../../utils/apiClient";
 import { ensurePanktiIndex } from "../../utils/meili";
+import * as Sentry from "@sentry/react";
 
 const SPEECH_API_US_URL = "wss://stt-rt.soniox.com/transcribe-websocket";
 const SPEECH_API_JP_URL = "wss://stt-rt.jp.soniox.com/transcribe-websocket";
@@ -262,6 +263,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     try {
         await invoke('stop_soniox');
       } catch (error) {
+        Sentry.captureException(error);
         console.error('Error stopping Soniox:', error);
         return;
       }
@@ -299,6 +301,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
         panktis
       });
     } catch (error) {
+      Sentry.captureException(error);
       setStarted(false);
       status.current = 'Init';
       console.error('Error restarting Soniox:', error);
@@ -332,7 +335,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     silenceSeconds,
     pauseSpeech
   );
-  const baniPilot = useBaniPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript, silenceSeconds);
+  const baniPilot = useBaniPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript, silenceSeconds, stopSpeech);
   const searchPilot = useSearchPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript);
 
   const resetText = () => {

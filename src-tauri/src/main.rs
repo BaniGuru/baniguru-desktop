@@ -224,6 +224,7 @@ fn main() {
                 gurmukhi: "".to_string(),
                 punjabi: "".to_string(),
                 english: "".to_string(),
+                page: "search".to_string(),
             };
 
             app.manage(Mutex::new(pankti));

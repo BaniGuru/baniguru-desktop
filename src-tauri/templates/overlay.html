@@ -13,7 +13,14 @@
 </head>
 
 <body>
-    <section class="top-aligned-container" id="container">
+    <section class="top-aligned-container"
+        id="container"
+        style="
+            background-color: {{ background_color }};
+            opacity: {{ background_opacity }};
+            padding: {{ panel_gap_x }}px {{ panel_gap_y }}px;
+        "
+    >
         <p class="gurmukhi-1" id="gurmukhi">{{ gurmukhi }}</p>
         <p class="" id="punjabi" style="font-family: 'anmolunibaniheavy';">{{ punjabi }}</p>
         <p class="" id="english" style="font-family: 'Roboto-Regular', sans-serif;">{{ english }}</p>
