@@ -1,7 +1,7 @@
 let previousGurmukhi = localStorage.getItem('gurmukhi') || '';
 let intialGurmukhi = '';
 
-const timeoutDuration = 5 * 60 * 1000;
+const timeoutDuration = 2 * 60 * 1000;
 let timeoutId;
 
 const hideSectionAfterTimeout = () => {
@@ -27,6 +27,15 @@ const fetchData = async () => {
     const data = await res.json();
 
     const containerEl = document.getElementById('container');
+
+    if (data.page === "search") {
+        containerEl.style.display = 'none';
+
+        setTimeout(fetchData, 1000);
+        return;
+    }
+
+    containerEl.style.display = 'inline-flex';
 
     if (data.gurmukhi != intialGurmukhi) {
         const gurmukhiEl = document.getElementById('gurmukhi');
@@ -87,7 +96,7 @@ const checkInactivityTimeout = () => {
     if (lastUpdate) {
         const timeElapsed = Date.now() - lastUpdate;
         if (timeElapsed > timeoutDuration) {
-            hideSectionAfterTimeout(); // Hide section if 5 minutes passed
+            hideSectionAfterTimeout(); // Hide section if 2 minutes passed
         } else {
             const remainingTime = timeoutDuration - timeElapsed;
             timeoutId = setTimeout(hideSectionAfterTimeout, remainingTime);

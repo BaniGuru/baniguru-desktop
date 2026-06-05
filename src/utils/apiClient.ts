@@ -21,7 +21,11 @@ export interface ApiClient {
   sendSearchPanktis: (ids: string[]) => void;
 }
 
-export const apiClient = (shabadDispatch: React.Dispatch<any>, appDispatch: React.Dispatch<any>, setSearchTerm: any,
+export const apiClient = (
+  apiToken: string,
+  shabadDispatch: React.Dispatch<any>,
+  appDispatch: React.Dispatch<any>,
+  setSearchTerm: any,
   searchDispatch: React.Dispatch<any>
 ): ApiClient => {
   let socket: WebSocket | null = null;
@@ -34,7 +38,7 @@ export const apiClient = (shabadDispatch: React.Dispatch<any>, appDispatch: Reac
     if (socket && socket.readyState === WebSocket.OPEN) return;
 
     socket = new WebSocket(
-      `${ENV.wssApiUrl}?token=${ENV.apiToken}&appid=gurbani-explorer`
+      `${ENV.wssApiUrl}?token=${apiToken}&appid=gurbani-explorer`
     );
 
     socket.onopen = () => {
@@ -107,7 +111,6 @@ export const apiClient = (shabadDispatch: React.Dispatch<any>, appDispatch: Reac
     if (!final && !partial) return;
 
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      console.warn("WebSocket not connected");
       return;
     }
 
@@ -136,7 +139,6 @@ export const apiClient = (shabadDispatch: React.Dispatch<any>, appDispatch: Reac
 
   const sendPankti = (shabadId: string, current: number, home: number, baniId: number|null, visited: number[]) => {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      console.warn("WebSocket not connected");
       return;
     }
 

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "BaniGuru",
-  "version": "0.1.1",
-  "identifier": "com.baniguru.app",
+  "version": "1.0.2",
+  "identifier": "com.baniguru.desktop",
   "build": {
     "beforeDevCommand": "yarn dev",
     "devUrl": "http://localhost:1420",
@@ -32,6 +32,10 @@
           "permissions": [
             "sql:default",
             "sql:allow-execute",
+
+            "keyring:default",
+            "keyring:allow-get-password",
+            "keyring:allow-set-password",
 
             "core:window:default",
 

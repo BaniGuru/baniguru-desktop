@@ -1,4 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { setPassword, getPassword } from "tauri-plugin-keyring-api";
+
+const KEYRING_SERVICE = "BaniGuru";
 
 export type LangType = "ਗੁਰਮੁਖੀ" | "ਪੰਜਾਬੀ" | "English" | "Next Pankti" | "Akhand Paath";
 
@@ -41,6 +44,14 @@ type Settings = {
   setAutoSearch: (autoSearch: boolean) => void;
   setAudioStream: (audioStream: boolean) => void;
   setAutoNext: (autoNext: boolean) => void;
+
+  apiToken: string;
+  speechUsToken: string;
+  speechJpToken: string;
+
+  setApiToken: (token: string) => void;
+  setSpeechUsToken: (token: string) => void;
+  setSpeechJpToken: (token: string) => void;
 };
 
 const defaultVisibility: Record<LangType, boolean> = {
@@ -62,6 +73,10 @@ const defaultWidth = 800;
 const defaultHeight = 600;
 const settingVersion = "0.0.1.2";
 export const appVersion = "0.0.1";
+
+const defaultApiToken = "";
+const defaultSpeechUsToken = "";
+const defaultSpeechJpToken = "";
 
 const defaultThemes: Theme[] = [
   {name: "BaniGuru"},
@@ -92,6 +107,9 @@ const getDefaultSettings = (): Settings => ({
   autoSearch: false,
   audioStream: false,
   autoNext: false,
+  apiToken: defaultApiToken,
+  speechUsToken: defaultSpeechUsToken,
+  speechJpToken: defaultSpeechJpToken,
 
   setPanelLocation: () => { },
   updateSetting: () => { },
@@ -107,6 +125,9 @@ const getDefaultSettings = (): Settings => ({
   setAutoSearch: () => { },
   setAudioStream: () => { },
   setAutoNext: () => { },
+  setApiToken: () => {},
+  setSpeechUsToken: () => {},
+  setSpeechJpToken: () => {},
 });
 
 const getInitialSettings = () => {
@@ -183,6 +204,10 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
   const [audioStream, setAudioStream] = useState(initial.audioStream);
   const [autoNext, setAutoNext] = useState(true);
   const [speechRegion, setSpeechRegion] = useState<string>(initial.speechRegion);
+  const [apiToken, setApiToken] = useState(initial.apiToken);
+  const [speechUsToken, setSpeechUsToken] = useState(initial.speechUsToken);
+  const [speechJpToken, setSpeechJpToken] = useState(initial.speechJpToken);
+  const [secureLoaded, setSecureLoaded] = useState(false);
 
   const themes = initial.themes;
   const [activeThemeName, setActiveThemeName] = useState<string>(initial.activeThemeName);
@@ -191,6 +216,78 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
     const found = themes.find(t => t.name === activeThemeName);
     return found ?? themes[0];
   }, [themes, activeThemeName]);
+
+  useEffect(() => {
+    const loadSecureSettings = async () => {
+      try {
+        const api = await getPassword(
+          KEYRING_SERVICE,
+          "apiToken"
+        );
+
+        const us = await getPassword(
+          KEYRING_SERVICE,
+          "speechUsToken"
+        );
+
+        const jp = await getPassword(
+          KEYRING_SERVICE,
+          "speechJpToken"
+        );
+
+        if (api) {
+          setApiToken(api);
+        }
+
+        if (us) {
+          setSpeechUsToken(us);
+        }
+
+        if (jp) {
+          setSpeechJpToken(jp);
+        }
+      } catch (error) {
+        console.error(
+          "Failed loading secure settings",
+          error
+        );
+      } finally {
+        setSecureLoaded(true);
+      }
+    };
+
+    loadSecureSettings();
+  }, []);
+
+  useEffect(() => {
+    if (!secureLoaded) return;
+
+    setPassword(
+      KEYRING_SERVICE,
+      "apiToken",
+      apiToken || ""
+    ).catch(console.error);
+  }, [apiToken, secureLoaded]);
+
+  useEffect(() => {
+    if (!secureLoaded) return;
+
+    setPassword(
+      KEYRING_SERVICE,
+      "speechUsToken",
+      speechUsToken || ""
+    ).catch(console.error);
+  }, [speechUsToken, secureLoaded]);
+
+  useEffect(() => {
+    if (!secureLoaded) return;
+
+    setPassword(
+      KEYRING_SERVICE,
+      "speechJpToken",
+      speechJpToken || ""
+    ).catch(console.error);
+  }, [speechJpToken, secureLoaded]);
 
   useEffect(() => {
     storeSettings({
@@ -205,13 +302,19 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
       panelLocation,
       autoSearch,
       speechRegion,
-      audioStream
+      audioStream,
+      apiToken,
+      speechUsToken,
+      speechJpToken,
     });
   }, [
     visibility, width, height, version, panelSetting, themes, activeThemeName, micName, panelLocation,
     autoSearch,
     speechRegion,
     audioStream,
+    apiToken,
+    speechUsToken,
+    speechJpToken,
   ]);
 
   const updateSetting = (key: "width" | "height", value: number) => {
@@ -264,6 +367,12 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
         setAutoNext,
         speechRegion,
         setSpeechRegion,
+        apiToken,
+        setApiToken,
+        speechUsToken,
+        setSpeechUsToken,
+        speechJpToken,
+        setSpeechJpToken,
       }}
     >
       {children}

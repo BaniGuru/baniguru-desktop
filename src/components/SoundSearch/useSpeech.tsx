@@ -12,15 +12,12 @@ import useSearchPilot from "./useSearchPilot";
 import { ENV } from "../../utils/env";
 import { ApiClient } from "../../utils/apiClient";
 import { ensurePanktiIndex } from "../../utils/meili";
-import { DB } from "../../utils/DB";
+import * as Sentry from "@sentry/react";
 
 const SPEECH_API_US_URL = "wss://stt-rt.soniox.com/transcribe-websocket";
 const SPEECH_API_JP_URL = "wss://stt-rt.jp.soniox.com/transcribe-websocket";
-const SPEECH_API_US_KEY = ENV.speechUsToken;
-const SPEECH_API_JP_KEY = ENV.speechJpToken;
 const WSS_API_URL = ENV.wssApiUrl;
 const API_URL = ENV.apiUrl;
-const API_TOKEN = ENV.apiToken;
 
 type TranscriptionError = {
   status: ErrorStatus;
@@ -41,6 +38,9 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const appContext = useContext(AppContext);
   const shabadContext = useCtxSelector(ShabadContext);
 
+  const SEARCH_LIMIT_MS = 5 * 60 * 1000;
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const transcriptRef = useRef("");
   const listenerRef = useRef(false);
   const audioStreaming = useRef(false);
@@ -50,11 +50,21 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const [errorText, setErrorText] = useState("");
   const [nonFinalText, setNonFinalText] = useState("");
   const [lastTokenTime, setLastTokenTime] = useState(0);
-  const { autoSearch, audioStream, micName, speechRegion } = useSettings();
+  const {
+    autoSearch,
+    audioStream,
+    micName,
+    speechRegion,
+    apiToken,
+    speechUsToken,
+    speechJpToken,
+   } = useSettings();
   const [silenceSeconds, setSilenceSeconds] = useState(0);
   const [silenceStart, setSilenceStart] = useState<number|null>(null);
   const prevLastEndMsRef = useRef<number|null>(null);
   const [pauseSpeech, setPauseSpeech] = useState<boolean>(false);
+
+  const currentPageRef = useRef(appContext.state.page);
 
   useEffect(() => {
     if (!audioStreaming.current && audioStream) {
@@ -71,9 +81,9 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
       micName: micName,
       wssApiUrl: WSS_API_URL,
       apiUrl: API_URL,
-      apiToken: API_TOKEN,
+      apiToken: apiToken,
     });
-  }, [micName, API_URL, WSS_API_URL, API_TOKEN]);
+  }, [micName, API_URL, WSS_API_URL, apiToken]);
 
   const stopAudioStream = useCallback(async() => {
     await invoke('stop_stream');
@@ -92,6 +102,45 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     setStarted(false);
     setPauseSpeech(false);
   }, [audioStream]);
+
+  const clearSearchTimer = useCallback(() => {
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+      searchTimerRef.current = null;
+    }
+  }, []);
+
+  const startSearchTimer = useCallback(() => {
+    clearSearchTimer();
+
+    searchTimerRef.current = setTimeout(() => {
+      console.log("Search tab active for 5 minutes. Stopping speech.");
+      stopSpeech();
+    }, SEARCH_LIMIT_MS);
+  }, [clearSearchTimer, stopSpeech]);
+
+  useEffect(() => {
+    const shouldRunSearchTimer =
+      started &&
+      appContext.state.page === PAGE_SEARCH;
+
+    if (shouldRunSearchTimer) {
+      startSearchTimer();
+    } else {
+      clearSearchTimer();
+    }
+
+    return clearSearchTimer;
+  }, [
+    started,
+    appContext.state.page,
+    startSearchTimer,
+    clearSearchTimer,
+  ]);
+
+  useEffect(() => {
+    currentPageRef.current = appContext.state.page;
+  }, [appContext.state.page]);
 
   useEffect(() => {
 
@@ -113,9 +162,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
       }
 
       setNonFinalText(partial);
-
       setLastTokenTime(end_ms);
-
     }).then(fn => {
       unlistenFn = fn;
     });
@@ -168,6 +215,19 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
       return;
     }
 
+    let apiKey = speechUsToken;
+    let speechUrl = SPEECH_API_US_URL;
+    if (speechRegion == "jp") {
+      apiKey = speechJpToken;
+      speechUrl = SPEECH_API_JP_URL;
+    }
+
+    if (apiKey === "") {
+      setErrorText("Api key not configured for auto pilot.");
+      setStarted(false);
+      return;
+    }
+
     status.current = 'Starting';
     transcriptRef.current = "";
     setErrorText("");
@@ -177,13 +237,6 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     setError(null);
     setTerms(panktis);
     startPage.current = appContext.state.page;
-
-    let apiKey = SPEECH_API_US_KEY;
-    let speechUrl = SPEECH_API_US_URL;
-    if (speechRegion == "jp") {
-      apiKey = SPEECH_API_JP_KEY;
-      speechUrl = SPEECH_API_JP_URL;
-    }
 
     try {
       await invoke('start_soniox', {
@@ -204,8 +257,8 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   }, [
     micName,
     SPEECH_API_US_URL,
-    SPEECH_API_US_KEY,
-    SPEECH_API_JP_KEY,
+    speechUsToken,
+    speechJpToken,
     SPEECH_API_JP_URL,
     setFinalText,
     setNonFinalText,
@@ -221,6 +274,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     try {
         await invoke('stop_soniox');
       } catch (error) {
+        Sentry.captureException(error);
         console.error('Error stopping Soniox:', error);
         return;
       }
@@ -243,10 +297,10 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     startPage.current = appContext.state.page;
     status.current = "Restarting";
 
-    let apiKey = SPEECH_API_US_KEY;
+    let apiKey = speechUsToken;
     let speechUrl = SPEECH_API_US_URL;
     if (speechRegion == "jp") {
-      apiKey = SPEECH_API_JP_KEY;
+      apiKey = speechJpToken;
       speechUrl = SPEECH_API_JP_URL;
     }
 
@@ -258,6 +312,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
         panktis
       });
     } catch (error) {
+      Sentry.captureException(error);
       setStarted(false);
       status.current = 'Init';
       console.error('Error restarting Soniox:', error);
@@ -275,14 +330,15 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   }, [
     appContext.state.page,
     SPEECH_API_US_URL,
-    SPEECH_API_US_KEY,
-    SPEECH_API_JP_KEY,
+    speechUsToken,
+    speechJpToken,
     SPEECH_API_JP_URL,
   ]);
 
   const shabadPilot = useShabadPilot(
     finalText,
     nonFinalText,
+    newFinalToken,
     status.current,
     startPage.current,
     startTranscription,
@@ -290,7 +346,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     silenceSeconds,
     pauseSpeech
   );
-  const baniPilot = useBaniPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript, silenceSeconds);
+  const baniPilot = useBaniPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript, silenceSeconds, stopSpeech);
   const searchPilot = useSearchPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript);
 
   const resetText = () => {
@@ -359,11 +415,11 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   ]);
 
   useEffect(() => {
-    if (!searchReady.current && autoSearch && DB.getDbPath()) {
+    if (!searchReady.current && autoSearch && appContext.dbPath) {
       ensurePanktiIndex();
       searchReady.current = true;
     }
-  }, [autoSearch]);
+  }, [autoSearch, appContext.dbPath]);
 
   const updateLastTokenElapse = useCallback((finalText: string, nonFinalText: string) => {
     // Silence begins when:

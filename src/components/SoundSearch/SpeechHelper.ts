@@ -135,9 +135,20 @@ export const getUnvisitedIdx = (panktis: Pankti[], currentIdx: number) => {
         .map(({ idx }) => idx);
 
     if (currentGroupIdxs.length > 3) {
-        return panktis.findIndex(
-            p => !p.visited && p.type_id > 2 && p.gurmukhi_words.length > 1 && p.group === currentGroup
+        const hasVisitedPanktiInOtherGroup = panktis.some(
+            (pankti, idx) =>
+                idx !== currentIdx &&
+                pankti.group !== currentGroup &&
+                pankti.visited &&
+                pankti.type_id > 2 &&
+                pankti.gurmukhi_words.length > 1
         );
+
+        if (!hasVisitedPanktiInOtherGroup) {
+            return panktis.findIndex(
+                p => !p.visited && p.type_id > 2 && p.gurmukhi_words.length > 1 && p.group === currentGroup
+            );
+        }
     }
 
     return panktis.findIndex(
@@ -216,14 +227,25 @@ export const getAllowedNextPanktiIdxs = (panktis: Pankti[], homeIdx: number, cur
 
         // long group, keep within group
         if (currentGroupIdxs.length > 3) {
-            const groupUnvisitedIndex = panktis.findIndex(
-                p => !p.visited && p.type_id > 2 && p.gurmukhi_words.length > 2 && p.group === currentGroup
+            const hasVisitedPanktiInOtherGroup = panktis.some(
+                (pankti, idx) =>
+                    idx !== currentIdx &&
+                    pankti.group !== currentGroup &&
+                    pankti.visited &&
+                    pankti.type_id > 2 &&
+                    pankti.gurmukhi_words.length > 1
             );
-            if (groupUnvisitedIndex === -1) {
-                return [currentIdx, homeIdx];
-            }
 
-            return [groupUnvisitedIndex, currentIdx, homeIdx];
+            if (!hasVisitedPanktiInOtherGroup) {
+                const groupUnvisitedIndex = panktis.findIndex(
+                    p => !p.visited && p.type_id > 2 && p.gurmukhi_words.length > 2 && p.group === currentGroup
+                );
+                if (groupUnvisitedIndex === -1) {
+                    return [currentIdx, homeIdx];
+                }
+
+                return [groupUnvisitedIndex, currentIdx, homeIdx];
+            }
         }
 
         if (currentGroup === homeGroup && currentGroupIdxs.length > 0) {
@@ -352,10 +374,13 @@ export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], curr
     }
 
     // filter full matched ones
-    const fullMatchScores = matchScores.filter(matchScore => matchScore.fullMatch &&
+    const fullMatchScores = matchScores.filter(matchScore =>
         (
-            (matchScore.totalMatches > 1 && panktis[matchScore.panktiIdx]?.type_id > 2) ||
-            nextPanktiIdxs.includes(matchScore.panktiIdx)
+            matchScore.fullMatch &&
+            (matchScore.totalMatches > 1 && panktis[matchScore.panktiIdx]?.type_id > 2)
+        ) || (
+            nextPanktiIdxs.includes(matchScore.panktiIdx) &&
+            (matchScore.startFull || matchScore.vishraamFull)
         )
     );
     if (fullMatchScores.length === 1) {
@@ -368,12 +393,11 @@ export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], curr
     }
 
     // filter full start or vishraam
-    const fullStartOrVishraam = matchScores.filter(matchScore => (matchScore.startFull || matchScore.vishraamFull)
-        &&
-        (
-            matchScore.totalMatches > 1 ||
-            nextPanktiIdxs.includes(matchScore.panktiIdx)
-        )
+    const fullStartOrVishraam = matchScores.filter(matchScore => (
+            matchScore.startFull ||
+            matchScore.vishraamFull ||
+            (nextPanktiIdxs.includes(matchScore.panktiIdx) && matchScore.panktiStarted && matchScore.continueMatch)
+        ) && matchScore.totalMatches > 1
     );
     if (fullStartOrVishraam.length === 1) {
         return [

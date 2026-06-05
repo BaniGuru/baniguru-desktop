@@ -104,7 +104,7 @@ pub async fn start_soniox_stream(
         "target_language": "pa",
         "keepAlive": true,
         "enable_endpoint_detection": true,
-        "max_endpoint_delay_ms": 2500,
+        "max_endpoint_delay_ms": 3000,
         "context": {
             "terms": panktis
         }
@@ -143,6 +143,10 @@ pub async fn start_soniox_stream(
         let mut buffer: Vec<i16> = Vec::new();
         let mut last_partial = String::new();
         let mut total_audio_proc_ms: u64 = 0;
+
+        // track completed words
+        let mut current_word = String::new();
+        let mut current_word_end_ms: u32 = 0;
 
         loop {
             tokio::select! {
@@ -201,17 +205,50 @@ pub async fn start_soniox_stream(
                             total_audio_proc_ms = sx_msg.total_audio_proc_ms;
 
                             let tokens = sx_msg.tokens;
+                            let mut completed_words = Vec::new();
 
                             let mut stable_final = Vec::new();
                             let mut first_non_final = tokens.len();
 
                             for (i, token) in tokens.iter().enumerate() {
-                                if token.is_final {
-                                    stable_final.push(token.text.clone());
-                                } else {
+                                if !token.is_final {
                                     first_non_final = i;
                                     break;
                                 }
+
+                                stable_final.push(token.text.clone());
+
+                                if token.text == "<end>" {
+                                    if !current_word.is_empty() {
+                                        completed_words.push(json!({
+                                            "word": current_word,
+                                            "end_ms": current_word_end_ms
+                                        }));
+
+                                        current_word.clear();
+                                        current_word_end_ms = 0;
+                                    }
+
+                                    continue;
+                                }
+
+                                let starts_new_word =
+                                    token.text.chars().next().is_some_and(char::is_whitespace);
+
+                                if starts_new_word {
+                                    if !current_word.is_empty() {
+                                        completed_words.push(json!({
+                                            "word": current_word,
+                                            "end_ms": current_word_end_ms
+                                        }));
+                                    }
+
+                                    current_word = token.text.trim_start().to_string();
+                                } else {
+                                    current_word.push_str(&token.text);
+                                }
+
+                                current_word_end_ms = token.end_ms;
                             }
 
                             let partial = tokens[first_non_final..]
@@ -220,6 +257,61 @@ pub async fn start_soniox_stream(
                                 .collect::<Vec<String>>()
                                 .join("");
 
+                            /** partial token timing section start */
+                            let partial_tokens = &tokens[first_non_final..];
+                            let mut partial_words = Vec::new();
+                            let mut pw = String::new();
+                            let mut pw_start_ms: Option<u32> = None;
+                            let mut pw_end_ms: u32 = 0;
+
+                            // word split between final + partial => whole word goes to partial side
+                            if let Some(first) = partial_tokens.first() {
+                                let starts_new = first.text.chars().next().is_some_and(char::is_whitespace);
+
+                                if !current_word.is_empty() && !starts_new {
+                                    pw = current_word.clone();
+                                    pw_end_ms = current_word_end_ms;
+                                }
+                            }
+
+                            for token in partial_tokens {
+                                if token.text == "<end>" {
+                                    continue;
+                                }
+
+                                let starts_new = token.text.chars().next().is_some_and(char::is_whitespace);
+
+                                if starts_new {
+                                    if !pw.is_empty() {
+                                        partial_words.push(json!({
+                                            "word": pw,
+                                            "start_ms": pw_start_ms,
+                                            "end_ms": pw_end_ms
+                                        }));
+                                    }
+
+                                    pw = token.text.trim_start().to_string();
+                                    pw_start_ms = Some(token.start_ms);
+                                } else {
+                                    if pw.is_empty() {
+                                        pw_start_ms = Some(token.start_ms);
+                                    }
+
+                                    pw.push_str(&token.text);
+                                }
+
+                                pw_end_ms = token.end_ms;
+                            }
+
+                            if !pw.is_empty() {
+                                partial_words.push(json!({
+                                    "word": pw,
+                                    "start_ms": pw_start_ms,
+                                    "end_ms": pw_end_ms
+                                }));
+                            }
+                            /* partial token timing section end */
+
                             if !stable_final.is_empty() || partial != last_partial {
 
                                 last_partial = partial.clone();
@@ -227,6 +319,8 @@ pub async fn start_soniox_stream(
                                 let payload = json!({
                                     "final": stable_final.join(""),
                                     "partial": partial,
+                                    "completed_words": completed_words,
+                                    "partial_words": partial_words,
                                     "end_ms": total_audio_proc_ms
                                 });
 

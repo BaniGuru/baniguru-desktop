@@ -167,6 +167,7 @@ pub async fn start_web_server(app_handle: AppHandle) {
                     "gurmukhi": remove_vishraams(&locked.gurmukhi),
                     "punjabi": locked.punjabi,
                     "english": locked.english,
+                    "page": locked.page,
                     "theme": settings.theme,
                     "font": settings.font,
                     "gurmukhi_font_size": settings.gurmukhi_font_size,  // Removed clone and unwrap_or_default
@@ -246,7 +247,8 @@ async fn render_overlay_page(app_handle: AppHandle, tera: Arc<Tera>) -> String {
     context.insert("theme", &settings.theme);
     context.insert("font", &settings.font);
     context.insert("font_size", &settings.gurmukhi_font_size.to_string()); // Removed clone and unwrap_or
-    context.insert("background_color", &settings.background_color.to_string()); // Converted to string
+    context.insert("background_color", &settings.background_color.to_string());
+    context.insert("background_opacity", &settings.background_opacity);
     context.insert(
         "gurmukhi_font_color",
         &settings.gurmukhi_font_color.to_string(),

@@ -143,11 +143,11 @@ const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
         const sendDataToBackend = async () => {
             if (state.current < 0) return;
 
-            await updateServerPankti(state.panktis[state.current]);  // Call the utility function
+            await updateServerPankti(state.panktis[state.current], appState.page);  // Call the utility function
         };
 
         sendDataToBackend();
-    }, [state.panktis, state.current]);
+    }, [state.panktis, state.current, appState.page]);
 
     useEffect(() => {
         const loadShabad = async () => {

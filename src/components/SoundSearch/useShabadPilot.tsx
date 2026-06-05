@@ -30,7 +30,7 @@ function isSimran(tokenText: string) {
     return count >= 4;
 }
 
-const useShabadPilot = (finalText: string, partialText: string, status: RecordState, startPage: string|null, startTranscription: any, restartTranscript: any, silenceSeconds: number, pauseSpeech: boolean) => {
+const useShabadPilot = (finalText: string, partialText: string, newFinalToken: string, status: RecordState, startPage: string|null, startTranscription: any, restartTranscript: any, silenceSeconds: number, pauseSpeech: boolean) => {
 
     const [lastCheckIdx, setLastCheckIdx] = useState(0);
     const [prevText, setPrevText] = useState("");
@@ -92,6 +92,11 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
             return;
         }
 
+        // prevent going to previous pankti when empty new token or initial partial token
+        if ((newFinalToken + partialText).length <= 1) {
+            return;
+        }
+
         const totalText = finalText + partialText;
         const tokenText = totalText.slice(lastCheckIdx);
 
@@ -126,7 +131,6 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
 
         const speechParts = speechText.replace(/[,।\s]+$/g, '').split('।');
         const lastPart = speechParts[speechParts.length-1];
-        // console.log('lastPart: ', lastPart);
 
         const tokens = lastPart.split(' ');
 
@@ -185,6 +189,7 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
         active,
         finalText,
         partialText,
+        newFinalToken,
         status,
         silenceSeconds,
         shabadContext.state.shabadId,
@@ -203,13 +208,13 @@ const useShabadPilot = (finalText: string, partialText: string, status: RecordSt
     ]);
 
     useEffect(() => {
-        if (silenceSeconds < 5 || simran || pauseSpeech) return;
+        if (silenceSeconds < 7 || simran || pauseSpeech) return;
 
         const panktis = shabadContext.state.panktis
         const firstUnvisitedIndex = getUnvisitedIdx(panktis, shabadContext.state.current);
 
         // all visited and on home
-        if (firstUnvisitedIndex === -1 && shabadContext.state.home === shabadContext.state.current && silenceSeconds > 7) {
+        if (firstUnvisitedIndex === -1 && shabadContext.state.home === shabadContext.state.current && silenceSeconds > 60) {
             appContext.dispatch({
                 type: SET_APP_PAGE,
                 payload: {

@@ -7,7 +7,7 @@ import { useContext as useCtxSelector } from "use-context-selector";
 import { AppContext, PAGE_SEARCH } from "../../state/providers/AppProvider";
 import { RecordState } from "./useSpeech";
 
-const useBaniPilot = (finalText: string, partialText: string, status: RecordState, startTranscription: (panktis: string[]) => any, restartTranscript: (panktis: string[]) => any, silenceSeconds: number) => {
+const useBaniPilot = (finalText: string, partialText: string, status: RecordState, startTranscription: (panktis: string[]) => any, restartTranscript: (panktis: string[]) => any, silenceSeconds: number, stopSpeech: any) => {
 
     const [lastCheckIdx, setLastCheckIdx] = useState(0);
     const [active, setActive] = useState(false);
@@ -19,6 +19,53 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecordStat
 
     const [part, setPart] = useState(1);
     const [panktis, setPanktis] = useState<Pankti[]>([]);
+    const lastPanktiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // switch to search after 1 minute on last pankti
+    useEffect(() => {
+         if (!active) {
+            if (lastPanktiTimerRef.current) {
+                clearTimeout(lastPanktiTimerRef.current);
+                lastPanktiTimerRef.current = null;
+            }
+            return;
+        }
+
+        const isLastPankti =
+            shabadContext.state.current === shabadContext.state.panktis.length - 1;
+
+        if (!isLastPankti) {
+            if (lastPanktiTimerRef.current) {
+                clearTimeout(lastPanktiTimerRef.current);
+                lastPanktiTimerRef.current = null;
+            }
+            return;
+        }
+
+        if (!lastPanktiTimerRef.current) {
+            lastPanktiTimerRef.current = setTimeout(() => {
+                shabadContext.dispatch({ type: SHABAD_RESET });
+                appContext.dispatch({
+                    type: SET_APP_PAGE,
+                    payload: {
+                        page: PAGE_SEARCH,
+                        show_panel: true,
+                    }
+                });
+
+                if (shabadContext.state.baniId === 13 || shabadContext.state.baniId === 6) {
+                    stopSpeech();
+                }
+            }, 60 * 1000);
+        }
+
+        return () => {
+            if (lastPanktiTimerRef.current) {
+                clearTimeout(lastPanktiTimerRef.current);
+                lastPanktiTimerRef.current = null;
+            }
+        };
+    }, [active, shabadContext.state.current, shabadContext.state.panktis.length]);
 
     const getTerms = (termPart: number) => {
         let terms: string[] = [];
@@ -175,7 +222,11 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecordStat
     ]);
 
     const navigatePankti = () => {
-        if (silenceSeconds > 5 && (shabadContext.state.panktis.length - 1) === shabadContext.state.current) {
+        if (
+            silenceSeconds > 5 &&
+            (shabadContext.state.panktis.length - 1) === shabadContext.state.current &&
+            (shabadContext.state.baniId !== 13 && shabadContext.state.baniId !== 6)
+        ) {
             shabadContext.dispatch({ type: SHABAD_RESET });
             appContext.dispatch({
                 type: SET_APP_PAGE,

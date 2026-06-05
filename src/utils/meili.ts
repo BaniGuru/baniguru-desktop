@@ -5,6 +5,7 @@ import { appDataDir, join } from '@tauri-apps/api/path';
 import { mkdir } from '@tauri-apps/plugin-fs';
 import { get as levenshtein } from 'fast-levenshtein';
 import { Pankti } from '../models/Pankti';
+import * as Sentry from "@sentry/react";
 
 const MEILI_HOST = 'http://127.0.0.1:7700';
 const MEILI_KEY = 'baniguru-dev-key';
@@ -376,30 +377,35 @@ export async function startMeilisearch() {
     });
 
     const command = Command.sidecar(
-      'binaries/meilisearch',
+      "binaries/meilisearch",
       [
-        '--http-addr',
-        '127.0.0.1:7700',
-
-        '--master-key',
+        "--http-addr",
+        "127.0.0.1:7700",
+        "--master-key",
         MEILI_KEY,
-
-        '--db-path',
+        "--db-path",
         meiliDbPath,
-
-        '--log-level',
-        'ERROR',
-      ]
+        "--log-level",
+        "ERROR",
+      ],
+      {
+        cwd: dataDir,
+      }
     );
 
     command.stderr.on('data', (line) => {
       const text = String(line);
 
-      if (
-        text.includes('ERROR') ||
-        text.includes('error')
-      ) {
-        console.error('[meili]', text);
+      if (text.toLowerCase().includes("error")) {
+        Sentry.captureMessage("Meilisearch stderr", {
+          level: "error",
+          extra: {
+            text,
+            meiliDbPath,
+          },
+        });
+
+        console.error("[meili]", text);
       }
     });
 
@@ -409,6 +415,7 @@ export async function startMeilisearch() {
 
     console.log('Meilisearch ready');
   } catch (e) {
+    Sentry.captureException(e);
     meiliStarted = false;
     console.error(e);
   }
@@ -532,6 +539,7 @@ export async function ensurePanktiIndex() {
   } catch (e) {
     meiliIndexed = false;
 
+    Sentry.captureException(e);
     console.error(
       'Failed to index panktis:',
       e
@@ -543,7 +551,9 @@ async function isMeiliRunning() {
   try {
     const res = await fetch(`${MEILI_HOST}/health`);
     return res.ok;
-  } catch {
+  } catch(e) {
+    Sentry.captureException(e);
+
     return false;
   }
 }
@@ -558,13 +568,16 @@ async function waitForMeili() {
       if (res.ok) {
         return;
       }
-    } catch {}
+    } catch(e) {
+      Sentry.captureException(e);
+    }
 
     await new Promise((r) =>
       setTimeout(r, 500)
     );
   }
 
+  Sentry.captureException('Meilisearch failed to start');
   throw new Error(
     'Meilisearch failed to start'
   );
@@ -577,6 +590,7 @@ export async function stopMeilisearch() {
     meiliProcess = null;
     meiliStarted = false;
   } catch (e) {
+    Sentry.captureException(e);
     console.error(
       'Failed to stop Meilisearch',
       e

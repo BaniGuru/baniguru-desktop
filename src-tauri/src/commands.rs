@@ -62,6 +62,7 @@ pub struct Pankti {
     pub gurmukhi: String,
     pub punjabi: String,
     pub english: String,
+    pub page: String,
 }
 
 //
@@ -395,5 +396,40 @@ pub async fn release_mic(audio: &AudioState) {
     if *users == 0 {
         println!("Stopping microphone");
         mic.take();
+    }
+}
+
+//
+// =============================
+// Request admin permission
+// =============================
+//
+#[tauri::command]
+pub fn request_admin_permission() -> Result<bool, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+
+        let current_exe = std::env::current_exe()
+            .map_err(|e| e.to_string())?;
+
+        let status = Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-Command",
+                &format!(
+                    "Start-Process -FilePath '{}' -ArgumentList '--admin-unlock-check' -Verb RunAs -Wait",
+                    current_exe.display()
+                ),
+            ])
+            .status()
+            .map_err(|e| e.to_string())?;
+
+        return Ok(status.success());
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(false)
     }
 }
