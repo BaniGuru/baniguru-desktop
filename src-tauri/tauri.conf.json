@@ -33,6 +33,10 @@
             "sql:default",
             "sql:allow-execute",
 
+            "keyring:default",
+            "keyring:allow-get-password",
+            "keyring:allow-set-password",
+
             "core:window:default",
 
             "core:window:allow-minimize",

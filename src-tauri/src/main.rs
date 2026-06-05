@@ -18,6 +18,7 @@ use crate::commands::Pankti;
 use crate::commands::{
     restart_soniox, start_soniox, start_stream, stop_soniox, stop_stream, AudioState,
     RawStreamState, StreamState,
+    request_admin_permission,
 };
 use crate::server::start_web_server;
 use futures_util::StreamExt;
@@ -191,12 +192,17 @@ fn install_panic_logger() {
 }
 
 fn main() {
+    if std::env::args().any(|arg| arg == "--admin-unlock-check") {
+        std::process::exit(0);
+    }
+
     install_panic_logger();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
+         .plugin(tauri_plugin_keyring::init())
         .invoke_handler(tauri::generate_handler![
             greet,
             download_sqlite_file_with_channel,
@@ -209,6 +215,7 @@ fn main() {
             stop_stream,
             list_mics,
             fake_fullscreen,
+            request_admin_permission,
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();

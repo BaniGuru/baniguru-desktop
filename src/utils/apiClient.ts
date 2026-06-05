@@ -21,7 +21,11 @@ export interface ApiClient {
   sendSearchPanktis: (ids: string[]) => void;
 }
 
-export const apiClient = (shabadDispatch: React.Dispatch<any>, appDispatch: React.Dispatch<any>, setSearchTerm: any,
+export const apiClient = (
+  apiToken: string,
+  shabadDispatch: React.Dispatch<any>,
+  appDispatch: React.Dispatch<any>,
+  setSearchTerm: any,
   searchDispatch: React.Dispatch<any>
 ): ApiClient => {
   let socket: WebSocket | null = null;
@@ -34,7 +38,7 @@ export const apiClient = (shabadDispatch: React.Dispatch<any>, appDispatch: Reac
     if (socket && socket.readyState === WebSocket.OPEN) return;
 
     socket = new WebSocket(
-      `${ENV.wssApiUrl}?token=${ENV.apiToken}&appid=gurbani-explorer`
+      `${ENV.wssApiUrl}?token=${apiToken}&appid=gurbani-explorer`
     );
 
     socket.onopen = () => {

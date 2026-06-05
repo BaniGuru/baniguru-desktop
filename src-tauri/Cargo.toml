@@ -54,6 +54,7 @@ futures-util = "0.3.30"
 tauri-plugin-store = "2.4"
 tauri-plugin-shell = "2"
 tauri-plugin-fs = "2"
+tauri-plugin-keyring = "0.1.0"
 
 [features]
 default = ["custom-protocol"]

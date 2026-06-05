@@ -75,7 +75,7 @@ function App() {
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const appRef = useRef<number>(0);
-  const {panelSetting, version, updateVersion, panelLocation, setPanelLocation} = useSettings();
+  const {panelSetting, version, updateVersion, panelLocation, setPanelLocation, apiToken} = useSettings();
   const { palette } = useThemeColors();
   const [splashVisible, setSplashVisible] = useState(true);
   
@@ -122,17 +122,22 @@ function App() {
   );
 
   useEffect(() => {
+    if (!apiToken) {
+      return;
+    }
+
     if (!apiClientRef.current || !apiClientRef.current.isOpen) {
-      const client = apiClient(shabadDispatch, appContext.dispatch, setSearchTerm, searchDispatch);
+      const client = apiClient(apiToken, shabadDispatch, appContext.dispatch, setSearchTerm, searchDispatch);
       client.connect();
       apiClientRef.current = client;
     }
-  }, [shabadDispatch, appContext.dispatch, setSearchTerm]);
+  }, [shabadDispatch, appContext.dispatch, setSearchTerm, apiToken]);
 
   const speech = useSpeech({apiClient: apiClientRef.current ?? null});
   const speechStarted = speech.started;
   const speechStartedRef = useRef(speech.started);
   const speechPausedRef = useRef(speech.pauseSpeech);
+  const appPage = useRef(appContext.state.page);
 
   useEffect(() => {
     speechStartedRef.current = speech.started;
@@ -236,6 +241,10 @@ function App() {
 
   useEffect(() => {
       const onESC = (ev: KeyboardEvent) => {
+        if (appPage.current !== "settings") {
+          return;
+        }
+
         if (ev.ctrlKey) {
           ev.preventDefault();
         }

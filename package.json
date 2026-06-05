@@ -27,6 +27,7 @@
     "react-dom": "^18.2.0",
     "react-icons": "^4.7.1",
     "styled-components": "^5.3.6",
+    "tauri-plugin-keyring-api": "^0.1.1",
     "use-context-selector": "^2.0.0",
     "ws": "^8.19.0"
   },

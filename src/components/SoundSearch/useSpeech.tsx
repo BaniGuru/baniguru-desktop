@@ -16,11 +16,8 @@ import * as Sentry from "@sentry/react";
 
 const SPEECH_API_US_URL = "wss://stt-rt.soniox.com/transcribe-websocket";
 const SPEECH_API_JP_URL = "wss://stt-rt.jp.soniox.com/transcribe-websocket";
-const SPEECH_API_US_KEY = ENV.speechUsToken;
-const SPEECH_API_JP_KEY = ENV.speechJpToken;
 const WSS_API_URL = ENV.wssApiUrl;
 const API_URL = ENV.apiUrl;
-const API_TOKEN = ENV.apiToken;
 
 type TranscriptionError = {
   status: ErrorStatus;
@@ -53,7 +50,15 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const [errorText, setErrorText] = useState("");
   const [nonFinalText, setNonFinalText] = useState("");
   const [lastTokenTime, setLastTokenTime] = useState(0);
-  const { autoSearch, audioStream, micName, speechRegion } = useSettings();
+  const {
+    autoSearch,
+    audioStream,
+    micName,
+    speechRegion,
+    apiToken,
+    speechUsToken,
+    speechJpToken,
+   } = useSettings();
   const [silenceSeconds, setSilenceSeconds] = useState(0);
   const [silenceStart, setSilenceStart] = useState<number|null>(null);
   const prevLastEndMsRef = useRef<number|null>(null);
@@ -76,9 +81,9 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
       micName: micName,
       wssApiUrl: WSS_API_URL,
       apiUrl: API_URL,
-      apiToken: API_TOKEN,
+      apiToken: apiToken,
     });
-  }, [micName, API_URL, WSS_API_URL, API_TOKEN]);
+  }, [micName, API_URL, WSS_API_URL, apiToken]);
 
   const stopAudioStream = useCallback(async() => {
     await invoke('stop_stream');
@@ -210,6 +215,19 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
       return;
     }
 
+    let apiKey = speechUsToken;
+    let speechUrl = SPEECH_API_US_URL;
+    if (speechRegion == "jp") {
+      apiKey = speechJpToken;
+      speechUrl = SPEECH_API_JP_URL;
+    }
+
+    if (apiKey === "") {
+      setErrorText("Api key not configured for auto pilot.");
+      setStarted(false);
+      return;
+    }
+
     status.current = 'Starting';
     transcriptRef.current = "";
     setErrorText("");
@@ -219,13 +237,6 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     setError(null);
     setTerms(panktis);
     startPage.current = appContext.state.page;
-
-    let apiKey = SPEECH_API_US_KEY;
-    let speechUrl = SPEECH_API_US_URL;
-    if (speechRegion == "jp") {
-      apiKey = SPEECH_API_JP_KEY;
-      speechUrl = SPEECH_API_JP_URL;
-    }
 
     try {
       await invoke('start_soniox', {
@@ -246,8 +257,8 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   }, [
     micName,
     SPEECH_API_US_URL,
-    SPEECH_API_US_KEY,
-    SPEECH_API_JP_KEY,
+    speechUsToken,
+    speechJpToken,
     SPEECH_API_JP_URL,
     setFinalText,
     setNonFinalText,
@@ -286,10 +297,10 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     startPage.current = appContext.state.page;
     status.current = "Restarting";
 
-    let apiKey = SPEECH_API_US_KEY;
+    let apiKey = speechUsToken;
     let speechUrl = SPEECH_API_US_URL;
     if (speechRegion == "jp") {
-      apiKey = SPEECH_API_JP_KEY;
+      apiKey = speechJpToken;
       speechUrl = SPEECH_API_JP_URL;
     }
 
@@ -319,8 +330,8 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   }, [
     appContext.state.page,
     SPEECH_API_US_URL,
-    SPEECH_API_US_KEY,
-    SPEECH_API_JP_KEY,
+    speechUsToken,
+    speechJpToken,
     SPEECH_API_JP_URL,
   ]);
 
