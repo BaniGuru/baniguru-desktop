@@ -66,16 +66,6 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
 
   const currentPageRef = useRef(appContext.state.page);
 
-  useEffect(() => {
-    if (!audioStreaming.current && audioStream) {
-      audioStreaming.current = true;
-      startAudioStream();
-    } else if (audioStreaming.current && !audioStream) {
-      audioStreaming.current = false;
-      stopAudioStream();
-    }
-  }, [audioStream]);
-
   const startAudioStream = useCallback(async() => {
     await invoke('start_stream', {
       micName: micName,
@@ -88,6 +78,48 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const stopAudioStream = useCallback(async() => {
     await invoke('stop_stream');
   }, []);
+
+  useEffect(() => {
+    if (!apiToken || !micName) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        if (audioStream && !audioStreaming.current) {
+          await startAudioStream();
+
+          if (!cancelled) {
+            audioStreaming.current = true;
+          }
+        }
+
+        if (!audioStream && audioStreaming.current) {
+          await stopAudioStream();
+
+          if (!cancelled) {
+            audioStreaming.current = false;
+          }
+        }
+      } catch (err) {
+        audioStreaming.current = false;
+        Sentry.captureException(err);
+      }
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+
+      if (audioStreaming.current) {
+        audioStreaming.current = false;
+        stopAudioStream().catch(console.error);
+      }
+    };
+  }, [audioStream, apiToken, micName, startAudioStream, stopAudioStream]);
 
   const startSpeech = useCallback(async() => {
     setStarted(true);

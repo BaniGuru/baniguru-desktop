@@ -241,7 +241,7 @@ function App() {
 
   useEffect(() => {
       const onESC = (ev: KeyboardEvent) => {
-        if (appPage.current !== "settings") {
+        if (appPage.current === "settings") {
           return;
         }
 

@@ -1,5 +1,6 @@
 import { SELECT_PANKTI, SET_APP_PAGE } from "../state/ActionTypes";
 import { ENV } from "./env";
+import * as Sentry from "@sentry/react";
 
 export type ApiToken = {
   final: string;
@@ -29,13 +30,44 @@ export const apiClient = (
   searchDispatch: React.Dispatch<any>
 ): ApiClient => {
   let socket: WebSocket | null = null;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let manuallyClosed = false;
+  let reconnectAttempt = 0;
+
+  const BASE_RECONNECT_MS = 5000;
+  const MAX_RECONNECT_MS = 300000;
+
+  const scheduleReconnect = () => {
+    if (manuallyClosed) return;
+    if (reconnectTimer) return;
+
+    const delay = Math.min(
+      BASE_RECONNECT_MS * 2 ** reconnectAttempt,
+      MAX_RECONNECT_MS
+    );
+
+    reconnectAttempt += 1;
+
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connect();
+    }, delay);
+  };
 
   const isOpen = (): boolean => {
     return (socket && socket.readyState === WebSocket.OPEN) ?? false;
   }
 
   const connect = () => {
-    if (socket && socket.readyState === WebSocket.OPEN) return;
+    if (
+      socket &&
+      (socket.readyState === WebSocket.OPEN ||
+        socket.readyState === WebSocket.CONNECTING)
+    ) {
+      return;
+    }
+
+    manuallyClosed = false;
 
     socket = new WebSocket(
       `${ENV.wssApiUrl}?token=${apiToken}&appid=gurbani-explorer`
@@ -43,6 +75,7 @@ export const apiClient = (
 
     socket.onopen = () => {
       console.log("WebSocket connected");
+      reconnectAttempt = 0;
     };
 
     socket.onmessage = (event) => {
@@ -88,18 +121,35 @@ export const apiClient = (
       }
     };
 
-    socket.onclose = () => {
+    socket.onclose = (event) => {
       console.log("WebSocket disconnected");
-      // check reconnection
-      // setTimeout(connect, 1000);
+      Sentry.captureMessage("WebSocket closed", {
+        level: "warning",
+        extra: {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean,
+        },
+      });
+
+      socket = null;
+      scheduleReconnect();
     };
 
     socket.onerror = (err) => {
       console.error("WebSocket error:", err);
+      Sentry.captureMessage("WebSocket error");
     };
   };
 
   const disconnect = () => {
+    manuallyClosed = true;
+
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+
     socket?.close();
     socket = null;
   };
