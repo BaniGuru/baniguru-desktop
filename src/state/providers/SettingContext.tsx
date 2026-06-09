@@ -63,8 +63,8 @@ const defaultVisibility: Record<LangType, boolean> = {
 };
 
 const defaultPanelSetting = {
-  panelWidth: 33,
-  panelHeight: 33,
+  panelWidth: 50,
+  panelHeight: 45,
   panelFontSize: 12,
 };
 
@@ -101,7 +101,7 @@ const getDefaultSettings = (): Settings => ({
   height: defaultHeight,
   version: "",
   themes: defaultThemes,
-  activeThemeName: defaultThemes[0].name,
+  activeThemeName: "ShabadOs2",
   visibility: defaultVisibility,
   micName: "",
   autoSearch: false,

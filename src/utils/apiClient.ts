@@ -12,10 +12,14 @@ export type ApiToken = {
   page: string;
 };
 
+export type SpeechCommand = "start" | "pause" | "resume" | "stop";
+
 export interface ApiClient {
   connect: () => void;
   disconnect: () => void;
   isOpen: () => boolean;
+  setSpeechCommandHandler: (handler: ((command: SpeechCommand) => void) | null) => void;
+  sendSpeechCommand: (command: SpeechCommand) => void;
   sendToken: (token: ApiToken) => void;
   sendPage: (page: string) => void;
   sendPankti: (shabadId: string, current: number, home: number, baniId: number|null, visited: number[]) => void;
@@ -30,6 +34,7 @@ export const apiClient = (
   searchDispatch: React.Dispatch<any>
 ): ApiClient => {
   let socket: WebSocket | null = null;
+  let speechCommandHandler: ((command: SpeechCommand) => void) | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let manuallyClosed = false;
   let reconnectAttempt = 0;
@@ -99,7 +104,7 @@ export const apiClient = (
               type: SET_APP_PAGE,
               payload: {
                   page: data.p,
-                  show_panel: data.p === 'search' ? true : false,
+                  show_panel: false,
               }
           });
         } else if (data.type === "search-term") {
@@ -115,6 +120,12 @@ export const apiClient = (
               type: SET_APP_PAGE,
               payload: { page: "shabad", show_panel: false }
           });
+        } else if (data.type === "speech") {
+          const command = data.command as SpeechCommand;
+
+          if (["start", "pause", "resume", "stop"].includes(command)) {
+            speechCommandHandler?.(command);
+          }
         }
       } catch (err) {
         console.error("Invalid WS message:", err);
@@ -214,10 +225,30 @@ export const apiClient = (
     }));
   }
 
+  const setSpeechCommandHandler = (
+    handler: ((command: SpeechCommand) => void) | null
+  ) => {
+    speechCommandHandler = handler;
+  };
+
+  const sendSpeechCommand = (command: SpeechCommand) => {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      console.warn("WebSocket not connected");
+      return;
+    }
+
+    socket.send(JSON.stringify({
+      type: "speech",
+      command,
+    }));
+  };
+
   return {
     connect,
     disconnect,
     isOpen,
+    setSpeechCommandHandler,
+    sendSpeechCommand,
     sendToken,
     sendPage,
     sendPankti,

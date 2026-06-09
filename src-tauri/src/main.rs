@@ -140,15 +140,27 @@ fn fake_fullscreen(app: AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())?
         .ok_or("No monitor found")?;
 
-    let position = monitor.position();
     let size = monitor.size();
 
-    window.unmaximize().ok();
-    window.set_decorations(false).map_err(|e| e.to_string())?;
-    window.set_shadow(false).ok();
+    #[cfg(target_os = "linux")]
+    {
+        window.show().ok();
+        window.unmaximize().ok();
+        window.set_decorations(false).ok();
+        window.set_fullscreen(true).map_err(|e| e.to_string())?;
+    }
 
-    window.set_position(*position).map_err(|e| e.to_string())?;
-    window.set_size(*size).map_err(|e| e.to_string())?;
+    #[cfg(target_os = "windows")]
+    {
+        window.unmaximize().ok();
+        window.set_decorations(false).map_err(|e| e.to_string())?;
+        window.set_shadow(false).ok();
+
+        let position = monitor.position();
+
+        window.set_position(*position).map_err(|e| e.to_string())?;
+        window.set_size(*size).map_err(|e| e.to_string())?;
+    }
 
     window.show().map_err(|e| e.to_string())?;
     window.set_focus().map_err(|e| e.to_string())?;
@@ -218,6 +230,14 @@ fn main() {
             request_admin_permission,
         ])
         .setup(|app| {
+            #[cfg(target_os = "linux")]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    window.show().map_err(|e| e.to_string())?;
+                    window.set_focus().ok();
+                }
+            }
+
             let app_handle = app.handle().clone();
 
             let config_path = app

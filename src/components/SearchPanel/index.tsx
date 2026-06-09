@@ -1,8 +1,7 @@
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef } from "react";
 import { SearchContext } from "../../state/providers/SearchProvider";
-import { GURBANI_SEARCH, SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SET_PANKTIS, SHABAD_RESET } from "../../state/ActionTypes";
+import { SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SHABAD_RESET } from "../../state/ActionTypes";
 import styled from "styled-components";
-import { DB } from "../../utils/DB";
 import { Pankti } from "../../models/Pankti";
 import { MdOutlineClear } from "react-icons/md";
 import { BsKeyboard } from "react-icons/bs";
@@ -10,7 +9,7 @@ import SearchList from "./SearchList";
 import { AppContext } from "../../state/providers/AppProvider";
 import { useContextSelector } from "use-context-selector";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
-import { ApiClient } from "../../utils/apiClient";
+import { useGurbaniSearch } from "../../utils/useGurbaniSearch";
 
 const SearchButton = styled.button`
     font-size: 14px;
@@ -28,13 +27,8 @@ const KeyboardButton = styled.button`
     color: #444;
 `;
 
-interface SearchPanelProps {
-  apiClient: ApiClient | null;
-}
-
-const SearchPanel: React.FC<SearchPanelProps> = ({ apiClient }) => {
+const SearchPanel: React.FC = () => {
     const {dispatch, searchInputRef, searchTerm, setSearchTerm, panktis} = useContext(SearchContext);
-    const [focusIndex, setFocusIndex] = useState(0);
     const {dispatch: appDispatch, fontSize} = useContext(AppContext);
     const { dispatch: shabadDispatch, shabadId } = useContextSelector(
         ShabadContext,
@@ -43,11 +37,14 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ apiClient }) => {
             shabadId: ctx.state.shabadId,
         })
     );
-    const appRef = useRef<number>(0);
-    const listContainerRef = useRef<HTMLUListElement | null>(null);
-    appRef.current++;
+    const {
+        listContainerRef,
+        focusIndex,
+        setFocusIndex,
+    } = useGurbaniSearch();
 
-    const searchRequestId = useRef(0);
+    const appRef = useRef<number>(0);
+    appRef.current++;
 
     const handleSearchShortcuts = (event: React.KeyboardEvent<HTMLInputElement>) => {
         const blockedKeys: Record<string, string> = {
@@ -111,111 +108,6 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ apiClient }) => {
         }
     };
 
-    const searchByFirstLetters = async (value: string, requestId: number) => {
-        const db = await DB.getInstance();
-        db.select(`
-            SELECT
-                lines.*,
-                CASE
-                    WHEN first_letters like '${value}' THEN 1
-                    WHEN first_letters like '${value}%' THEN 2
-                    WHEN first_letters like '%${value}' THEN 3
-                    WHEN first_letters like '%${value}%' THEN 4
-                    ELSE 5
-                END AS rank
-            FROM lines
-            INNER JOIN shabads ON lines.shabad_id = shabads.id
-            WHERE
-                first_letters like '%${value}%'
-            ORDER BY shabads.source_id, rank
-            LIMIT 100
-        `).then((res: any) => {
-            // Ignore if not latest search request
-            if (requestId !== searchRequestId.current) return;
-
-            if (!res) {
-                return;
-            }
-
-            const panktis: Pankti[] = res;
-            dispatch({
-                type: SET_PANKTIS,
-                payload: panktis
-            });
-            setFocusIndex(0);
-            if (listContainerRef.current) {
-                listContainerRef.current.scrollTo({
-                    top: 0
-                })
-            }
-        });
-    }
-
-    const searchByWords = async (value: string, requestId: number) => {
-        const searchValue = value.trim();
-        const db = await DB.getInstance();
-        db.select(`
-            SELECT
-                search_lines.*,
-                CASE
-                    WHEN TRIM(gurmukhi_normalized) LIKE CONCAT('${searchValue}') THEN 1
-                    WHEN TRIM(gurmukhi_normalized) LIKE CONCAT('${searchValue}', '%') THEN 2
-                    WHEN TRIM(gurmukhi_normalized) LIKE CONCAT('% ', '${searchValue}') THEN 3
-                    WHEN TRIM(gurmukhi_normalized) LIKE CONCAT('% ', '${searchValue}', '%') THEN 4
-                    ELSE 5
-                END AS rank
-            FROM search_lines
-            INNER JOIN shabads ON search_lines.shabad_id = shabads.id
-            WHERE
-                TRIM(gurmukhi_normalized) LIKE CONCAT('${searchValue}') OR
-                TRIM(gurmukhi_normalized) LIKE CONCAT('${searchValue}', '%') OR
-                TRIM(gurmukhi_normalized) LIKE CONCAT('% ', '${searchValue}') OR
-                TRIM(gurmukhi_normalized) LIKE CONCAT('% ', '${searchValue}', '%')
-            ORDER BY rank, shabads.source_id
-            LIMIT 100
-        `).then((res: any) => {
-            // Ignore if not latest search request
-            if (requestId !== searchRequestId.current) return;
-
-            if (!res) {
-                return;
-            }
-
-            const panktis: Pankti[] = res;
-            dispatch({
-                type: SET_PANKTIS,
-                payload: panktis
-            });
-            setFocusIndex(0);
-            if (listContainerRef.current) {
-                listContainerRef.current.scrollTo({
-                    top: 0
-                })
-            }
-        });
-    };
-
-    const handleSearch = async (value: string) => {
-        if (value.length < 2) {
-            return;
-        }
-
-        const currentRequestId = ++searchRequestId.current;
-
-        if (value.includes(' ')) {
-            await searchByWords(value, currentRequestId);
-        } else {
-            await searchByFirstLetters(value, currentRequestId);
-        }
-
-        dispatch({
-            type: GURBANI_SEARCH,
-            payload: {
-                searchTerm: value
-            }
-        });
-    }
-
     const clearSearch = useCallback(() => {
         if (searchInputRef.current !== null) {
             searchInputRef.current.value = "";
@@ -251,27 +143,6 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ apiClient }) => {
         searchInputRef?.current?.focus();
         searchInputRef?.current?.select;
     }, []);
-
-    useEffect(() => {
-        if (! searchInputRef.current?.value) {
-            return;
-        }
-
-        handleSearch(searchTerm);
-    }, [searchTerm]);
-
-    useEffect(() => {
-        if (!apiClient) {
-            return;
-        }
-
-        if (panktis.length > 20) {
-            return;
-        }
-
-        const ids = panktis.map(pankti => pankti.id);
-        apiClient.sendSearchPanktis(ids);
-    }, [panktis]);
 
     return (
         <>

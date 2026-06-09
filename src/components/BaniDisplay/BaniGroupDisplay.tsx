@@ -10,6 +10,7 @@ import { AppContext } from "../../state/providers/AppProvider";
 
 // import backgroundDesign from "../../assets/images/logo-shabados-2.png";
 import backgroundDesign from "./background_design.png";
+import { ApiClient } from "../../utils/apiClient";
 
 interface PanktiLike {
     id?: string | number;
@@ -187,7 +188,11 @@ const HiddenMeasureCard = styled(VerseCard)`
     justify-content: center;
 `;
 
-const BaniGroupDisplay: FC = () => {
+interface BaniGroupDisplayProps {
+  apiClient: ApiClient | null;
+}
+
+const BaniGroupDisplay: FC<BaniGroupDisplayProps> = ({ apiClient }) => {
     const baniContext = useContext(BaniContext);
     const { state } = useCtxSelector(ShabadContext);
     const { visibility } = useSettings();
@@ -227,6 +232,23 @@ const BaniGroupDisplay: FC = () => {
             },
         });
     }, [state.baniId, state.current]);
+
+    useEffect(() => {
+        let adjustIdx = 0;
+        if (state.baniId === 13 && state.current > 7) {
+            adjustIdx = 1;
+        }
+
+        apiClient?.sendPankti(
+            state.shabadId ?? "",
+            ((state.current ?? 0) + adjustIdx),
+            state.home ?? 0,
+            state.baniId,
+            state.panktis
+                .map((p, index) => p.visited ? index : null)
+                .filter((index): index is number => index !== null)
+        );
+    }, [state.current, state.baniId, state.home]);
 
     const showGroup = state.panktis[current]?.show_group;
 

@@ -37,6 +37,7 @@ import BaniGroupDisplay from "./components/BaniDisplay/BaniGroupDisplay";
 import splash from "./assets/images/splash.png";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { stopMeilisearch } from "./utils/meili";
+import { useGurbaniSearch } from "./utils/useGurbaniSearch";
 
 
 type DownloadEvent =
@@ -83,6 +84,7 @@ function App() {
   const downloadedRef = useRef<number>(0);
   const downloadingRef = useRef<boolean>(false);
   const apiClientRef = useRef<ApiClient|null>(null);
+  const [apiClientState, setApiClientState] = useState<ApiClient | null>(null);
 
   const baniId = useContextSelector(ShabadContext, (ctx) => ctx.state.baniId);
 
@@ -126,14 +128,62 @@ function App() {
       return;
     }
 
-    if (!apiClientRef.current || !apiClientRef.current.isOpen) {
+    if (!apiClientRef.current || !apiClientRef.current.isOpen()) {
       const client = apiClient(apiToken, shabadDispatch, appContext.dispatch, setSearchTerm, searchDispatch);
       client.connect();
       apiClientRef.current = client;
+      setApiClientState(client);
     }
   }, [shabadDispatch, appContext.dispatch, setSearchTerm, apiToken]);
 
-  const speech = useSpeech({apiClient: apiClientRef.current ?? null});
+  const speech = useSpeech({apiClient: apiClientState});
+  const {panktis} = useGurbaniSearch();
+
+  useEffect(() => {
+    if (!apiClientState) return;
+
+    apiClientState.setSpeechCommandHandler((command) => {
+      switch (command) {
+        case "start":
+          speech.startSpeech();
+          break;
+        case "pause":
+          speech.togglePauseSpeech(true);
+          break;
+        case "resume":
+          speech.togglePauseSpeech(false);
+          break;
+        case "stop":
+          speech.stopSpeech();
+          break;
+      }
+    });
+
+    return () => {
+      apiClientState.setSpeechCommandHandler(null);
+    };
+  }, [apiClientState, speech.startSpeech, speech.stopSpeech, speech.togglePauseSpeech]);
+
+  const startSpeech = () => {
+    speech.startSpeech();
+    apiClientRef.current?.sendSpeechCommand("start");
+  };
+
+  const pauseSpeech = () => {
+    speech.togglePauseSpeech(true);
+    apiClientRef.current?.sendSpeechCommand("pause");
+  };
+
+  const resumeSpeech = () => {
+    speech.togglePauseSpeech(false);
+    apiClientRef.current?.sendSpeechCommand("resume");
+  };
+
+  const stopSpeech = () => {
+    speech.stopSpeech();
+    apiClientRef.current?.sendSpeechCommand("stop");
+  };
+
   const speechStarted = speech.started;
   const speechStartedRef = useRef(speech.started);
   const speechPausedRef = useRef(speech.pauseSpeech);
@@ -177,6 +227,18 @@ function App() {
       gurbaniSearch.init();
     }
   }, [DB.getDbPath()]);
+
+  useEffect(() => {
+      if (!apiClientState) {
+          return;
+      }
+
+      const ids = panktis
+      .slice(0, 20)
+      .map(pankti => pankti.id);
+
+      apiClientState.sendSearchPanktis(ids);
+  }, [panktis, apiClientState]);
 
   useShabadNavigation();
   const { mouseVisible, showTitleBar } = useAutoHideCursor({ delay: 5, titleBarThreshold: 100 });
@@ -260,9 +322,9 @@ function App() {
               if (ev.ctrlKey) {
                 ev.preventDefault();
                 if (!speechStartedRef.current) {
-                  speech.startSpeech();
+                  startSpeech();
                 } else if (speechPausedRef.current) {
-                  speech.togglePauseSpeech(false);
+                  resumeSpeech();
                 }
               }
               break;
@@ -272,7 +334,7 @@ function App() {
               if (ev.ctrlKey) {
                 ev.preventDefault();
                 if (!speechPausedRef.current) {
-                  speech.togglePauseSpeech(true);
+                  pauseSpeech();
                 }
               }
               break;
@@ -413,7 +475,7 @@ function App() {
         }
 
         {speechStarted && (baniId == 13 || baniId == 12)
-            ? <BaniGroupDisplay />
+            ? <BaniGroupDisplay apiClient={apiClientRef.current ?? null} />
             : <ShabadDisplay apiClient={apiClientRef.current ?? null} />
         }
           {appContext.state.show_panel &&
@@ -430,7 +492,7 @@ function App() {
                     {speech.started ? (
                       <div>
                         <button
-                          onClick={() => speech.stopSpeech()}
+                          onClick={() => stopSpeech()}
                         >
                         <FaStopCircle
                           className="text-red-700"
@@ -440,7 +502,7 @@ function App() {
                         {
                           speech.pauseSpeech &&
                           <button
-                            onClick={() => speech.togglePauseSpeech(false)}
+                            onClick={() => resumeSpeech()}
                           >
                           <FaPlayCircle
                             className="text-yellow-700 ml-4 text-sm"
@@ -451,7 +513,7 @@ function App() {
                         {
                           !speech.pauseSpeech &&
                           <button
-                            onClick={() => speech.togglePauseSpeech(true)}
+                            onClick={() => pauseSpeech()}
                           >
                           <FaPauseCircle
                             className="text-yellow-700 ml-4 text-sm"
@@ -462,7 +524,7 @@ function App() {
                       </div>
                     ) : (
                       <button
-                        onClick={() => speech.startSpeech()}
+                        onClick={() => startSpeech()}
                       >
                       <FaPlayCircle
                         title="Start Bani Pilot"
@@ -485,7 +547,7 @@ function App() {
               </div>
               <div className="flex-1 flex flex-col overflow-hidden bg-gray-100">
                 {appContext.state.page === "shabad" && <ShabadPanel />}
-                {appContext.state.page === "search" && <SearchPanel apiClient={apiClientRef.current ?? null} />}
+                {appContext.state.page === "search" && <SearchPanel />}
                 {appContext.state.page === "settings" && <SettingPanel />}
                 {appContext.state.page === "recent" && <RecentPanel />}
                 {appContext.state.page === "bani" && <BaniPanel />}

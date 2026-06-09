@@ -428,8 +428,22 @@ pub fn request_admin_permission() -> Result<bool, String> {
         return Ok(status.success());
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
     {
-        Ok(false)
+        use std::process::Command;
+
+        let current_exe = std::env::current_exe()
+            .map_err(|e| e.to_string())?;
+
+        let status = Command::new("pkexec")
+            .arg(current_exe)
+            .arg("--admin-unlock-check")
+            .status()
+            .map_err(|e| e.to_string())?;
+
+        return Ok(status.success());
     }
+
+    #[allow(unreachable_code)]
+    Ok(false)
 }
