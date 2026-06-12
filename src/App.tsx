@@ -14,6 +14,7 @@ import BaniPanel from "./components/BaniPanel";
 import {
   FaPauseCircle,
   FaPlayCircle,
+  FaSearch,
   FaStopCircle,
   FaTimes,
   FaWindowMaximize,
@@ -366,13 +367,7 @@ function App() {
               case "/":
                 if (ev.ctrlKey) {
                   setSearchTerm('');
-                  appContext.dispatch({
-                      type: SET_APP_PAGE,
-                      payload: {
-                          page: "search",
-                          show_panel: true,
-                      },
-                  });
+                  showSearch();
                   ev.preventDefault();
                 }
                 break;
@@ -412,6 +407,17 @@ function App() {
   const togglePanel = () => {
     appContext.dispatch({
       type: TOGGLE_PANEL
+    });
+  }
+
+  const showSearch = () => {
+    appContext.dispatch({
+        type: SET_APP_PAGE,
+        payload: {
+            page: "search",
+            show_panel: true,
+            clear_search: true,
+        },
     });
   }
 
@@ -559,10 +565,22 @@ function App() {
             </TabPanel>
           }
           {!appContext.state.show_panel && mouseVisible &&
-            <div className="absolute right-4 bottom-4 flex">
+            <div className="absolute right-6 bottom-6 flex">
+              <div className="flex p-4 border-2 border-gray-300 rounded-full bg-white hover:bg-gray-800 mr-4 text-gray-800 hover:text-white">
+                <FaSearch
+                  className="cursor-pointer text-2xl"
+                  onClick={showSearch}
+                />
+              </div>
+              <div className="flex p-3 border-2 border-gray-300 rounded-2xl bg-white h-11 mt-2 text-gray-800 hover:bg-gray-800 hover:text-white">
+                <FaWindowMaximize
+                  className="cursor-pointer"
+                  onClick={togglePanel}
+                />
+              </div>
               { 
                 speech.started &&
-                <div className="flex mr-6 bg-white border-2 border-gray-300 rounded-2xl p-2">
+                <div className="flex ml-6 mt-2 bg-white border-2 border-gray-300 rounded-2xl p-2 h-11">
                   {
                     speech.pauseSpeech &&
                     <button
@@ -587,12 +605,6 @@ function App() {
                   }
                 </div>
               }
-              <div className="flex p-3 border-2 border-gray-300 rounded-2xl bg-white">
-                <FaWindowMaximize
-                  className=" text-gray-800 cursor-pointer"
-                  onClick={togglePanel}
-                />
-              </div>
             </div>
           }
     </AppPanel>

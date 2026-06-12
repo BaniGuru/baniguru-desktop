@@ -25,6 +25,8 @@ const Panel = styled.div<PanelProps>`
     padding-top: ${({ fontSize }) => `${fontSize}px`};
     padding-left: ${() => `${window.innerWidth * 0.03}px`};
     padding-right: ${() => `${window.innerWidth * 0.03}px`};
+    user-select: none;
+    -webkit-user-select: none;
 `;
 
 interface FontProps {

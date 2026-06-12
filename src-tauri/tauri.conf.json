@@ -13,7 +13,7 @@
     "windows": [
       {
         "title": "BaniGuru",
-        "resizable": true,
+        "resizable": false,
         "fullscreen": false,
         "maximized": false,
         "decorations": false,

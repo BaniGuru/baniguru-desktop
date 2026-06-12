@@ -6,6 +6,7 @@ export type AppState = {
     prev_page: string;
     show_panel: boolean;
     prev_show_panel: boolean;
+    clear_search: boolean;
     // dbPath: string;
 };
 
@@ -20,6 +21,7 @@ const initAppState: AppState = {
     prev_page: "",
     show_panel: true,
     prev_show_panel: true,
+    clear_search: false,
     // dbPath: "",
 };
 
@@ -42,6 +44,7 @@ const appReducer = (state: AppState, action: any) => {
                 page: page,
                 prev_show_panel: state.show_panel,
                 show_panel: !state.show_panel,
+                clear_search: action.clear_search ?? false,
             }
     }
 

@@ -1,6 +1,6 @@
-import { useCallback, useContext, useEffect, useRef } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { SearchContext } from "../../state/providers/SearchProvider";
-import { SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SHABAD_RESET } from "../../state/ActionTypes";
+import { SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SHABAD_PANKTI, SHABAD_RESET, TOGGLE_PANEL } from "../../state/ActionTypes";
 import styled from "styled-components";
 import { Pankti } from "../../models/Pankti";
 import { MdOutlineClear } from "react-icons/md";
@@ -29,12 +29,14 @@ const KeyboardButton = styled.button`
 
 const SearchPanel: React.FC = () => {
     const {dispatch, searchInputRef, searchTerm, setSearchTerm, panktis} = useContext(SearchContext);
-    const {dispatch: appDispatch, fontSize} = useContext(AppContext);
-    const { dispatch: shabadDispatch, shabadId } = useContextSelector(
+    const {dispatch: appDispatch, fontSize, state} = useContext(AppContext);
+    const [searchCleared, setSearchCleared] = useState(false);
+    const { dispatch: shabadDispatch, shabadId, panktis: ShabadPanktis } = useContextSelector(
         ShabadContext,
         ctx => ({
             dispatch: ctx.dispatch,
             shabadId: ctx.state.shabadId,
+            panktis: ctx.state.panktis
         })
     );
     const {
@@ -117,9 +119,26 @@ const SearchPanel: React.FC = () => {
         setSearchTerm("");
     }, [searchInputRef]);
 
+    useEffect(() => {
+        if (!searchCleared) {
+            setSearchCleared(true);
+            clearSearch();
+        }
+    }, [state.clear_search, searchCleared])
+
     const displayShabad = useCallback((pankti: Pankti) => {
+        appDispatch({
+            type: TOGGLE_PANEL,
+        });
+
         // current shabad
         if (pankti.shabad_id == shabadId) {
+            shabadDispatch({
+                type: SHABAD_PANKTI,
+                payload: {
+                    current: ShabadPanktis.findIndex(sPankti => sPankti.id === pankti.id),
+                }
+            });
             appDispatch({
                 type: SET_APP_PAGE,
                 payload: { page: "shabad" }
