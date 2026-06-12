@@ -310,7 +310,7 @@ export const findMatchingPankti = (panktis: Pankti[], tokens: string[], homeIdx:
 
     const nextPanktiIdxs = getAllowedNextPanktiIdxs(panktis, homeIdx, currentIdx);
     // console.log('next panktis: ', nextPanktiIdxs);
-    let matchScores: PanktiScore[] = getPanktiScores(panktis, tokens);
+    let matchScores: PanktiScore[] = getPanktiScores(panktis, tokens, currentIdx);
 
     if (matchScores.length === 0) {
         return [];
@@ -361,7 +361,7 @@ export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], curr
         i++;
     }
 
-    let matchScores: PanktiScore[] = getPanktiScores(panktis, tokens, 0, true);
+    let matchScores: PanktiScore[] = getPanktiScores(panktis, tokens, relativeCurrentIdx, 0, true);
 
     if (matchScores.length === 0) {
         return [];
@@ -456,12 +456,13 @@ export const findMatchTowardEnd = (scores: PanktiScore[]) => {
     });
 }
 
-export const getPanktiScores = (panktis: Pankti[], tokens: string[], prefixIdx = 0, strictMatch: boolean = true, strictLevel: number = 1) => {
+export const getPanktiScores = (panktis: Pankti[], tokens: string[], currentIdx: number, prefixIdx = 0, strictMatch: boolean = true) => {
     const rTokens = tokens.join(' ').split(' ').reverse();
 
     const matches = [];
+    const strictLevel = 1;
     for (let i = 0; i < panktis.length; i++) {
-        const matchScore = getPanktiScore(panktis[i], rTokens, strictMatch, strictLevel);
+        const matchScore = getPanktiScore(panktis[i], i, currentIdx, rTokens, strictMatch, strictLevel);
 
         if (matchScore == null) continue;
 
@@ -561,7 +562,7 @@ const isMatching = (word: string, token: string, strictMatch: boolean, strictLev
     return false;
 };
 
-export const getPanktiScore = (pankti: Pankti, tokens: string[], strictMatch: boolean, strictLevel: number = 1) => {
+const getPanktiScore = (pankti: Pankti, panktiIdx: number, currentIdx: number, tokens: string[], strictMatch: boolean, strictLevel: number = 1) => {
     let matches: PanktiScore[] = [];
     const words = pankti.gurmukhi_rwords;
     const vishraam_idx = pankti.vishraam_ridx ? (pankti.vishraam_ridx - 1) : -1;
@@ -579,9 +580,19 @@ export const getPanktiScore = (pankti: Pankti, tokens: string[], strictMatch: bo
                     isMatching(words[i + k], tokens[j + k], strictMatch, strictLevel) ||
                     (
                         words[i+k].startsWith(tokens[j+k]) &&
-                        (i+k+1) < words.length &&
-                        (j+k+1) < tokens.length &&
-                        isMatching(words[i + k + 1], tokens[j + k + 1], strictMatch, strictLevel)
+                        (
+                            (
+                                (i+k+1) < words.length &&
+                                (j+k+1) < tokens.length
+                            ) ||
+                            (
+                                // allow current pankti partial match
+                                isMatching(words[i + k + 1], tokens[j + k + 1], strictMatch, strictLevel) ||
+                                (
+                                    panktiIdx === currentIdx
+                                )
+                            )
+                        )
                     )
                 )
             ) {

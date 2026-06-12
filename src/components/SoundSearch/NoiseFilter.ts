@@ -503,8 +503,6 @@ export function postProcessText(
         // console.log('norm frag: ', normFragment);
         const {matches, score} = findRelativePankti(normFragment, panktis, gurmukhiPanktis, prevNormWord, nextRawFragment);
 
-        // console.log('match: ', match);
-        // console.log('score: ', score);
 
         if (matches.length === 0 || (score && score.totalWords != (score.matchLen + score.totalGap))) {
             if (prevRawFragment.includes(normFragment)) {
