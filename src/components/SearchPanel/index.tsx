@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { SearchContext } from "../../state/providers/SearchProvider";
-import { SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SHABAD_PANKTI, SHABAD_RESET, TOGGLE_PANEL } from "../../state/ActionTypes";
+import { SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SHABAD_PANKTI, SHABAD_RESET } from "../../state/ActionTypes";
 import styled from "styled-components";
 import { Pankti } from "../../models/Pankti";
 import { MdOutlineClear } from "react-icons/md";

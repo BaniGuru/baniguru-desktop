@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "BaniGuru",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "identifier": "com.baniguru.desktop",
   "build": {
     "beforeDevCommand": "yarn dev",
