@@ -127,10 +127,6 @@ const SearchPanel: React.FC = () => {
     }, [state.clear_search, searchCleared])
 
     const displayShabad = useCallback((pankti: Pankti) => {
-        appDispatch({
-            type: TOGGLE_PANEL,
-        });
-
         // current shabad
         if (pankti.shabad_id == shabadId) {
             shabadDispatch({
@@ -141,7 +137,10 @@ const SearchPanel: React.FC = () => {
             });
             appDispatch({
                 type: SET_APP_PAGE,
-                payload: { page: "shabad" }
+                payload: {
+                    page: "shabad",
+                    show_panel: false,
+                }
             });
             return;
         }
@@ -154,7 +153,10 @@ const SearchPanel: React.FC = () => {
 
         appDispatch({
             type: SET_APP_PAGE,
-            payload: { page: "shabad" }
+            payload: {
+                page: "shabad",
+                show_panel: false,
+            }
         });
     }, [shabadDispatch, dispatch, appDispatch]);
 

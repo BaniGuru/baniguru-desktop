@@ -93,7 +93,7 @@ pub async fn start_soniox_stream(
     //
     let start_msg = json!({
         "api_key": api_key,
-        "model": "stt-rt-v4",
+        "model": "stt-rt-v5",
         "audio_format": "pcm_s16le",
         "num_channels": 1,
         "sample_rate": 16000,
