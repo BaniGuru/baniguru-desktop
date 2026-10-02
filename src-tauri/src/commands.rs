@@ -1,7 +1,7 @@
 // src/commands.rs
 
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, State};
+use tauri::{path::BaseDirectory, AppHandle, Manager, State};
 use tokio::sync::Mutex;
 
 use cpal::traits::{DeviceTrait, HostTrait};
@@ -9,6 +9,7 @@ use cpal::traits::{DeviceTrait, HostTrait};
 use crate::audio_bus::AudioBus;
 use crate::p2p_audio_sender::start_p2p_audio_stream_with_signaling;
 use crate::p2p_audio_sender::ApiConfig;
+use crate::offline_asr::{start_offline_asr_stream, stop_offline_asr_stream, OfflineAsrStream};
 use crate::soniox::{start_soniox_stream, stop_soniox_stream, SonioxStream};
 use tauri::async_runtime::JoinHandle;
 
@@ -50,6 +51,15 @@ pub struct RawStreamState {
 //
 pub struct StreamState {
     pub stream: Mutex<Option<SonioxStream>>,
+}
+
+//
+// =============================
+// Offline ASR State
+// =============================
+//
+pub struct OfflineAsrState {
+    pub stream: Mutex<Option<OfflineAsrStream>>,
 }
 
 //
@@ -297,6 +307,80 @@ pub async fn restart_soniox(
 
     println!("Soniox restarted");
 
+    Ok(())
+}
+
+//
+// =============================
+// Start Offline ASR
+// =============================
+//
+#[tauri::command]
+pub async fn start_offline_asr(
+    app: AppHandle,
+    mic_name: String,
+    state: State<'_, OfflineAsrState>,
+    audio: State<'_, AudioState>,
+) -> Result<(), String> {
+    let mut guard = state.stream.lock().await;
+
+    if guard.is_some() {
+        return Err("Offline ASR already running".into());
+    }
+
+    acquire_mic(mic_name, &audio).await?;
+
+    let mic_config = audio
+        .mic_config
+        .lock()
+        .await
+        .ok_or("Mic config missing")?;
+
+    let resource_dir = app
+        .path()
+        .resolve("resources/offline_asr", BaseDirectory::Resource)
+        .map_err(|e| format!("Could not resolve offline ASR resources: {e}"))?;
+
+    match start_offline_asr_stream(
+        app,
+        resource_dir,
+        mic_config.sample_rate,
+        mic_config.channels,
+        audio.bus.clone(),
+    )
+    .await
+    {
+        Ok(stream) => {
+            *guard = Some(stream);
+            println!("Offline ASR started");
+            Ok(())
+        }
+        Err(error) => {
+            release_mic(&audio).await;
+            Err(error)
+        }
+    }
+}
+
+//
+// =============================
+// Stop Offline ASR
+// =============================
+//
+#[tauri::command]
+pub async fn stop_offline_asr(
+    state: State<'_, OfflineAsrState>,
+    audio: State<'_, AudioState>,
+) -> Result<(), String> {
+    let mut guard = state.stream.lock().await;
+
+    let Some(stream) = guard.take() else {
+        return Ok(());
+    };
+
+    stop_offline_asr_stream(stream).await;
+    release_mic(&audio).await;
+    println!("Offline ASR stopped");
     Ok(())
 }
 

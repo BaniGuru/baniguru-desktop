@@ -5,6 +5,7 @@
 
 mod audio_bus;
 mod commands;
+mod offline_asr;
 mod p2p_audio_sender;
 mod server;
 mod settings;
@@ -16,8 +17,8 @@ use crate::commands::list_mics;
 use crate::commands::update_pankti;
 use crate::commands::Pankti;
 use crate::commands::{
-    restart_soniox, start_soniox, start_stream, stop_soniox, stop_stream, AudioState,
-    RawStreamState, StreamState,
+    restart_soniox, start_offline_asr, start_soniox, start_stream, stop_offline_asr,
+    stop_soniox, stop_stream, AudioState, OfflineAsrState, RawStreamState, StreamState,
     request_admin_permission,
 };
 use crate::server::start_web_server;
@@ -223,6 +224,8 @@ fn main() {
             start_soniox,
             stop_soniox,
             restart_soniox,
+            start_offline_asr,
+            stop_offline_asr,
             start_stream,
             stop_stream,
             list_mics,
@@ -257,6 +260,9 @@ fn main() {
             app.manage(Mutex::new(pankti));
             app.manage(config_path);
             app.manage(StreamState {
+                stream: Mutex::new(None),
+            });
+            app.manage(OfflineAsrState {
                 stream: Mutex::new(None),
             });
             app.manage(AudioState {

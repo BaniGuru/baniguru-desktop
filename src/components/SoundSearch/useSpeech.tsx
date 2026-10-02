@@ -9,6 +9,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useSettings } from "../../state/providers/SettingContext";
 import { useContext as useCtxSelector } from "use-context-selector";
 import useSearchPilot from "./useSearchPilot";
+import useOfflineSearchPilot from "./useOfflineSearchPilot";
 import { ENV } from "../../utils/env";
 import { ApiClient } from "../../utils/apiClient";
 import { ensurePanktiIndex } from "../../utils/meili";
@@ -42,7 +43,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const transcriptRef = useRef("");
-  const listenerRef = useRef(false);
+  const activeProviderRef = useRef<"soniox" | "offline" | null>(null);
   const audioStreaming = useRef(false);
   const searchReady = useRef(false);
   const [finalText, setFinalText] = useState("");
@@ -52,6 +53,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const [lastTokenTime, setLastTokenTime] = useState(0);
   const {
     autoSearch,
+    offlineMode,
     audioStream,
     micName,
     speechRegion,
@@ -175,34 +177,39 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   }, [appContext.state.page]);
 
   useEffect(() => {
+    let unlistenSoniox: (() => void) | undefined;
+    let unlistenOffline: (() => void) | undefined;
+    let cancelled = false;
 
-    if (listenerRef.current) return;
-    listenerRef.current = true;
-
-    let unlistenFn: any;
-
-    listen("soniox_transcript", (event: any) => {
-
-      const { final, partial, end_ms } = event.payload;
-
+    const applyTranscript = (provider: "soniox" | "offline", payload: any) => {
+      if (activeProviderRef.current !== provider) return;
+      const { final, partial, end_ms } = payload;
       if (final) {
-        transcriptRef.current += final.replaceAll('<end>', '');
-        setNewFinalToken(final.replaceAll('<end>', ''));
+        const cleaned = final.replaceAll('<end>', '');
+        transcriptRef.current += cleaned;
+        setNewFinalToken(cleaned);
         setFinalText(transcriptRef.current);
       } else {
         setNewFinalToken("");
       }
+      setNonFinalText(partial || "");
+      setLastTokenTime(end_ms || 0);
+    };
 
-      setNonFinalText(partial);
-      setLastTokenTime(end_ms);
-    }).then(fn => {
-      unlistenFn = fn;
+    Promise.all([
+      listen("soniox_transcript", (event: any) => applyTranscript("soniox", event.payload)),
+      listen("offline_transcript", (event: any) => applyTranscript("offline", event.payload)),
+    ]).then(([a, b]) => {
+      if (cancelled) { a(); b(); return; }
+      unlistenSoniox = a;
+      unlistenOffline = b;
     });
 
     return () => {
-      if (unlistenFn) unlistenFn();
+      cancelled = true;
+      unlistenSoniox?.();
+      unlistenOffline?.();
     };
-
   }, []);
 
   useEffect(() => {
@@ -254,7 +261,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
       speechUrl = SPEECH_API_JP_URL;
     }
 
-    if (apiKey === "") {
+    if (!offlineMode && apiKey === "") {
       setErrorText("Api key not configured for auto pilot.");
       setStarted(false);
       return;
@@ -271,12 +278,18 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     startPage.current = appContext.state.page;
 
     try {
-      await invoke('start_soniox', {
-        micName: micName,
-        sonioxUrl: speechUrl,
-        apiKey: apiKey,
-        panktis
-      });
+      if (offlineMode) {
+        await invoke('start_offline_asr', { micName });
+        activeProviderRef.current = "offline";
+      } else {
+        await invoke('start_soniox', {
+          micName: micName,
+          sonioxUrl: speechUrl,
+          apiKey: apiKey,
+          panktis
+        });
+        activeProviderRef.current = "soniox";
+      }
     } catch (error) {
       setStarted(false);
       setErrorText("Api Error: " + error);
@@ -299,15 +312,21 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     setTerms,
     appContext.state.page,
     speechRegion,
+    offlineMode,
   ]);
 
   const stopTranscription = useCallback(async () => {
     // return;
     try {
-        await invoke('stop_soniox');
+        if (activeProviderRef.current === "offline") {
+          await invoke('stop_offline_asr');
+        } else if (activeProviderRef.current === "soniox") {
+          await invoke('stop_soniox');
+        }
+        activeProviderRef.current = null;
       } catch (error) {
         Sentry.captureException(error);
-        console.error('Error stopping Soniox:', error);
+        console.error('Error stopping speech provider:', error);
         return;
       }
 
@@ -328,6 +347,17 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
 
     startPage.current = appContext.state.page;
     status.current = "Restarting";
+
+    if (activeProviderRef.current === "offline") {
+      transcriptRef.current = "";
+      setFinalText("");
+      setNonFinalText("");
+      setSpeechTokens([]);
+      setError(null);
+      setTerms(panktis);
+      status.current = "Running";
+      return;
+    }
 
     let apiKey = speechUsToken;
     let speechUrl = SPEECH_API_US_URL;
@@ -380,6 +410,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   );
   const baniPilot = useBaniPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript, silenceSeconds, stopSpeech);
   const searchPilot = useSearchPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript);
+  const offlineSearchPilot = useOfflineSearchPilot(finalText, nonFinalText, status.current, startTranscription);
 
   const resetText = () => {
     transcriptRef.current = "";
@@ -432,10 +463,16 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     );
 
     searchPilot.setActive(
-      autoSearch &&
+      !offlineMode && autoSearch &&
       appContext.state.page === PAGE_SEARCH &&
       started
-    )
+    );
+
+    offlineSearchPilot.setActive(
+      offlineMode && autoSearch &&
+      appContext.state.page === PAGE_SEARCH &&
+      started
+    );
   }, [
     appContext.state.page,
     shabadContext.state.baniId,
@@ -443,15 +480,18 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     shabadPilot.setActive,
     baniPilot.setActive,
     resetText,
-    autoSearch
+    autoSearch,
+    offlineMode,
+    offlineSearchPilot.setActive,
+    searchPilot.setActive
   ]);
 
   useEffect(() => {
-    if (!searchReady.current && autoSearch && appContext.dbPath) {
+    if (!offlineMode && !searchReady.current && autoSearch && appContext.dbPath) {
       ensurePanktiIndex();
       searchReady.current = true;
     }
-  }, [autoSearch, appContext.dbPath]);
+  }, [autoSearch, offlineMode, appContext.dbPath]);
 
   const updateLastTokenElapse = useCallback((finalText: string, nonFinalText: string) => {
     // Silence begins when:

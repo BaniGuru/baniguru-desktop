@@ -28,17 +28,16 @@
         {
           "identifier": "my-capability",
           "description": "My application capability used for all windows",
-          "windows": ["*"],
+          "windows": [
+            "*"
+          ],
           "permissions": [
             "sql:default",
             "sql:allow-execute",
-
             "keyring:default",
             "keyring:allow-get-password",
             "keyring:allow-set-password",
-
             "core:window:default",
-
             "core:window:allow-minimize",
             "core:window:allow-close",
             "core:window:allow-maximize",
@@ -46,7 +45,6 @@
             "core:window:allow-toggle-maximize",
             "core:window:allow-hide",
             "core:window:allow-show",
-
             "core:window:allow-set-fullscreen",
             "core:window:allow-is-fullscreen",
             "core:window:allow-set-always-on-top",
@@ -54,17 +52,14 @@
             "core:window:allow-set-position",
             "core:window:allow-set-decorations",
             "core:window:allow-destroy",
-
             "core:event:allow-listen",
             "core:event:allow-emit",
-
             "core:path:default",
             "core:path:allow-resolve-directory",
             "fs:default",
             "fs:allow-mkdir",
             "fs:allow-appdata-write",
             "fs:allow-appdata-write-recursive",
-
             "shell:default",
             "shell:allow-kill",
             "shell:allow-spawn",
@@ -95,6 +90,9 @@
     ],
     "externalBin": [
       "binaries/meilisearch"
+    ],
+    "resources": [
+      "resources/offline_asr/*"
     ]
   },
   "plugins": {

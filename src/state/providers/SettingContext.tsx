@@ -16,6 +16,7 @@ type Settings = {
     panelHeight: number;
   };
   autoSearch: boolean;
+  offlineMode: boolean;
   audioStream: boolean;
   autoNext: boolean;
   panelLocation: string;
@@ -42,6 +43,7 @@ type Settings = {
   settingVersion: string;
   setPanelLocation: (location: string) => void;
   setAutoSearch: (autoSearch: boolean) => void;
+  setOfflineMode: (offlineMode: boolean) => void;
   setAudioStream: (audioStream: boolean) => void;
   setAutoNext: (autoNext: boolean) => void;
 
@@ -105,6 +107,7 @@ const getDefaultSettings = (): Settings => ({
   visibility: defaultVisibility,
   micName: "",
   autoSearch: false,
+  offlineMode: false,
   audioStream: false,
   autoNext: false,
   apiToken: defaultApiToken,
@@ -123,6 +126,7 @@ const getDefaultSettings = (): Settings => ({
   setSpeechRegion: () => {},
   settingVersion: settingVersion,
   setAutoSearch: () => { },
+  setOfflineMode: () => { },
   setAudioStream: () => { },
   setAutoNext: () => { },
   setApiToken: () => {},
@@ -151,6 +155,7 @@ const getInitialSettings = () => {
           micName: parsed.micName ?? "",
           speechRegion: parsed.speechRegion ?? defaultRegion,
           autoSearch: parsed.autoSearch ?? false,
+          offlineMode: parsed.offlineMode ?? false,
           audioStream: parsed.audioStream ?? false,
         };
         storageSettings = true;
@@ -184,6 +189,7 @@ const storeSettings = (settings: any) => {
       micName: settings.micName,
       settingVersion: settingVersion,
       autoSearch: settings.autoSearch,
+      offlineMode: settings.offlineMode,
       speechRegion: settings.speechRegion,
       audioStream: settings.audioStream,
     })
@@ -201,6 +207,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
   const [micName, setMicName] = useState(initial.micName);
   const [panelLocation, setPanelLocation] = useState(initial.panelLocation);
   const [autoSearch, setAutoSearch] = useState(initial.autoSearch);
+  const [offlineMode, setOfflineMode] = useState(initial.offlineMode);
   const [audioStream, setAudioStream] = useState(initial.audioStream);
   const [autoNext, setAutoNext] = useState(true);
   const [speechRegion, setSpeechRegion] = useState<string>(initial.speechRegion);
@@ -301,6 +308,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
       micName,
       panelLocation,
       autoSearch,
+      offlineMode,
       speechRegion,
       audioStream,
       apiToken,
@@ -310,6 +318,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
   }, [
     visibility, width, height, version, panelSetting, themes, activeThemeName, micName, panelLocation,
     autoSearch,
+    offlineMode,
     speechRegion,
     audioStream,
     apiToken,
@@ -361,6 +370,8 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
         micName,
         autoSearch,
         setAutoSearch,
+        offlineMode,
+        setOfflineMode,
         audioStream,
         setAudioStream,
         autoNext,

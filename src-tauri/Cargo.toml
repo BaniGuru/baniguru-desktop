@@ -56,6 +56,13 @@ tauri-plugin-shell = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-keyring = "0.1.0"
 
+# Offline RNNT ASR
+ort = "2.0.0-rc.13"
+sentencepiece-rs = "0.2.2"
+ndarray = "0.16"
+ndarray-npy = "0.9"
+rustfft = "6"
+
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]

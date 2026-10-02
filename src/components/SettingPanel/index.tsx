@@ -51,6 +51,8 @@ export const SettingPanel = () => {
     setMicName,
     autoSearch,
     setAutoSearch,
+    offlineMode,
+    setOfflineMode,
     audioStream,
     setAudioStream,
     autoNext,
@@ -350,6 +352,13 @@ export const SettingPanel = () => {
                 description="Automatically search when speech is detected."
                 value={autoSearch}
                 onClick={() => setAutoSearch(!autoSearch)}
+              />
+
+              <ToggleRow
+                label="Offline"
+                description="Use the bundled ONNX speech model instead of Soniox."
+                value={offlineMode}
+                onClick={() => setOfflineMode(!offlineMode)}
               />
 
               <ToggleRow
