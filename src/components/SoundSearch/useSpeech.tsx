@@ -11,7 +11,7 @@ import { useContext as useCtxSelector } from "use-context-selector";
 import useSearchPilot from "./useSearchPilot";
 import useOfflineSearchPilot from "./useOfflineSearchPilot";
 import useOfflinePanktiPilot from "./useOfflinePanktiPilot";
-import { mergeOfflineTimedWords, OfflineTimedWord } from "./offlineTimedTranscript";
+import { mergeOfflineTranscriptUpdate, OfflineTimedWord } from "./offlineTimedTranscript";
 import { ENV } from "../../utils/env";
 import { ApiClient } from "../../utils/apiClient";
 import { ensurePanktiIndex } from "../../utils/meili";
@@ -188,14 +188,20 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     const applyTranscript = (provider: "soniox" | "offline", payload: any) => {
       if (activeProviderRef.current !== provider) return;
       const { final, partial, end_ms } = payload;
-      if (provider === "offline" && Array.isArray(payload.word_timings) && payload.word_timings.length) {
-        offlineTimedWordsRef.current = mergeOfflineTimedWords(
+      if (
+        provider === "offline" &&
+        (Array.isArray(payload.word_timings) || Array.isArray(payload.partial_word_timings))
+      ) {
+        // Store only committed words as history. The rolling partial hypothesis
+        // replaces the previous one each update, so fragments from a revised
+        // right-edge word cannot accumulate in the visible transcript.
+        const transcriptUpdate = mergeOfflineTranscriptUpdate(
           offlineTimedWordsRef.current,
-          payload.word_timings,
+          payload.word_timings || [],
+          payload.partial_word_timings || [],
         );
-        // Offline ASR emits rolling-window hypotheses. Timings let the UI keep
-        // earlier words after those words leave the model's current window.
-        transcriptRef.current = offlineTimedWordsRef.current
+        offlineTimedWordsRef.current = transcriptUpdate.committed;
+        transcriptRef.current = transcriptUpdate.visible
           .map(timing => timing.word)
           .join(" ");
         setNewFinalToken("");

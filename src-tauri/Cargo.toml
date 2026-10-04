@@ -62,6 +62,8 @@ sentencepiece-rs = "0.2.2"
 ndarray = "0.16"
 ndarray-npy = "0.9"
 rustfft = "6"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+hound = "3.5"
 
 [features]
 default = ["custom-protocol"]

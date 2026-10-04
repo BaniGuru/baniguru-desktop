@@ -58,3 +58,16 @@ export const mergeOfflineTimedWords = (
     left.start_ms - right.start_ms || left.end_ms - right.end_ms
   );
 };
+
+/** Merge only newly committed words into history, then overlay the current partial. */
+export const mergeOfflineTranscriptUpdate = (
+  committed: OfflineTimedWord[],
+  newlyCommitted: OfflineTimedWord[],
+  currentPartial: OfflineTimedWord[],
+) => {
+  const nextCommitted = mergeOfflineTimedWords(committed, newlyCommitted);
+  return {
+    committed: nextCommitted,
+    visible: mergeOfflineTimedWords(nextCommitted, currentPartial),
+  };
+};

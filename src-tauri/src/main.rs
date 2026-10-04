@@ -10,6 +10,7 @@ mod p2p_audio_sender;
 mod server;
 mod settings;
 mod soniox;
+mod vocal_pipeline;
 mod webrtc;
 
 use crate::audio_bus::AudioBus;
@@ -17,17 +18,16 @@ use crate::commands::list_mics;
 use crate::commands::update_pankti;
 use crate::commands::Pankti;
 use crate::commands::{
-    restart_soniox, start_offline_asr, start_soniox, start_stream, stop_offline_asr,
-    stop_soniox, stop_stream, AudioState, OfflineAsrState, RawStreamState, StreamState,
-    request_admin_permission,
+    request_admin_permission, restart_soniox, start_offline_asr, start_soniox, start_stream,
+    stop_offline_asr, stop_soniox, stop_stream, AudioState, OfflineAsrState, RawStreamState,
+    StreamState, VocalPipelineState,
 };
 use crate::server::start_web_server;
-use futures_util::StreamExt;
 use serde::Serialize;
 use std::env;
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::io::Write;
+use std::io::{copy, Write};
 use std::panic;
 use std::path::PathBuf;
 use tauri::{ipc::Channel, AppHandle, Manager};
@@ -67,8 +67,7 @@ fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
-async fn download_sqlite_file_with_channel<'a>(
-    url: String,
+async fn install_bundled_database_with_channel<'a>(
     app: AppHandle,
     on_event: Channel<DownloadEvent<'a>>,
 ) -> Result<String, String> {
@@ -81,50 +80,62 @@ async fn download_sqlite_file_with_channel<'a>(
 
     let db_path = app_data_path.join("bani.db");
 
-    if db_path.exists() {
+    const DATABASE_ASSET_REVISION: &str =
+        "fad20604c7a067adaa177d4d8a38d29acab47c347eb97044d811740c6b4f15b2";
+    let revision_path = app_data_path.join(".bani-db-revision");
+    let installed_revision = std::fs::read_to_string(&revision_path).unwrap_or_default();
+    if db_path.exists() && installed_revision.trim() == DATABASE_ASSET_REVISION {
         let _ = on_event.send(DownloadEvent::Skipped {
             db_path: &db_path.to_string_lossy().to_string(),
         });
         return Ok(db_path.to_string_lossy().to_string());
     }
 
-    let response = reqwest::get(&url)
-        .await
-        .map_err(|e| format!("Failed to fetch file: {}", e))?;
+    let bundled_db = app
+        .path()
+        .resolve("bani.db", tauri::path::BaseDirectory::Resource)
+        .map_err(|e| format!("Could not resolve bundled database: {e}"))?;
+    let total_size = std::fs::metadata(&bundled_db)
+        .map_err(|e| format!("Could not read bundled database: {e}"))?
+        .len();
+    let temporary_path = app_data_path.join("bani.db.installing");
+    let mut source =
+        File::open(&bundled_db).map_err(|e| format!("Could not open bundled database: {e}"))?;
+    let mut dest = File::create(&temporary_path)
+        .map_err(|e| format!("Could not create database copy: {e}"))?;
 
-    let total_size = response
-        .content_length()
-        .ok_or("Failed to get content length")?;
-
-    let mut dest = File::create(&db_path).map_err(|e| format!("File create error: {}", e))?;
-    let mut stream = response.bytes_stream();
-
-    let download_id = 1;
-
-    // Send started event
     on_event
         .send(DownloadEvent::Started {
-            url: &url,
-            download_id,
+            url: "Bundled Bani database",
+            download_id: 1,
             content_length: total_size as usize,
         })
         .map_err(|e| e.to_string())?;
 
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| format!("Stream error: {}", e))?;
-        dest.write_all(&chunk)
-            .map_err(|e| format!("Write error: {}", e))?;
-
-        on_event
-            .send(DownloadEvent::Progress {
-                download_id,
-                chunk_length: chunk.len(),
-            })
-            .map_err(|e| e.to_string())?;
+    let copied = copy(&mut source, &mut dest)
+        .map_err(|e| format!("Could not copy bundled database: {e}"))?;
+    if copied != total_size {
+        return Err(format!(
+            "Bundled database copy was incomplete: {copied}/{total_size} bytes"
+        ));
     }
+    dest.sync_all()
+        .map_err(|e| format!("Could not flush database copy: {e}"))?;
+    drop(dest);
+    std::fs::rename(&temporary_path, &db_path)
+        .map_err(|e| format!("Could not install bundled database: {e}"))?;
+    std::fs::write(&revision_path, DATABASE_ASSET_REVISION)
+        .map_err(|e| format!("Could not record database revision: {e}"))?;
 
     on_event
-        .send(DownloadEvent::Finished { download_id })
+        .send(DownloadEvent::Progress {
+            download_id: 1,
+            chunk_length: total_size as usize,
+        })
+        .map_err(|e| e.to_string())?;
+
+    on_event
+        .send(DownloadEvent::Finished { download_id: 1 })
         .map_err(|e| e.to_string())?;
 
     Ok(db_path.to_string_lossy().to_string())
@@ -215,10 +226,10 @@ fn main() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
-         .plugin(tauri_plugin_keyring::init())
+        .plugin(tauri_plugin_keyring::init())
         .invoke_handler(tauri::generate_handler![
             greet,
-            download_sqlite_file_with_channel,
+            install_bundled_database_with_channel,
             update_pankti,
             get_local_ip,
             start_soniox,
@@ -264,6 +275,9 @@ fn main() {
             });
             app.manage(OfflineAsrState {
                 stream: Mutex::new(None),
+            });
+            app.manage(VocalPipelineState {
+                pipeline: Mutex::new(None),
             });
             app.manage(AudioState {
                 bus: AudioBus::new(),

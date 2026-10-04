@@ -9,6 +9,7 @@ export type OfflineWordMatch = {
   exactWords: number;
   tokenEndIndex: number;
 };
+export type PendingOfflinePanktiMatch = { panktiIdx: number; confirmations: number } | null;
 export type OfflineShabadCandidate = OfflineCandidate & {
   shabad_id?: string;
   order_id?: number;
@@ -61,6 +62,7 @@ export const findStrongOfflinePanktiMatch = (
   panktis: Array<Pick<OfflineCandidate, "gurmukhi_speech">>,
   transcript: string,
   minimumWords = 2,
+  currentPanktiIdx = -1,
 ): OfflineWordMatch | null => {
   const tokens = normalizeOfflineText(transcript).split(" ").filter(Boolean).slice(-40);
   if (tokens.length < minimumWords) return null;
@@ -110,7 +112,10 @@ export const findStrongOfflinePanktiMatch = (
     right.tokenEndIndex - left.tokenEndIndex ||
     right.matchedWords - left.matchedWords ||
     right.exactWords - left.exactWords ||
-    left.panktiIdx - right.panktiIdx
+    (currentPanktiIdx >= 0
+      ? (left.panktiIdx <= currentPanktiIdx ? Number.MAX_SAFE_INTEGER : left.panktiIdx - currentPanktiIdx) -
+        (right.panktiIdx <= currentPanktiIdx ? Number.MAX_SAFE_INTEGER : right.panktiIdx - currentPanktiIdx)
+      : left.panktiIdx - right.panktiIdx)
   );
   const best = matches[0];
   if (!best) return null;
@@ -121,7 +126,56 @@ export const findStrongOfflinePanktiMatch = (
     match.matchedWords === best.matchedWords &&
     match.exactWords === best.exactWords
   );
-  return tied ? null : best;
+  if (!tied) return best;
+
+  // Kirtan repeats canonical lines. When equally strong text matches both the
+  // current line and a later line, prefer the nearest forward occurrence so
+  // the display follows the Shabad's order instead of sticking behind.
+  if (currentPanktiIdx >= 0) {
+    const forwardTie = matches
+      .filter(match =>
+        match.panktiIdx > currentPanktiIdx &&
+        match.tokenEndIndex === best.tokenEndIndex &&
+        match.matchedWords === best.matchedWords &&
+        match.exactWords === best.exactWords
+      )
+      .sort((left, right) => left.panktiIdx - right.panktiIdx)[0];
+    if (forwardTie) return forwardTie;
+  }
+  return null;
+};
+
+/** Keep line changes in canonical order and require a second hypothesis for jumps. */
+export const stabilizeOfflinePanktiMatch = (
+  currentIdx: number,
+  match: OfflineWordMatch | null,
+  pending: PendingOfflinePanktiMatch,
+): { currentIdx: number; pending: PendingOfflinePanktiMatch } => {
+  if (!match || match.panktiIdx === currentIdx) {
+    return { currentIdx, pending: null };
+  }
+
+  // Never move backward in a Shabad. Strong recent word evidence can move
+  // directly to a later canonical line, including when one earlier line was
+  // missed by ASR.
+  if (match.panktiIdx < currentIdx) {
+    return { currentIdx, pending: null };
+  }
+  if (
+    match.panktiIdx > currentIdx &&
+    match.matchedWords >= 3 &&
+    match.exactWords >= 2
+  ) {
+    return { currentIdx: match.panktiIdx, pending: null };
+  }
+
+  const confirmations = pending?.panktiIdx === match.panktiIdx
+    ? pending.confirmations + 1
+    : 1;
+  if (confirmations >= 2) {
+    return { currentIdx: match.panktiIdx, pending: null };
+  }
+  return { currentIdx, pending: { panktiIdx: match.panktiIdx, confirmations } };
 };
 
 export const scoreOfflinePankti = (speech: string, pankti: string) => {

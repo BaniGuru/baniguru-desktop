@@ -91,9 +91,10 @@
     "externalBin": [
       "binaries/meilisearch"
     ],
-    "resources": [
-      "resources/offline_asr/*"
-    ]
+    "resources": {
+      "resources/offline_asr/*": "resources/offline_asr/",
+      "../additional_assets/bani.db": "bani.db"
+    }
   },
   "plugins": {
     "store": {

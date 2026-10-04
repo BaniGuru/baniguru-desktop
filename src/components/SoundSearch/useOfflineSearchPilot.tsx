@@ -77,7 +77,10 @@ const useOfflineSearchPilot = (
     if (status === "Init") startTranscription([]);
     if (searchTerm) return;
 
-    const latestText = partialText.trim() || finalText.trim();
+    // Offline finalText is rebuilt from the accumulated timed-word history on
+    // every rolling ASR event. Searching only partialText throws away the
+    // preceding Panktis needed to identify a Kirtan Shabad reliably.
+    const latestText = finalText.trim() || partialText.trim();
     const words = latestText
       .replace(/\s+/g, " ")
       .trim()

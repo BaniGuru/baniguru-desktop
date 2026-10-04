@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import Database from "@tauri-apps/plugin-sql";
 
 let instance: Database | void;
@@ -83,16 +82,6 @@ const DB = {
 
     close: () => {
         instance?.close();
-    },
-
-    downloadDb: async () => {
-        try {
-            await invoke<string>('download_sqlite_file', {
-                url: 'https://github.com/singhecloud/database/releases/download/v1.0.0/bani.db',
-            });
-        } catch (error) {
-            console.error('Failed to download SQLite DB:', error);
-        }
     }
 }
 

@@ -259,7 +259,7 @@ impl OfflineAsrModel {
 
         let token_ids: Vec<usize> = timed_token_ids.iter().map(|(id, _)| *id as usize).collect();
 
-        let text = self.tokenizer
+        let greedy_text = self.tokenizer
             .decode_ids(&token_ids)
             .map(|text| text.trim().to_string())
             .map_err(|e| format!("SentencePiece decode failed: {e}"))?;
@@ -267,8 +267,9 @@ impl OfflineAsrModel {
             &timed_token_ids,
             audio_duration,
             frame_count,
-            window_start_ms
+            window_start_ms,
         )?;
+        let text = greedy_text;
         let elapsed = transcribe_start.elapsed().as_secs_f64();
         println!(
             "[ASR:{profile}] audio={audio_duration:.2}s | transcribe={elapsed:.3}s | realtime={:.2}x",
@@ -356,24 +357,6 @@ impl OfflineAsrModel {
                 end_ms: end_ms.max(start_ms),
             });
         }
-
-        println!("--------------------------");
-        println!(
-            "window {}ms -> {}ms",
-            window_start_ms,
-            window_start_ms + (audio_duration * 1000.0) as u64,
-        );
-
-        for word in &aligned {
-            println!(
-                "[{:>6} - {:>6}] {}",
-                word.start_ms,
-                word.end_ms,
-                word.word,
-            );
-        }
-
-        println!("--------------------------");
 
         Ok(aligned)
     }

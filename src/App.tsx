@@ -243,6 +243,12 @@ function App() {
 
   useShabadNavigation();
   const { mouseVisible, showTitleBar } = useAutoHideCursor({ delay: 5, titleBarThreshold: 100 });
+  const latestTranscriptLine = speech.transcriptText
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(-12)
+    .join(" ");
 
   useEffect(() => {
     const downloadDB = async () => {
@@ -278,8 +284,7 @@ function App() {
       });
 
       try {
-        const path = await invoke<string>("download_sqlite_file_with_channel", {
-          url: "https://github.com/singhecloud/database/releases/download/v1.0.0/bani.db",
+        const path = await invoke<string>("install_bundled_database_with_channel", {
           onEvent: channel,
         });
 
@@ -539,10 +544,15 @@ function App() {
                     )}
                   </div>
 
-                  <div className="ml-4 flex-1 overflow-hidden mt-3 text-gray-600 text-sm">
-                    {appContext.state.page === "search" || (speech.offlineMode && appContext.state.page === "shabad")
-                      ? speech.transcriptText
-                      : speech.nonFinalText}
+                  <div
+                    className="ml-4 flex min-w-0 flex-1 justify-end overflow-hidden whitespace-nowrap mt-3 text-gray-600 text-sm"
+                    aria-live="polite"
+                  >
+                    <span className="shrink-0 whitespace-nowrap">
+                      {appContext.state.page === "search" || (speech.offlineMode && appContext.state.page === "shabad")
+                        ? latestTranscriptLine
+                        : speech.nonFinalText}
+                    </span>
                     {speech.errorText}
                     &nbsp;
                   </div>
