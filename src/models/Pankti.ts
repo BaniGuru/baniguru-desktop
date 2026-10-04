@@ -26,4 +26,6 @@ export type Pankti = {
     show_translation :boolean;
     join_next: boolean;
     auto_next: boolean;
+    bani_names?: string[];
+    bani_ids?: number[];
 };

@@ -131,8 +131,22 @@ const SearchList: React.FC<SearchListProps> = ({ panktis, current, displayShabad
                         padding: `${fontSize*0.25*0.5}px`
                     }}
                 >
-                    
-                    <HighlightedTextComponent ang={pankti.source_page} gurmukhi={pankti.gurmukhi} searchTerm={searchTerm} />
+                    <div className="w-full">
+                        <div className="flex items-baseline gap-2">
+                            {pankti.bani_names?.map((name, baniIndex) => (
+                                <span
+                                    key={`${pankti.id}-bani-${baniIndex}`}
+                                    className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-900"
+                                    title="This pankti belongs to this Bani"
+                                >
+                                    {name}
+                                </span>
+                            ))}
+                            <div className="min-w-0 flex-1">
+                                <HighlightedTextComponent ang={pankti.source_page} gurmukhi={pankti.gurmukhi} searchTerm={searchTerm} />
+                            </div>
+                        </div>
+                    </div>
                 </ListItem>
             ))}
         </ul>

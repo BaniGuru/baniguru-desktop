@@ -319,6 +319,7 @@ pub async fn restart_soniox(
 pub async fn start_offline_asr(
     app: AppHandle,
     mic_name: String,
+    kirtan_mode: bool,
     state: State<'_, OfflineAsrState>,
     audio: State<'_, AudioState>,
 ) -> Result<(), String> {
@@ -346,6 +347,7 @@ pub async fn start_offline_asr(
         resource_dir,
         mic_config.sample_rate,
         mic_config.channels,
+        kirtan_mode,
         audio.bus.clone(),
     )
     .await

@@ -169,8 +169,9 @@ const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
             if (recentIndex >= 0) {                
                 const recentShabad: RecentShabad = searchContext.state.recent[recentIndex];
                 const current = recentShabad.panktis.findIndex(
-                    (pankti: Pankti) => pankti.id === searchPankti.id
+                    (pankti: Pankti) => String(pankti.id) === String(searchPankti.id)
                 );
+                if (current < 0) return;
                 recentShabad.panktis[current].visited = true;
 
                 dispatch({
@@ -215,8 +216,9 @@ const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
                 }
 
                 const current = panktis.findIndex(
-                    (pankti: Pankti) => pankti.id === searchPankti.id
+                    (pankti: Pankti) => String(pankti.id) === String(searchPankti.id)
                 );
+                if (current < 0) return;
 
                 searchContext.dispatch({
                     type: RECENT_SEARCH_UPDATE,

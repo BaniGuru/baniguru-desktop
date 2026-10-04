@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { SearchContext } from "../../state/providers/SearchProvider";
-import { SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SHABAD_PANKTI, SHABAD_RESET } from "../../state/ActionTypes";
+import { SEARCH_SHABAD_PANKTI, SET_APP_PAGE, SHABAD_PANKTI, SHABAD_RESET, SHABAD_UPDATE } from "../../state/ActionTypes";
 import styled from "styled-components";
 import { Pankti } from "../../models/Pankti";
 import { MdOutlineClear } from "react-icons/md";
@@ -10,6 +10,10 @@ import { AppContext } from "../../state/providers/AppProvider";
 import { useContextSelector } from "use-context-selector";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { useGurbaniSearch } from "../../utils/useGurbaniSearch";
+import { BANI_ACTION_Add, BANI_ACTION_UPDATE, BaniContext } from "../../state/providers/BaniProvider";
+import { loadBaniPanktis } from "../../utils/baniPanktis";
+import { getShabadIds } from "../../utils/shabadUtil";
+import { useSettings } from "../../state/providers/SettingContext";
 
 const SearchButton = styled.button`
     font-size: 14px;
@@ -30,6 +34,8 @@ const KeyboardButton = styled.button`
 const SearchPanel: React.FC = () => {
     const {dispatch, searchInputRef, searchTerm, setSearchTerm, panktis} = useContext(SearchContext);
     const {dispatch: appDispatch, fontSize, state} = useContext(AppContext);
+    const {state: baniState, dispatch: baniDispatch} = useContext(BaniContext);
+    const { offlineMode } = useSettings();
     const [searchCleared, setSearchCleared] = useState(false);
     const { dispatch: shabadDispatch, shabadId, panktis: ShabadPanktis } = useContextSelector(
         ShabadContext,
@@ -126,23 +132,50 @@ const SearchPanel: React.FC = () => {
         }
     }, [state.clear_search, searchCleared])
 
-    const displayShabad = useCallback((pankti: Pankti) => {
+    const displayShabad = useCallback(async (pankti: Pankti) => {
+        if (!pankti) return;
+
         // current shabad
         if (pankti.shabad_id == shabadId) {
+            const current = ShabadPanktis.findIndex(sPankti => String(sPankti.id) === String(pankti.id));
             shabadDispatch({
                 type: SHABAD_PANKTI,
                 payload: {
-                    current: ShabadPanktis.findIndex(sPankti => sPankti.id === pankti.id),
+                    current,
                 }
             });
             appDispatch({
                 type: SET_APP_PAGE,
                 payload: {
                     page: "shabad",
-                    show_panel: false,
+                    show_panel: offlineMode,
                 }
             });
             return;
+        }
+
+        const baniId = pankti.bani_ids?.[0] ?? pankti.bani_id;
+        if (baniId) {
+            const baniPanktis = await loadBaniPanktis(Number(baniId));
+            const current = baniPanktis.findIndex(line => String(line.id) === String(pankti.id));
+            if (current >= 0) {
+                const payload = {
+                    baniId: Number(baniId),
+                    panktis: baniPanktis,
+                    shabadIds: getShabadIds(baniPanktis),
+                    current,
+                    home: current,
+                };
+                if (baniState.banis.some(recent => recent.baniId === Number(baniId))) {
+                    baniDispatch({ type: BANI_ACTION_UPDATE, payload });
+                } else {
+                    baniDispatch({ type: BANI_ACTION_Add, payload });
+                }
+                shabadDispatch({ type: SHABAD_RESET });
+                shabadDispatch({ type: SHABAD_UPDATE, payload });
+                appDispatch({ type: SET_APP_PAGE, payload: { page: "shabad", show_panel: offlineMode } });
+                return;
+            }
         }
 
         shabadDispatch({ type: SHABAD_RESET });
@@ -155,10 +188,10 @@ const SearchPanel: React.FC = () => {
             type: SET_APP_PAGE,
             payload: {
                 page: "shabad",
-                show_panel: false,
+                show_panel: offlineMode,
             }
         });
-    }, [shabadDispatch, dispatch, appDispatch]);
+    }, [shabadDispatch, dispatch, appDispatch, baniState.banis, baniDispatch, shabadId, ShabadPanktis, offlineMode]);
 
     useEffect(() => {
         searchInputRef?.current?.focus();

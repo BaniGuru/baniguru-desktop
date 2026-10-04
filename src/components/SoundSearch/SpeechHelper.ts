@@ -347,13 +347,42 @@ export const findMatchingPankti = (panktis: Pankti[], tokens: string[], homeIdx:
     return [];
 };
 
-export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], currentIdx: number, prefixIdx: number) => {
+export const findBaniMatchingPankti = (
+    panktis: Pankti[],
+    tokens: string[],
+    currentIdx: number,
+    prefixIdx: number,
+    allowPrevious = false,
+    allowNextShabad = false,
+) => {
     if (tokens.length < 1) {
         return [];
     }
 
     const relativeCurrentIdx = currentIdx - prefixIdx;
     let nextPanktiIdxs = [relativeCurrentIdx, relativeCurrentIdx+1];
+    if (allowPrevious && relativeCurrentIdx > 0) {
+        nextPanktiIdxs.unshift(relativeCurrentIdx - 1);
+    }
+
+    if (allowNextShabad) {
+        const currentShabadId = panktis[relativeCurrentIdx]?.shabad_id;
+        const nextShabadStart = currentShabadId
+            ? panktis.findIndex((pankti, index) =>
+                index > relativeCurrentIdx && pankti.shabad_id !== currentShabadId
+            )
+            : -1;
+        const nextShabadId = nextShabadStart >= 0
+            ? panktis[nextShabadStart].shabad_id
+            : undefined;
+
+        if (nextShabadId) {
+            for (let index = nextShabadStart; index < panktis.length; index++) {
+                if (panktis[index].shabad_id !== nextShabadId) break;
+                nextPanktiIdxs.push(index);
+            }
+        }
+    }
 
     let i = 1;
     while (panktis[relativeCurrentIdx+i]?.type_id <= 2 && i <= 5) {
@@ -361,7 +390,9 @@ export const findBaniMatchingPankti = (panktis: Pankti[], tokens: string[], curr
         i++;
     }
 
-    let matchScores: PanktiScore[] = getPanktiScores(panktis, tokens, relativeCurrentIdx, 0, true);
+    // Bani recognition follows an ordered sequence; allow a one-character
+    // ASR typo in a word while retaining the current/next-pankti constraints.
+    let matchScores: PanktiScore[] = getPanktiScores(panktis, tokens, relativeCurrentIdx, 0, false);
 
     if (matchScores.length === 0) {
         return [];
@@ -764,7 +795,9 @@ export function removeMatras(text: string) {
     const matras = ['ਿ', 'ੀ', 'ੁ', 'ੂ', 'ੇ', 'ੈ', 'ੋ', 'ੌ', '੍', 'ਾ', 'ਂ', 'ੰ', 'ੱ'];
 
     // Split the text into an array of characters, filter out matras, and join back into a string
-    return text.replaceAll('੍ਰ', '').split('')
+    // Normalize the common spelling/order variants ਕਿਰ... and ਕ੍ਰਿ... before
+    // removing vowel marks, so the search index and ASR query reduce equally.
+    return text.replace(/([ਕ-ਹ])ਿਰ/g, '$1੍ਰਿ').replaceAll('੍ਰ', '').split('')
             .map(char => char
                 .replace('ਆ', 'ਅ')
                 .replace('ਐ', 'ਅ')
@@ -835,4 +868,3 @@ export function unifySpeechText(text: string) {
     .sort((a, b) => lastIndex.get(a)! - lastIndex.get(b)!)
     .join(" ").replaceAll('  ', ' ');
 };
-

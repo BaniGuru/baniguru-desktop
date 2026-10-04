@@ -10,6 +10,8 @@ import { useSettings } from "../../state/providers/SettingContext";
 import { useContext as useCtxSelector } from "use-context-selector";
 import useSearchPilot from "./useSearchPilot";
 import useOfflineSearchPilot from "./useOfflineSearchPilot";
+import useOfflinePanktiPilot from "./useOfflinePanktiPilot";
+import { mergeOfflineTimedWords, OfflineTimedWord } from "./offlineTimedTranscript";
 import { ENV } from "../../utils/env";
 import { ApiClient } from "../../utils/apiClient";
 import { ensurePanktiIndex } from "../../utils/meili";
@@ -43,6 +45,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const transcriptRef = useRef("");
+  const offlineTimedWordsRef = useRef<OfflineTimedWord[]>([]);
   const activeProviderRef = useRef<"soniox" | "offline" | null>(null);
   const audioStreaming = useRef(false);
   const searchReady = useRef(false);
@@ -54,6 +57,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const {
     autoSearch,
     offlineMode,
+    kirtanMode,
     audioStream,
     micName,
     speechRegion,
@@ -184,6 +188,22 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     const applyTranscript = (provider: "soniox" | "offline", payload: any) => {
       if (activeProviderRef.current !== provider) return;
       const { final, partial, end_ms } = payload;
+      if (provider === "offline" && Array.isArray(payload.word_timings) && payload.word_timings.length) {
+        offlineTimedWordsRef.current = mergeOfflineTimedWords(
+          offlineTimedWordsRef.current,
+          payload.word_timings,
+        );
+        // Offline ASR emits rolling-window hypotheses. Timings let the UI keep
+        // earlier words after those words leave the model's current window.
+        transcriptRef.current = offlineTimedWordsRef.current
+          .map(timing => timing.word)
+          .join(" ");
+        setNewFinalToken("");
+        setFinalText(transcriptRef.current);
+        setNonFinalText("");
+        setLastTokenTime(end_ms || 0);
+        return;
+      }
       if (final) {
         const cleaned = final.replaceAll('<end>', '');
         transcriptRef.current += cleaned;
@@ -269,6 +289,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
 
     status.current = 'Starting';
     transcriptRef.current = "";
+    offlineTimedWordsRef.current = [];
     setErrorText("");
     setFinalText("");
     setNonFinalText("");
@@ -279,7 +300,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
 
     try {
       if (offlineMode) {
-        await invoke('start_offline_asr', { micName });
+        await invoke('start_offline_asr', { micName, kirtanMode });
         activeProviderRef.current = "offline";
       } else {
         await invoke('start_soniox', {
@@ -313,6 +334,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     appContext.state.page,
     speechRegion,
     offlineMode,
+    kirtanMode,
   ]);
 
   const stopTranscription = useCallback(async () => {
@@ -336,6 +358,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
       startPage.current = null;
       setFinalText("");
       setNonFinalText("");
+      offlineTimedWordsRef.current = [];
       console.log('speech stopped');
   }, [setSilenceSeconds, setSilenceStart]);
 
@@ -350,6 +373,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
 
     if (activeProviderRef.current === "offline") {
       transcriptRef.current = "";
+      offlineTimedWordsRef.current = [];
       setFinalText("");
       setNonFinalText("");
       setSpeechTokens([]);
@@ -409,6 +433,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     pauseSpeech
   );
   const baniPilot = useBaniPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript, silenceSeconds, stopSpeech);
+  const offlinePanktiPilot = useOfflinePanktiPilot(finalText, nonFinalText, status.current, startTranscription);
   const searchPilot = useSearchPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript);
   const offlineSearchPilot = useOfflineSearchPilot(finalText, nonFinalText, status.current, startTranscription);
 
@@ -449,6 +474,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     }
 
     shabadPilot.setActive(
+      !offlineMode &&
       (appContext.state.page === PAGE_SHABAD ||
         appContext.state.page === PAGE_ANNOUNCEMENT
       ) &&
@@ -457,9 +483,16 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     );
 
     baniPilot.setActive(
+      !offlineMode &&
       appContext.state.page === PAGE_SHABAD &&
       started &&
       (shabadContext.state.baniId !== null)
+    );
+
+    offlinePanktiPilot.setActive(
+      offlineMode &&
+      (appContext.state.page === PAGE_SHABAD || appContext.state.page === PAGE_ANNOUNCEMENT) &&
+      started
     );
 
     searchPilot.setActive(
@@ -479,6 +512,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     started,
     shabadPilot.setActive,
     baniPilot.setActive,
+    offlinePanktiPilot.setActive,
     resetText,
     autoSearch,
     offlineMode,
@@ -540,6 +574,8 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     status,
     terms,
     nonFinalText,
+    transcriptText: `${finalText} ${nonFinalText}`.trim(),
+    offlineMode,
     error,
     errorText
   };

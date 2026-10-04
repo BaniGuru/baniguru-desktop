@@ -6,9 +6,12 @@ import { SET_APP_PAGE, SHABAD_PANKTI, SHABAD_PANKTI_MARK_VISITED, SHABAD_PANKTI_
 import { useContext as useCtxSelector } from "use-context-selector";
 import { AppContext, PAGE_SEARCH } from "../../state/providers/AppProvider";
 import { RecordState } from "./useSpeech";
+import { useSettings } from "../../state/providers/SettingContext";
 
 const useBaniPilot = (finalText: string, partialText: string, status: RecordState, startTranscription: (panktis: string[]) => any, restartTranscript: (panktis: string[]) => any, silenceSeconds: number, stopSpeech: any) => {
 
+    const { offlineMode, kirtanMode } = useSettings();
+    const allowNextShabad = offlineMode && !kirtanMode;
     const [lastCheckIdx, setLastCheckIdx] = useState(0);
     const [active, setActive] = useState(false);
     const shabadContext = useCtxSelector(ShabadContext);
@@ -16,6 +19,9 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecordStat
     const [_panktiFinished, setPanktiFinished] = useState(false);
     const lastTerm = useRef(0);
     const lastPanktiIdxRef = useRef(0);
+    const autoNextSuppressedShabadRef = useRef<string | null>(null);
+    const matchingBaniIdRef = useRef<number | null>(null);
+    const matchingBaniHomeRef = useRef(-1);
 
     const [part, setPart] = useState(1);
     const [panktis, setPanktis] = useState<Pankti[]>([]);
@@ -254,10 +260,35 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecordStat
         const tokens = lastPart.split(' ').filter(part => part.length > 0);
         if (tokens.length < 1 || speechText.trim().endsWith('<no_match>।') || speechText.trim().endsWith('<multi-match>।')) return;
 
-        const matchingPanktis = findBaniMatchingPankti(panktis, tokens, shabadContext.state.current, lastPanktiIdx);
+        const matchingPanktis = findBaniMatchingPankti(
+            panktis,
+            tokens,
+            shabadContext.state.current,
+            lastPanktiIdx,
+            true,
+            allowNextShabad,
+        );
 
         if (matchingPanktis.length === 1) {
             const matchingPankti = matchingPanktis[0];
+            const matchedLine = shabadContext.state.panktis[matchingPankti.panktiIdx];
+            const currentLine = shabadContext.state.panktis[shabadContext.state.current];
+
+            // If ASR returns to an earlier pankti in the same shabad, follow it
+            // and suspend automatic advancement until the bani moves on to a
+            // different shabad. This prevents a repeated line from skipping ahead.
+            if (
+                matchingPankti.panktiIdx < shabadContext.state.current &&
+                matchedLine?.shabad_id === currentLine?.shabad_id
+            ) {
+                autoNextSuppressedShabadRef.current = currentLine.shabad_id;
+            } else if (
+                autoNextSuppressedShabadRef.current &&
+                matchedLine?.shabad_id !== autoNextSuppressedShabadRef.current
+            ) {
+                autoNextSuppressedShabadRef.current = null;
+            }
+
             if (matchingPankti.fullMatch
                 && !matchingPankti.startingWordMatch
                 && matchingPankti.panktiIdx === shabadContext.state.current
@@ -268,7 +299,9 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecordStat
 
                 // auto next
                 const currentPankti = shabadContext.state.panktis[shabadContext.state.current];
-                if (currentPankti.auto_next) {
+                const autoNextSuppressed =
+                    currentPankti.shabad_id === autoNextSuppressedShabadRef.current;
+                if (!autoNextSuppressed && shabadContext.state.current + 1 < shabadContext.state.panktis.length) {
                     shabadContext.dispatch({
                         type: SHABAD_PANKTI_NO_VISITED,
                         payload: {
@@ -313,7 +346,7 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecordStat
     useEffect(() => {
         if (!active) return;
 
-        if (![6,7,9,12,13,15].includes(shabadContext.state.baniId ?? -1)) {
+        if ((shabadContext.state.baniId ?? 0) <= 0) {
             return;
         }
 
@@ -329,16 +362,37 @@ const useBaniPilot = (finalText: string, partialText: string, status: RecordStat
             // }
 
             lastTerm.current = 0;
+            matchingBaniIdRef.current = shabadContext.state.baniId;
+            matchingBaniHomeRef.current = shabadContext.state.home;
+            autoNextSuppressedShabadRef.current = null;
             setPart(starPart);
             setLastCheckIdx(0);
             startTranscription(
                 getTerms(starPart)
-            )
+            );
+            return;
+        }
+
+        // Offline search can identify a Bani while the microphone is already
+        // running. Seed the sequence matcher with the loaded Bani before trying
+        // to advance from the current transcript.
+        if (
+            matchingBaniIdRef.current !== shabadContext.state.baniId ||
+            matchingBaniHomeRef.current !== shabadContext.state.home ||
+            panktis.length === 0
+        ) {
+            matchingBaniIdRef.current = shabadContext.state.baniId;
+            matchingBaniHomeRef.current = shabadContext.state.home;
+            autoNextSuppressedShabadRef.current = null;
+            lastPanktiIdxRef.current = 0;
+            setLastCheckIdx(0);
+            setPanktis(shabadContext.state.panktis);
+            return;
         }
 
         navigatePankti();
 
-    }, [active, finalText, partialText, setPart, appContext.dispatch, shabadContext.dispatch]);
+    }, [active, finalText, partialText, panktis, setPart, appContext.dispatch, shabadContext.dispatch, allowNextShabad]);
 
     return {
         setActive

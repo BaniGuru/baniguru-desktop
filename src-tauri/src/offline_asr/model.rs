@@ -1,12 +1,14 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
-use ndarray::{Array1, Array2};
+use ndarray::{Array1, ArrayD};
 use ndarray_npy::read_npy;
 use ort::{session::Session, value::Tensor};
 use rustfft::{num_complex::Complex32, FftPlanner};
 use sentencepiece_rs::SentencePieceProcessor;
 use serde::Deserialize;
+use serde::Serialize;
 
 const LOG_ZERO_GUARD_DEFAULT: f32 = 5.960_464_5e-8;
 const NORMALIZE_EPSILON: f32 = 1e-5;
@@ -64,6 +66,19 @@ pub struct OfflineAsrModel {
     stft_window: Vec<f32>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct WordTiming {
+    pub word: String,
+    pub start_ms: u64,
+    pub end_ms: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct TimedTranscript {
+    pub text: String,
+    pub words: Vec<WordTiming>,
+}
+
 impl OfflineAsrModel {
     pub fn load(resource_dir: &Path) -> Result<Self, String> {
         let runtime_path = resource_dir.join("runtime.json");
@@ -86,15 +101,21 @@ impl OfflineAsrModel {
         let mel_path = checked_file(resource_dir.join(&config.mel_filterbank))?;
         let window_path = checked_file(resource_dir.join(&config.stft_window))?;
 
-        let mel: Array2<f32> = read_npy(&mel_path)
+        // NeMo's exported filterbank includes a leading singleton axis.
+        // Accept both [1, n_mels, fft_bins] and legacy [n_mels, fft_bins].
+        let mel: ArrayD<f32> = read_npy(&mel_path)
             .map_err(|e| format!("Could not load {}: {e}", mel_path.display()))?;
         let expected_bins = config.n_fft / 2 + 1;
-        if mel.shape() != [config.n_mels, expected_bins] {
+        let mel_shape = mel.shape();
+        let is_matrix = mel_shape == [config.n_mels, expected_bins];
+        let has_singleton_channel = mel_shape == [1, config.n_mels, expected_bins];
+        if !is_matrix && !has_singleton_channel {
             return Err(format!(
-                "Unexpected mel filterbank shape {:?}; expected [{}, {}]",
-                mel.shape(), config.n_mels, expected_bins
+                "Unexpected mel filterbank shape {:?}; expected [{}, {}] or [1, {}, {}]",
+                mel_shape, config.n_mels, expected_bins, config.n_mels, expected_bins
             ));
         }
+        let mel_filterbank = mel.into_raw_vec_and_offset().0;
 
         let window: Array1<f32> = read_npy(&window_path)
             .map_err(|e| format!("Could not load {}: {e}", window_path.display()))?;
@@ -127,15 +148,38 @@ impl OfflineAsrModel {
             encoder,
             decoder,
             tokenizer,
-            mel_filterbank: mel.into_raw_vec_and_offset().0,
+            mel_filterbank,
             stft_window: window.into_raw_vec_and_offset().0,
         })
     }
 
-    pub fn transcribe(&mut self, audio: &[f32]) -> Result<String, String> {
+    pub fn transcribe_kirtan(
+        &mut self,
+        audio: &[f32],
+        window_start_ms: u64,
+    ) -> Result<TimedTranscript, String> {
+        self.transcribe_window(audio, "kirtan", window_start_ms)
+    }
+
+    pub fn transcribe_speech(
+        &mut self,
+        audio: &[f32],
+        window_start_ms: u64,
+    ) -> Result<TimedTranscript, String> {
+        self.transcribe_window(audio, "speech", window_start_ms)
+    }
+
+    fn transcribe_window(
+        &mut self,
+        audio: &[f32],
+        profile: &str,
+        window_start_ms: u64,
+    ) -> Result<TimedTranscript, String> {
+        let transcribe_start = Instant::now();
         if audio.is_empty() {
-            return Ok(String::new());
+            return Ok(TimedTranscript { text: String::new(), words: Vec::new() });
         }
+        let audio_duration = audio.len() as f64 / self.config.sample_rate as f64;
 
         let (features, feature_frames) = self.preprocess(audio)?;
 
@@ -198,26 +242,140 @@ impl OfflineAsrModel {
         };
 
         // encoder_result is now dropped, so self.encoder is no longer borrowed.
-        let token_ids = self.rnnt_greedy_decode(
+        let timed_token_ids = self.rnnt_greedy_decode(
             &encoded,
             hidden,
             available_frames,
             frame_count,
         )?;
 
-        if token_ids.is_empty() {
-            return Ok(String::new());
+        if timed_token_ids.is_empty() {
+            println!(
+                "[ASR:{profile}] audio={audio_duration:.2}s | transcribe={:.3}s | no transcript",
+                transcribe_start.elapsed().as_secs_f64(),
+            );
+            return Ok(TimedTranscript { text: String::new(), words: Vec::new() });
         }
 
-        let token_ids: Vec<usize> = token_ids
-            .into_iter()
-            .map(|id| id as usize)
-            .collect();
+        let token_ids: Vec<usize> = timed_token_ids.iter().map(|(id, _)| *id as usize).collect();
 
-        self.tokenizer
+        let text = self.tokenizer
             .decode_ids(&token_ids)
             .map(|text| text.trim().to_string())
-            .map_err(|e| format!("SentencePiece decode failed: {e}"))
+            .map_err(|e| format!("SentencePiece decode failed: {e}"))?;
+        let words = self.align_words(
+            &timed_token_ids,
+            audio_duration,
+            frame_count,
+            window_start_ms
+        )?;
+        let elapsed = transcribe_start.elapsed().as_secs_f64();
+        println!(
+            "[ASR:{profile}] audio={audio_duration:.2}s | transcribe={elapsed:.3}s | realtime={:.2}x",
+            audio_duration / elapsed.max(f64::EPSILON),
+        );
+        Ok(TimedTranscript { text, words })
+    }
+
+    // Greedy RNNT emits each non-blank token at an encoder frame. Keep that
+    // alignment and project token prefixes through SentencePiece so word
+    // boundaries follow the model's own alignment rather than an estimate.
+    fn align_words(
+        &self,
+        timed_token_ids: &[(u32, usize)],
+        audio_duration: f64,
+        frame_count: usize,
+        window_start_ms: u64,
+    ) -> Result<Vec<WordTiming>, String> {
+        let mut token_ids = Vec::with_capacity(timed_token_ids.len());
+        let mut starts: Vec<u64> = Vec::new();
+        let mut ends: Vec<u64> = Vec::new();
+        let mut words: Vec<String> = Vec::new();
+
+        // for (token_id, frame_index) in timed_token_ids {
+        //     let relative_time_ms = (
+        //         (*frame_index as f64 / frame_count.max(1) as f64)
+        //         * audio_duration
+        //         * 1000.0
+        //     ) as u64;
+
+        //     let time_ms = window_start_ms + relative_time_ms;
+
+        //     let token_text = self
+        //         .tokenizer
+        //         .decode_ids(&[*token_id as usize])
+        //         .unwrap_or_else(|_| "?".to_string());
+
+        //     println!(
+        //         "window_start={}ms token_id={} token={:?} frame={} relative={}ms absolute={}ms",
+        //         window_start_ms,
+        //         token_id,
+        //         token_text,
+        //         frame_index,
+        //         relative_time_ms,
+        //         time_ms,
+        //     );
+        // }
+
+        for (token_id, frame_index) in timed_token_ids {
+            token_ids.push(*token_id as usize);
+            let decoded = self.tokenizer.decode_ids(&token_ids)
+                .map_err(|e| format!("SentencePiece alignment decode failed: {e}"))?;
+            let current_words: Vec<String> = decoded.split_whitespace().map(str::to_string).collect();
+            let relative_time_ms = (
+                (*frame_index as f64 / frame_count.max(1) as f64)
+                * audio_duration
+                * 1000.0
+            ) as u64;
+
+            let token_time_ms = window_start_ms + relative_time_ms;
+
+            if current_words.len() > words.len() {
+                while words.len() < current_words.len() {
+                    starts.push(token_time_ms);
+                    ends.push(token_time_ms);
+                    words.push(current_words[words.len()].clone());
+                }
+            } else {
+                for (word, current) in words.iter_mut().zip(current_words.iter()) {
+                    *word = current.clone();
+                }
+                if let Some(end) = ends.last_mut() {
+                    *end = token_time_ms;
+                }
+            }
+        }
+
+        let mut aligned = Vec::with_capacity(words.len());
+        for index in 0..words.len() {
+            let end_ms = ends[index];
+            let start_ms = starts[index].min(end_ms);
+            aligned.push(WordTiming {
+                word: words[index].clone(),
+                start_ms,
+                end_ms: end_ms.max(start_ms),
+            });
+        }
+
+        println!("--------------------------");
+        println!(
+            "window {}ms -> {}ms",
+            window_start_ms,
+            window_start_ms + (audio_duration * 1000.0) as u64,
+        );
+
+        for word in &aligned {
+            println!(
+                "[{:>6} - {:>6}] {}",
+                word.start_ms,
+                word.end_ms,
+                word.word,
+            );
+        }
+
+        println!("--------------------------");
+
+        Ok(aligned)
     }
 
     fn rnnt_greedy_decode(
@@ -226,7 +384,7 @@ impl OfflineAsrModel {
         encoder_hidden: usize,
         encoder_stride: usize,
         frame_count: usize,
-    ) -> Result<Vec<u32>, String> {
+    ) -> Result<Vec<(u32, usize)>, String> {
         let mut current_h = vec![0.0_f32; RNNT_HIDDEN_SIZE];
         let mut current_c = vec![0.0_f32; RNNT_HIDDEN_SIZE];
         let mut current_label = self.config.predictor_start_id;
@@ -312,7 +470,7 @@ impl OfflineAsrModel {
                 current_c.clear();
                 current_c.extend_from_slice(candidate_c);
 
-                output.push(local_token as u32);
+                output.push((local_token as u32, frame_index));
                 current_label = local_token as i32;
                 symbols_this_frame += 1;
             }

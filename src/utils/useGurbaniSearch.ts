@@ -11,6 +11,17 @@ export function useGurbaniSearch() {
     const searchRequestId = useRef(0);
     const listContainerRef = useRef<HTMLUListElement | null>(null);
 
+    const addBaniTags = (rows: any[]): Pankti[] => rows.map(row => ({
+        ...row,
+        bani_ids: (row.bani_ids_csv || "")
+            .split("|")
+            .filter(Boolean)
+            .map((id: string) => Number(id)),
+        bani_names: (row.bani_names_csv || "")
+            .split("|")
+            .filter(Boolean),
+    }));
+
     useEffect(() => {
         if (!searchTerm || searchTerm.length < 2) {
             return;
@@ -24,6 +35,17 @@ export function useGurbaniSearch() {
         db.select(`
             SELECT
                 lines.*,
+                (
+                    SELECT GROUP_CONCAT(bani_lines.bani_id, '|')
+                    FROM bani_lines
+                    WHERE bani_lines.line_id = lines.id
+                ) AS bani_ids_csv,
+                (
+                    SELECT GROUP_CONCAT(banis.name_gurmukhi, '|')
+                    FROM bani_lines
+                    INNER JOIN banis ON banis.id = bani_lines.bani_id
+                    WHERE bani_lines.line_id = lines.id
+                ) AS bani_names_csv,
                 CASE
                     WHEN first_letters like '${value}' THEN 1
                     WHEN first_letters like '${value}%' THEN 2
@@ -45,7 +67,7 @@ export function useGurbaniSearch() {
                 return;
             }
 
-            const panktis: Pankti[] = res;
+            const panktis = addBaniTags(res);
             dispatch({
                 type: SET_PANKTIS,
                 payload: panktis
@@ -65,6 +87,17 @@ export function useGurbaniSearch() {
         db.select(`
             SELECT
                 search_lines.*,
+                (
+                    SELECT GROUP_CONCAT(bani_lines.bani_id, '|')
+                    FROM bani_lines
+                    WHERE bani_lines.line_id = search_lines.id
+                ) AS bani_ids_csv,
+                (
+                    SELECT GROUP_CONCAT(banis.name_gurmukhi, '|')
+                    FROM bani_lines
+                    INNER JOIN banis ON banis.id = bani_lines.bani_id
+                    WHERE bani_lines.line_id = search_lines.id
+                ) AS bani_names_csv,
                 CASE
                     WHEN TRIM(gurmukhi_normalized) LIKE CONCAT('${searchValue}') THEN 1
                     WHEN TRIM(gurmukhi_normalized) LIKE CONCAT('${searchValue}', '%') THEN 2
@@ -89,7 +122,7 @@ export function useGurbaniSearch() {
                 return;
             }
 
-            const panktis: Pankti[] = res;
+            const panktis = addBaniTags(res);
             dispatch({
                 type: SET_PANKTIS,
                 payload: panktis

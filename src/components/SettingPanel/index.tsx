@@ -53,6 +53,8 @@ export const SettingPanel = () => {
     setAutoSearch,
     offlineMode,
     setOfflineMode,
+    kirtanMode,
+    setKirtanMode,
     audioStream,
     setAudioStream,
     autoNext,
@@ -360,6 +362,15 @@ export const SettingPanel = () => {
                 value={offlineMode}
                 onClick={() => setOfflineMode(!offlineMode)}
               />
+
+              {offlineMode && (
+                <ToggleRow
+                  label="Kirtan"
+                  description="Use the longer rolling window for melodic Kirtan."
+                  value={kirtanMode}
+                  onClick={() => setKirtanMode(!kirtanMode)}
+                />
+              )}
 
               <ToggleRow
                 label="Auto Next"

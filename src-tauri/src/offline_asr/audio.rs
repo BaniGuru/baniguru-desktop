@@ -67,10 +67,14 @@ pub struct RollingAudioWindow {
 
 impl RollingAudioWindow {
     pub fn new(window_seconds: usize, step_seconds: usize) -> Self {
+        Self::with_millis(window_seconds.saturating_mul(1000), step_seconds.saturating_mul(1000))
+    }
+
+    pub fn with_millis(window_ms: usize, step_ms: usize) -> Self {
         Self {
             samples: VecDeque::new(),
-            max_samples: TARGET_SAMPLE_RATE as usize * window_seconds,
-            step_samples: TARGET_SAMPLE_RATE as usize * step_seconds,
+            max_samples: TARGET_SAMPLE_RATE as usize * window_ms / 1000,
+            step_samples: (TARGET_SAMPLE_RATE as usize * step_ms / 1000).max(1),
             samples_since_decode: 0,
         }
     }
@@ -93,9 +97,24 @@ impl RollingAudioWindow {
         self.samples_since_decode >= self.step_samples && !self.samples.is_empty()
     }
 
+    pub fn should_decode_every_ms(&self, interval_ms: usize) -> bool {
+        let interval_samples = (TARGET_SAMPLE_RATE as usize * interval_ms / 1000).max(1);
+        self.samples_since_decode >= interval_samples && !self.samples.is_empty()
+    }
+
     pub fn snapshot_for_decode(&mut self) -> Vec<f32> {
         self.samples_since_decode %= self.step_samples.max(1);
         self.samples.iter().copied().collect()
+    }
+
+    pub fn snapshot_last_ms(&self, window_ms: usize) -> Vec<f32> {
+        let requested_samples = TARGET_SAMPLE_RATE as usize * window_ms / 1000;
+        let skip_samples = self.samples.len().saturating_sub(requested_samples);
+        self.samples.iter().skip(skip_samples).copied().collect()
+    }
+
+    pub fn consume_decode_tick(&mut self) {
+        self.samples_since_decode = 0;
     }
 
     pub fn snapshot(&self) -> Vec<f32> {
@@ -158,5 +177,28 @@ mod tests {
         assert!(!window.should_decode());
         window.push(&vec![0.1; 15_744]);
         assert!(window.should_decode());
+    }
+
+    #[test]
+    fn speech_profiles_keep_normal_and_fast_inputs_within_their_caps() {
+        let mut window = RollingAudioWindow::with_millis(4_000, 280);
+        window.push(&vec![0.1; TARGET_SAMPLE_RATE as usize * 4]);
+
+        assert_eq!(window.snapshot_last_ms(3_000).len(), TARGET_SAMPLE_RATE as usize * 3);
+        assert_eq!(window.snapshot_last_ms(4_000).len(), TARGET_SAMPLE_RATE as usize * 4);
+        assert_eq!(window.snapshot_last_ms(2_000).len(), TARGET_SAMPLE_RATE as usize * 2);
+        assert_eq!(window.snapshot_last_ms(3_000).len(), TARGET_SAMPLE_RATE as usize * 3);
+        assert_eq!(window.len(), TARGET_SAMPLE_RATE as usize * 4);
+
+        let half_interval = TARGET_SAMPLE_RATE as usize * 280 / 1000;
+        let mut cadence = RollingAudioWindow::with_millis(4_000, 280);
+        cadence.push(&vec![0.1; half_interval]);
+        assert!(!cadence.should_decode_every_ms(560));
+        cadence.push(&vec![0.1; half_interval]);
+        assert!(cadence.should_decode_every_ms(560));
+        cadence.consume_decode_tick();
+        cadence.push(&vec![0.1; half_interval]);
+        assert!(!cadence.should_decode_every_ms(560));
+        assert!(cadence.should_decode_every_ms(280));
     }
 }

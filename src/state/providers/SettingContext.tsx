@@ -17,6 +17,7 @@ type Settings = {
   };
   autoSearch: boolean;
   offlineMode: boolean;
+  kirtanMode: boolean;
   audioStream: boolean;
   autoNext: boolean;
   panelLocation: string;
@@ -44,6 +45,7 @@ type Settings = {
   setPanelLocation: (location: string) => void;
   setAutoSearch: (autoSearch: boolean) => void;
   setOfflineMode: (offlineMode: boolean) => void;
+  setKirtanMode: (kirtanMode: boolean) => void;
   setAudioStream: (audioStream: boolean) => void;
   setAutoNext: (autoNext: boolean) => void;
 
@@ -108,6 +110,7 @@ const getDefaultSettings = (): Settings => ({
   micName: "",
   autoSearch: false,
   offlineMode: false,
+  kirtanMode: true,
   audioStream: false,
   autoNext: false,
   apiToken: defaultApiToken,
@@ -127,6 +130,7 @@ const getDefaultSettings = (): Settings => ({
   settingVersion: settingVersion,
   setAutoSearch: () => { },
   setOfflineMode: () => { },
+  setKirtanMode: () => { },
   setAudioStream: () => { },
   setAutoNext: () => { },
   setApiToken: () => {},
@@ -156,6 +160,7 @@ const getInitialSettings = () => {
           speechRegion: parsed.speechRegion ?? defaultRegion,
           autoSearch: parsed.autoSearch ?? false,
           offlineMode: parsed.offlineMode ?? false,
+          kirtanMode: parsed.kirtanMode ?? true,
           audioStream: parsed.audioStream ?? false,
         };
         storageSettings = true;
@@ -190,6 +195,7 @@ const storeSettings = (settings: any) => {
       settingVersion: settingVersion,
       autoSearch: settings.autoSearch,
       offlineMode: settings.offlineMode,
+      kirtanMode: settings.kirtanMode,
       speechRegion: settings.speechRegion,
       audioStream: settings.audioStream,
     })
@@ -208,6 +214,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
   const [panelLocation, setPanelLocation] = useState(initial.panelLocation);
   const [autoSearch, setAutoSearch] = useState(initial.autoSearch);
   const [offlineMode, setOfflineMode] = useState(initial.offlineMode);
+  const [kirtanMode, setKirtanMode] = useState(initial.kirtanMode);
   const [audioStream, setAudioStream] = useState(initial.audioStream);
   const [autoNext, setAutoNext] = useState(true);
   const [speechRegion, setSpeechRegion] = useState<string>(initial.speechRegion);
@@ -309,6 +316,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
       panelLocation,
       autoSearch,
       offlineMode,
+      kirtanMode,
       speechRegion,
       audioStream,
       apiToken,
@@ -319,6 +327,7 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
     visibility, width, height, version, panelSetting, themes, activeThemeName, micName, panelLocation,
     autoSearch,
     offlineMode,
+    kirtanMode,
     speechRegion,
     audioStream,
     apiToken,
@@ -372,6 +381,8 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
         setAutoSearch,
         offlineMode,
         setOfflineMode,
+        kirtanMode,
+        setKirtanMode,
         audioStream,
         setAudioStream,
         autoNext,

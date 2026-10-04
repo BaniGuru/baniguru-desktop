@@ -70,12 +70,14 @@ class GurbaniSearch {
 
     if (!this.fuse || queries.length === 0) return [];
 
-    const map = new Map<string, PanktiRow>();
+    const map = new Map<string, { item: PanktiRow; score: number }>();
 
     for (const query of queries) {
       let queryResults;
       if (type === "search" && this.searchFuse) {
-        queryResults = this.searchFuse.search(query.trim());
+        // The search index is built from matra-normalized Gurbani. Normalize
+        // the live ASR query the same way before comparing it to that index.
+        queryResults = this.searchFuse.search(removeMatras(query.trim()));
       } else {
         queryResults = this.fuse.search(query.trim());
       }
@@ -83,13 +85,17 @@ class GurbaniSearch {
       for (const r of queryResults) {
         const item = r.item;
 
-        if (!map.has(item.id)) {
-          map.set(item.id, item);
+        const score = r.score ?? 1;
+        const current = map.get(item.id);
+        if (!current || score < current.score) {
+          map.set(item.id, { item, score });
         }
       }
     }
 
-    return Array.from(map.values());
+    return Array.from(map.values())
+      .sort((left, right) => left.score - right.score)
+      .map(result => result.item);
   }
 }
 
