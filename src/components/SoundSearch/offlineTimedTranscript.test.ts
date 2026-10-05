@@ -31,6 +31,25 @@ describe("offline timed transcript window merging", () => {
     expect(mergeOfflineTimedWords(stale, corrected)).toEqual(corrected);
   });
 
+  it("does not drop a distinct finalized word when adjacent timings overlap", () => {
+    const committed = [{ word: "ਤੇਰੀ", start_ms: 1_000, end_ms: 1_600 }];
+    const next = mergeOfflineTranscriptUpdate(committed, [
+      { word: "ਓਟ", start_ms: 1_400, end_ms: 1_800 },
+    ], []);
+
+    expect(next.committed.map(word => word.word)).toEqual(["ਤੇਰੀ", "ਓਟ"]);
+  });
+
+  it("does not let a changed partial hide a finalized neighboring word", () => {
+    const update = mergeOfflineTranscriptUpdate(
+      [{ word: "ਗੋਪਾਲਾ", start_ms: 4_000, end_ms: 4_800 }],
+      [],
+      [{ word: "ਪਾ", start_ms: 4_200, end_ms: 4_650 }],
+    );
+
+    expect(update.visible.map(word => word.word)).toEqual(["ਗੋਪਾਲਾ"]);
+  });
+
   it("keeps repeated words when they occur at different audio times", () => {
     const repeated = [
       { word: "ਹਰਿ", start_ms: 100, end_ms: 220 },

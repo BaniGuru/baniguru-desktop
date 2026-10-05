@@ -31,6 +31,7 @@ const useOfflineSearchPilot = (
   const requestId = useRef(0);
   const lastSpeech = useRef("");
   const acceptedShabadId = useRef<string | null>(null);
+  const acceptedBaniId = useRef<number | null>(null);
 
   const loadPanktis = useCallback(async (ids: string[]): Promise<Pankti[]> => {
     if (!ids.length) return [];
@@ -72,6 +73,7 @@ const useOfflineSearchPilot = (
       requestId.current += 1; // invalidate any search already in flight
       lastSpeech.current = "";
       acceptedShabadId.current = null;
+      acceptedBaniId.current = null;
       return;
     }
     if (status === "Init") startTranscription([]);
@@ -117,11 +119,8 @@ const useOfflineSearchPilot = (
         .map(row => loadedCandidates.find(pankti => pankti.id === row.id))
         .filter(Boolean) as Pankti[];
       // Prefer accumulated evidence across multiple Panktis to a one-line
-      // match. A typo in the latest Kirtan words must not redirect a Shabad
-      // that the preceding lines already identify.
-      const shabadMatch = kirtanMode
-        ? selectOfflineShabadFromSegments(searchSegments, loadedCandidates)
-        : null;
+      // match so repeated lines and noisy suffixes do not trigger a fallback.
+      const shabadMatch = selectOfflineShabadFromSegments(searchSegments, loadedCandidates);
       const selectedId = shabadMatch?.panktiId ?? selected?.id;
 
       if (selectedId) {
@@ -144,11 +143,23 @@ const useOfflineSearchPilot = (
         }
         const baniId = pankti.bani_ids?.[0];
         if (baniId) {
+          const candidateBaniId = Number(baniId);
+          if (
+            !kirtanMode &&
+            acceptedBaniId.current != null &&
+            acceptedBaniId.current !== candidateBaniId &&
+            !shabadMatch
+          ) {
+            if (rankedPanktis.length) searchDispatch({ type: SET_PANKTIS, payload: rankedPanktis });
+            return;
+          }
+          if (!kirtanMode && acceptedBaniId.current === candidateBaniId) return;
           const baniPanktis = await loadBaniPanktis(baniId);
           if (myRequest !== requestId.current || !active) return;
           const current = baniPanktis.findIndex(row => String(row.id) === String(pankti.id));
           if (current >= 0) {
             if (candidateShabadId) acceptedShabadId.current = candidateShabadId;
+            acceptedBaniId.current = candidateBaniId;
             const payload = {
               baniId,
               panktis: baniPanktis,

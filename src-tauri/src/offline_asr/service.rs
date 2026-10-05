@@ -13,12 +13,15 @@ const SPEECH_RMS_THRESHOLD: f32 = 0.0035;
 const ENDPOINT_SILENCE: Duration = Duration::from_millis(1_500);
 const MIN_FINAL_AUDIO_MS: usize = 500;
 const KIRTAN_WINDOW_MS: usize = 6_000;
-const PAATH_WINDOW_MS: usize = 3_000;
-const MINIMUM_WINDOW_MS: usize = 2_000;
+const PAATH_WINDOW_MS: usize = 1_500;
+const PAATH_MINIMUM_WINDOW_MS: usize = 320;
+const PAATH_MAX_AUDIO_MS: usize = 2_500;
 const KIRTAN_REFRESH_MS: usize = 720;
 const PAATH_REFRESH_MS: usize = 480;
+const PAATH_LEFT_CONTEXT_MS: u64 = 800;
 const LEFT_CONTEXT_MS: u64 = 4_000;
 const RIGHT_EDGE_GUARD_MS: u64 = 1_250;
+const PAATH_RIGHT_EDGE_GUARD_MS: u64 = 450;
 const WORD_MATCH_TOLERANCE_MS: u64 = 220;
 const CANDIDATE_MATCH_TOLERANCE_MS: u64 = 200;
 const WORD_POSITION_GAP_TOLERANCE_MS: u64 = 80;
@@ -30,15 +33,23 @@ const BOUNDARY_HOP_MS: usize = 5;
 
 fn audio_profile(kirtan_mode: bool) -> (usize, usize, usize) {
     if kirtan_mode {
-        (KIRTAN_WINDOW_MS, MINIMUM_WINDOW_MS, KIRTAN_REFRESH_MS)
+        (KIRTAN_WINDOW_MS, 2_000, KIRTAN_REFRESH_MS)
     } else {
-        (PAATH_WINDOW_MS, MINIMUM_WINDOW_MS, PAATH_REFRESH_MS)
+        (PAATH_WINDOW_MS, PAATH_MINIMUM_WINDOW_MS, PAATH_REFRESH_MS)
+    }
+}
+
+fn left_context_ms(sliding_window_ms: usize) -> usize {
+    if sliding_window_ms == PAATH_WINDOW_MS {
+        PAATH_LEFT_CONTEXT_MS as usize
+    } else {
+        LEFT_CONTEXT_MS as usize
     }
 }
 
 fn retained_audio_ms(sliding_window_ms: usize) -> usize {
     sliding_window_ms
-        .saturating_add(LEFT_CONTEXT_MS as usize)
+        .saturating_add(left_context_ms(sliding_window_ms))
         .saturating_add(BOUNDARY_SEARCH_BACK_MS)
 }
 
@@ -73,6 +84,9 @@ pub async fn start_offline_asr_stream_with_model(
 
     let task = tauri::async_runtime::spawn(async move {
         let (max_window_ms, minimum_window_ms, refresh_ms) = audio_profile(kirtan_mode);
+        let endpoint_audio_cap = (!kirtan_mode)
+            .then_some(TARGET_SAMPLE_RATE as usize * PAATH_MAX_AUDIO_MS / 1_000);
+        let max_decode_samples = endpoint_audio_cap;
         println!(
             "Offline ASR profile={} window={}ms refresh={}ms",
             if kirtan_mode { "kirtan" } else { "paath" },
@@ -89,6 +103,12 @@ pub async fn start_offline_asr_stream_with_model(
 
         let transcribe_audio =
             |model: &mut OfflineAsrModel, audio: &[f32], window_start_ms: u64| {
+                let skip_samples = max_decode_samples
+                    .map(|limit| audio.len().saturating_sub(limit))
+                    .unwrap_or(0);
+                let audio = &audio[skip_samples..];
+                let window_start_ms =
+                    window_start_ms.saturating_add(samples_to_ms(skip_samples as u64));
                 if kirtan_mode {
                     model.transcribe_kirtan(audio, window_start_ms)
                 } else {
@@ -112,6 +132,7 @@ pub async fn start_offline_asr_stream_with_model(
                         &mut full_audio,
                         &mut total_target_samples,
                         &mut last_speech_end_ms,
+                        endpoint_audio_cap,
                     );
 
                     let minimum_ready_samples =
@@ -131,6 +152,7 @@ pub async fn start_offline_asr_stream_with_model(
                                 &mut full_audio,
                                 &mut total_target_samples,
                                 &mut last_speech_end_ms,
+                                endpoint_audio_cap,
                             );
                         }
                         window.consume_decode_tick();
@@ -206,6 +228,7 @@ pub async fn start_offline_asr_stream_with_model(
                 &mut full_audio,
                 &mut total_target_samples,
                 &mut last_speech_end_ms,
+                endpoint_audio_cap,
             );
         }
 
@@ -244,6 +267,7 @@ fn push_audio_chunk(
     full_audio: &mut Vec<f32>,
     total_target_samples: &mut u64,
     last_speech_end_ms: &mut Option<u64>,
+    endpoint_audio_cap: Option<usize>,
 ) {
     let mono = to_mono(chunk, channels);
     let resampled = resample_to_16k(&mono, input_rate);
@@ -259,9 +283,19 @@ fn push_audio_chunk(
     }
     if speech_chunk || last_speech_end_ms.is_some() {
         full_audio.extend_from_slice(&resampled);
+        if let Some(limit) = endpoint_audio_cap {
+            retain_recent_audio(full_audio, limit);
+        }
     }
     if speech_chunk {
         *last_speech_end_ms = Some(samples_to_ms(*total_target_samples));
+    }
+}
+
+fn retain_recent_audio(audio: &mut Vec<f32>, max_samples: usize) {
+    if audio.len() > max_samples {
+        let excess = audio.len() - max_samples;
+        audio.drain(..excess);
     }
 }
 
@@ -318,14 +352,22 @@ fn anchored_audio(
     let retained = window.snapshot();
     let retained_start = total_samples.saturating_sub(retained.len() as u64);
     let now_ms = samples_to_ms(total_samples);
+    let left_context_ms = left_context_ms(max_window_ms);
     let context_floor_ms = now_ms.saturating_sub(
         max_window_ms
-            .saturating_add(LEFT_CONTEXT_MS as usize)
+            .saturating_add(left_context_ms)
             .saturating_add(BOUNDARY_SEARCH_BACK_MS) as u64,
     );
     let preferred_start_ms = next_unstable_start_ms
-        .map(|unstable_start_ms| unstable_start_ms.saturating_sub(LEFT_CONTEXT_MS))
-        .unwrap_or_else(|| now_ms.saturating_sub(max_window_ms as u64));
+        .map(|unstable_start_ms| unstable_start_ms.saturating_sub(left_context_ms as u64))
+        .unwrap_or_else(|| {
+            let initial_window_ms = if max_window_ms == PAATH_WINDOW_MS {
+                max_window_ms.saturating_add(left_context_ms)
+            } else {
+                max_window_ms
+            };
+            now_ms.saturating_sub(initial_window_ms as u64)
+        });
     let start_ms = preferred_start_ms
         .max(context_floor_ms)
         .max(samples_to_ms(retained_start));
@@ -389,12 +431,25 @@ struct StableWordCandidate {
     last_seen_tick: u64,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct StableWordFinalizer {
     tick: u64,
+    right_edge_guard_ms: u64,
     pending: Vec<StableWordCandidate>,
     finalized: Vec<WordTiming>,
     last_hypothesis: Vec<WordTiming>,
+}
+
+impl Default for StableWordFinalizer {
+    fn default() -> Self {
+        Self {
+            tick: 0,
+            right_edge_guard_ms: RIGHT_EDGE_GUARD_MS,
+            pending: Vec::new(),
+            finalized: Vec::new(),
+            last_hypothesis: Vec::new(),
+        }
+    }
 }
 
 impl StableWordFinalizer {
@@ -404,8 +459,13 @@ impl StableWordFinalizer {
         &mut self,
         words: &[WordTiming],
         now_ms: u64,
-        _refresh_ms: usize,
+        refresh_ms: usize,
     ) -> Vec<WordTiming> {
+        self.right_edge_guard_ms = if refresh_ms == PAATH_REFRESH_MS {
+            PAATH_RIGHT_EDGE_GUARD_MS
+        } else {
+            RIGHT_EDGE_GUARD_MS
+        };
         self.tick = self.tick.saturating_add(1);
         self.last_hypothesis = self.uncommitted_words(words);
         let mut matched = vec![false; self.pending.len()];
@@ -511,7 +571,7 @@ impl StableWordFinalizer {
             let mature = !is_trailing_word
                 && candidate.stable_windows >= STABLE_WINDOW_COUNT
                 && now_ms.saturating_sub(candidate.timing.end_ms.max(candidate.timing.start_ms))
-                    >= RIGHT_EDGE_GUARD_MS;
+                    >= self.right_edge_guard_ms;
 
             if mature && !blocked_by_earlier_word {
                 ready.push(candidate.timing);
@@ -545,7 +605,7 @@ impl StableWordFinalizer {
                     candidate.stable_windows >= STABLE_WINDOW_COUNT
                         && now_ms
                             .saturating_sub(candidate.timing.end_ms.max(candidate.timing.start_ms))
-                            >= RIGHT_EDGE_GUARD_MS
+                            >= self.right_edge_guard_ms
                 })
                 .map(|candidate| candidate.timing.clone()),
         );
@@ -782,9 +842,35 @@ mod tests {
     }
 
     #[test]
-    fn profiles_share_refresh_and_minimum_window_settings() {
+    fn kirtan_and_paath_profiles_use_the_requested_windows_and_refresh() {
         assert_eq!(audio_profile(true), (6_000, 2_000, 720));
-        assert_eq!(audio_profile(false), (3_000, 2_000, 480));
+        assert_eq!(audio_profile(false), (1_500, 320, 480));
+        assert_eq!(retained_audio_ms(PAATH_WINDOW_MS), PAATH_MAX_AUDIO_MS);
+    }
+
+    #[test]
+    fn endpoint_audio_buffer_keeps_only_the_recent_configured_tail() {
+        let mut audio = vec![0.0; 12];
+        retain_recent_audio(&mut audio, 5);
+        assert_eq!(audio, vec![0.0; 5]);
+    }
+
+    #[test]
+    fn paath_window_stays_under_the_two_point_five_second_cap() {
+        let rate = TARGET_SAMPLE_RATE as usize;
+        let mut window = RollingAudioWindow::with_millis(
+            retained_audio_ms(PAATH_WINDOW_MS),
+            PAATH_REFRESH_MS,
+        );
+        window.push(&vec![0.1; rate * 3]);
+
+        let normal = anchored_audio(&window, (rate * 3) as u64, PAATH_WINDOW_MS, None);
+        assert_eq!(normal.len(), rate * (PAATH_WINDOW_MS + PAATH_LEFT_CONTEXT_MS as usize) / 1_000);
+
+        // An old unsettled-word anchor is clamped by the two-and-a-half-second
+        // cap, including the 200 ms waveform-boundary search.
+        let following = anchored_audio(&window, (rate * 3) as u64, PAATH_WINDOW_MS, Some(100));
+        assert!(following.len() <= rate * PAATH_MAX_AUDIO_MS / 1_000);
     }
 
     #[test]
@@ -896,7 +982,7 @@ mod tests {
         window_ms: usize,
     ) -> (Vec<WordTiming>, Duration) {
         let refresh_ms = audio_profile(kirtan_mode).2;
-        let minimum_samples = TARGET_SAMPLE_RATE as usize * MINIMUM_WINDOW_MS / 1_000;
+        let minimum_samples = TARGET_SAMPLE_RATE as usize * audio_profile(kirtan_mode).1 / 1_000;
         let mut window = RollingAudioWindow::with_millis(retained_audio_ms(window_ms), refresh_ms);
         let mut finalizer = StableWordFinalizer::default();
         let mut finalized = Vec::new();
@@ -953,8 +1039,8 @@ mod tests {
         for (name, kirtan_mode, candidates) in [
             ("darbar_sahib_kirtan.mp3", true, vec![6_000]),
             ("asa_ki_vaar_kirtan.mp3", true, vec![6_000]),
-            ("fast_akhand_paath.mp3", false, vec![3_000]),
-            ("sukhmani_sahib_paath.mp3", false, vec![3_000]),
+            ("fast_akhand_paath.mp3", false, vec![1_500]),
+            ("sukhmani_sahib_paath.mp3", false, vec![1_500]),
         ] {
             if std::env::var("BANI_TEST_FIXTURE").is_ok_and(|only| only != name) {
                 continue;
@@ -989,6 +1075,18 @@ mod tests {
                     full_elapsed.as_secs_f64() / audio_duration.as_secs_f64(),
                     live_elapsed.as_secs_f64() / audio_duration.as_secs_f64(),
                 );
+                if name == "sukhmani_sahib_paath.mp3" && window_ms == PAATH_WINDOW_MS {
+                    assert!(
+                        wer <= 0.35,
+                        "Sukhmani live WER {wer:.4} exceeds 0.35 for the paath profile"
+                    );
+                    assert!(
+                        live_words.len() >= 50,
+                        "Sukhmani live transcript kept only {} of {} full-audio words",
+                        live_words.len(),
+                        full.words.len()
+                    );
+                }
                 println!("LIVE[{name}][{window_ms}ms] {live_text}");
                 println!("LIVE_TIMINGS[{name}][{window_ms}ms] {live_words:?}");
                 assert!(!live_words.is_empty(), "no live words for {name}");

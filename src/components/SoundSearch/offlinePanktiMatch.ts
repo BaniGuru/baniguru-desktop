@@ -48,13 +48,60 @@ const scoreBestSubstring = (query: string, candidate: string) => {
   );
 };
 
+const normalizedWordCache = new Map<string, string>();
+const normalizedPanktiCache = new Map<string, string[]>();
+const wordMatchCache = new Map<string, boolean>();
+
+const cacheValue = <T,>(cache: Map<string, T>, key: string, create: () => T): T => {
+  const cached = cache.get(key);
+  if (cached !== undefined) return cached;
+  const value = create();
+  if (cache.size >= 2_048) cache.clear();
+  cache.set(key, value);
+  return value;
+};
+
+const normalizeOfflineWord = (word: string) =>
+  cacheValue(normalizedWordCache, word, () => normalizeOfflineText(word));
+
+const normalizeOfflinePankti = (speech: string) =>
+  cacheValue(normalizedPanktiCache, speech, () =>
+    normalizeOfflineText(speech).split(" ").filter(Boolean)
+  );
+
+const wordsMatchNormalizedOffline = (a: string, b: string) => {
+  const key = a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
+  return cacheValue(wordMatchCache, key, () => {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    const shortest = Math.min(a.length, b.length);
+    if (shortest < 3 || Math.abs(a.length - b.length) > 1) return false;
+    // ASR often changes more than one code point in a longer Punjabi word, while
+    // matra removal keeps small spelling differences cheap to compare.
+    return levenshtein.get(a, b) <= (shortest >= 7 ? 2 : 1);
+  });
+};
+
 const wordsMatchOffline = (left: string, right: string) => {
-  const a = normalizeOfflineText(left);
-  const b = normalizeOfflineText(right);
-  if (!a || !b) return false;
-  if (a === b) return true;
-  if (Math.min(a.length, b.length) < 3 || Math.abs(a.length - b.length) > 1) return false;
-  return levenshtein.get(a, b) <= 1;
+  return wordsMatchNormalizedOffline(normalizeOfflineWord(left), normalizeOfflineWord(right));
+};
+
+/** Do not let a shared opening header identify a different Shabad. */
+export const buildOfflineShabadMatchSequence = <T extends Pick<OfflineCandidate, "gurmukhi_speech">>(
+  currentPanktis: T[],
+  nextPanktis: T[],
+) => {
+  const currentOpening = currentPanktis[0]?.gurmukhi_speech;
+  const nextOpening = nextPanktis[0]?.gurmukhi_speech;
+  const skipNextOpening = Boolean(
+    currentOpening && nextOpening &&
+    normalizeOfflineText(currentOpening) === normalizeOfflineText(nextOpening)
+  );
+
+  return {
+    panktis: [...currentPanktis, ...nextPanktis.slice(skipNextOpening ? 1 : 0)],
+    skippedNextPanktis: skipNextOpening ? 1 : 0,
+  };
 };
 
 /** Find a uniquely supported Pankti in a loaded Shabad using an ordered word run. */
@@ -64,12 +111,13 @@ export const findStrongOfflinePanktiMatch = (
   minimumWords = 2,
   currentPanktiIdx = -1,
 ): OfflineWordMatch | null => {
-  const tokens = normalizeOfflineText(transcript).split(" ").filter(Boolean).slice(-40);
+  const tokens = normalizeOfflineText(transcript).split(" ").filter(Boolean).slice(-40)
+    .map(normalizeOfflineWord);
   if (tokens.length < minimumWords) return null;
 
   const matches: OfflineWordMatch[] = [];
   panktis.forEach((pankti, panktiIdx) => {
-    const words = normalizeOfflineText(pankti.gurmukhi_speech).split(" ").filter(Boolean);
+    const words = normalizeOfflinePankti(pankti.gurmukhi_speech);
     let best: OfflineWordMatch | null = null;
 
     for (let panktiStart = 0; panktiStart < words.length; panktiStart++) {
@@ -79,7 +127,7 @@ export const findStrongOfflinePanktiMatch = (
         while (
           panktiStart + matchedWords < words.length &&
           tokenStart + matchedWords < tokens.length &&
-          wordsMatchOffline(words[panktiStart + matchedWords], tokens[tokenStart + matchedWords])
+          wordsMatchNormalizedOffline(words[panktiStart + matchedWords], tokens[tokenStart + matchedWords])
         ) {
           if (words[panktiStart + matchedWords] === tokens[tokenStart + matchedWords]) exactWords++;
           matchedWords++;
@@ -117,8 +165,38 @@ export const findStrongOfflinePanktiMatch = (
         (right.panktiIdx <= currentPanktiIdx ? Number.MAX_SAFE_INTEGER : right.panktiIdx - currentPanktiIdx)
       : left.panktiIdx - right.panktiIdx)
   );
-  const best = matches[0];
+  let best = matches[0];
   if (!best) return null;
+
+  // Paath is read in canonical order. A noisy one-word hypothesis at the live
+  // edge must not hide a two-word match to a later line just behind it. Prefer
+  // recent forward evidence when it contains at least two ordered words; the
+  // caller stabilizes the match before changing the displayed line.
+  if (currentPanktiIdx >= 0) {
+    const forward = matches
+      .filter(match =>
+        match.panktiIdx > currentPanktiIdx &&
+        match.matchedWords >= 2 &&
+        match.tokenEndIndex >= tokens.length - 8
+      )
+      .sort((left, right) =>
+        right.tokenEndIndex - left.tokenEndIndex ||
+        right.matchedWords - left.matchedWords ||
+        right.exactWords - left.exactWords ||
+        left.panktiIdx - right.panktiIdx
+      );
+    if (forward.length) best = forward[0];
+  }
+
+  // A lone word is only useful when it is exact, unique, and at the live
+  // transcript edge. The caller requires another matching hypothesis before
+  // moving on, which lets short distinctive words respond without random jumps.
+  if (
+    best.matchedWords === 1 &&
+    (best.exactWords !== 1 || best.tokenEndIndex !== tokens.length - 1)
+  ) {
+    return null;
+  }
 
   const tied = matches.some(match =>
     match.panktiIdx !== best.panktiIdx &&
@@ -145,11 +223,49 @@ export const findStrongOfflinePanktiMatch = (
   return null;
 };
 
+/** Return forward evidence when the live suffix contains the current Pankti's final words. */
+export const findCompletedOfflinePankti = (
+  panktis: Array<Pick<OfflineCandidate, "gurmukhi_speech">>,
+  transcript: string,
+  currentPanktiIdx: number,
+): OfflineWordMatch | null => {
+  const pankti = panktis[currentPanktiIdx];
+  if (!pankti || currentPanktiIdx + 1 >= panktis.length) return null;
+  const lineWords = normalizeOfflinePankti(pankti.gurmukhi_speech);
+  const transcriptWords = normalizeOfflineText(transcript).split(" ").filter(Boolean)
+    .map(normalizeOfflineWord);
+  if (lineWords.length < 2 || transcriptWords.length < 2) return null;
+
+  // Two matching final words, currently at the audio suffix, show that the
+  // line has completed. Prefer up to three words when available for stronger
+  // confirmation before moving to the next canonical line.
+  for (const span of [3, 2]) {
+    if (lineWords.length < span || transcriptWords.length < span) continue;
+    const lineTail = lineWords.slice(-span);
+    const liveTail = transcriptWords.slice(-span);
+    let exactWords = 0;
+    const matched = lineTail.every((word, index) => {
+      if (!wordsMatchOffline(word, liveTail[index])) return false;
+      if (word === liveTail[index]) exactWords++;
+      return true;
+    });
+    if (!matched || exactWords === 0) continue;
+    return {
+      panktiIdx: currentPanktiIdx + 1,
+      matchedWords: span,
+      exactWords,
+      tokenEndIndex: transcriptWords.length - 1,
+    };
+  }
+  return null;
+};
+
 /** Keep line changes in canonical order and require a second hypothesis for jumps. */
 export const stabilizeOfflinePanktiMatch = (
   currentIdx: number,
   match: OfflineWordMatch | null,
   pending: PendingOfflinePanktiMatch,
+  immediateMatchWords = 3,
 ): { currentIdx: number; pending: PendingOfflinePanktiMatch } => {
   if (!match || match.panktiIdx === currentIdx) {
     return { currentIdx, pending: null };
@@ -163,8 +279,8 @@ export const stabilizeOfflinePanktiMatch = (
   }
   if (
     match.panktiIdx > currentIdx &&
-    match.matchedWords >= 3 &&
-    match.exactWords >= 2
+    match.matchedWords >= immediateMatchWords &&
+    match.exactWords >= immediateMatchWords
   ) {
     return { currentIdx: match.panktiIdx, pending: null };
   }
