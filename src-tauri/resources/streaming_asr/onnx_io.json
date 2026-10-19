@@ -1,0 +1,163 @@
+{
+  "encoder": {
+    "inputs": [
+      {
+        "name": "audio_signal",
+        "shape": [
+          1,
+          80,
+          "feature_frames"
+        ],
+        "type": "tensor(float)"
+      },
+      {
+        "name": "length",
+        "shape": [
+          1
+        ],
+        "type": "tensor(int64)"
+      },
+      {
+        "name": "cache_last_channel",
+        "shape": [
+          17,
+          1,
+          204,
+          512
+        ],
+        "type": "tensor(float)"
+      },
+      {
+        "name": "cache_last_time",
+        "shape": [
+          17,
+          1,
+          512,
+          30
+        ],
+        "type": "tensor(float)"
+      },
+      {
+        "name": "cache_last_channel_len",
+        "shape": [
+          1
+        ],
+        "type": "tensor(int64)"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "outputs",
+        "shape": [
+          "Transposeoutputs_dim_0",
+          512,
+          "encoder_frames"
+        ],
+        "type": "tensor(float)"
+      },
+      {
+        "name": "encoded_lengths",
+        "shape": [
+          1
+        ],
+        "type": "tensor(int64)"
+      },
+      {
+        "name": "cache_last_channel_next",
+        "shape": [
+          17,
+          1,
+          "Slicecache_last_channel_next_dim_2",
+          512
+        ],
+        "type": "tensor(float)"
+      },
+      {
+        "name": "cache_last_time_next",
+        "shape": [
+          17,
+          1,
+          512,
+          "Concatcache_last_time_next_dim_3"
+        ],
+        "type": "tensor(float)"
+      },
+      {
+        "name": "cache_last_channel_next_len",
+        "shape": [
+          1
+        ],
+        "type": "tensor(int64)"
+      }
+    ]
+  },
+  "decoder_joint": {
+    "inputs": [
+      {
+        "name": "encoder_outputs",
+        "shape": [
+          1,
+          512,
+          1
+        ],
+        "type": "tensor(float)"
+      },
+      {
+        "name": "targets",
+        "shape": [
+          1,
+          1
+        ],
+        "type": "tensor(int64)"
+      },
+      {
+        "name": "input_states_1",
+        "shape": [
+          1,
+          1,
+          640
+        ],
+        "type": "tensor(float)"
+      },
+      {
+        "name": "input_states_2",
+        "shape": [
+          1,
+          1,
+          640
+        ],
+        "type": "tensor(float)"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "outputs",
+        "shape": [
+          1,
+          1,
+          1,
+          257
+        ],
+        "type": "tensor(float)"
+      },
+      {
+        "name": "output_states_1",
+        "shape": [
+          1,
+          1,
+          640
+        ],
+        "type": "tensor(float)"
+      },
+      {
+        "name": "output_states_2",
+        "shape": [
+          1,
+          1,
+          640
+        ],
+        "type": "tensor(float)"
+      }
+    ]
+  }
+}

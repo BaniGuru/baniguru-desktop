@@ -1,0 +1,51 @@
+{
+  "format_version": 1,
+  "architecture": "cache_aware_conformer_rnnt",
+  "language": "pa",
+  "sample_rate": 16000,
+  "n_fft": 512,
+  "win_length": 400,
+  "hop_length": 160,
+  "n_mels": 80,
+  "preemph": 0.97,
+  "log_zero_guard_value": 5.960464477539063e-08,
+  "normalization": "per_feature",
+  "subsampling_factor": 4,
+  "local_vocab_size": 256,
+  "aggregate_vocab_size": 5632,
+  "punjabi_offset": 3840,
+  "joint_blank_id": 256,
+  "predictor_start_id": 256,
+  "predictor_hidden_size": 640,
+  "max_symbols_per_step": 10,
+  "encoder": "encoder.onnx",
+  "decoder_joint": "decoder_joint.onnx",
+  "tokenizer": "tokenizer.model",
+  "mel_filterbank": "mel_filterbank.npy",
+  "stft_window": "stft_window.npy",
+  "encoder_hidden_size": 512,
+  "feature_left_context": 8,
+  "chunk_feature_frames": 204,
+  "encoded_frame_ms": 40,
+  "trained_right_context_ms": 2000,
+  "cache_last_channel_shape": [
+    17,
+    1,
+    204,
+    512
+  ],
+  "cache_last_time_shape": [
+    17,
+    1,
+    512,
+    30
+  ],
+  "attention_context": [
+    204,
+    50
+  ],
+  "source_checkpoint": "baniguru_kirtan_stream_v3.nemo",
+  "source_sha256": "721ea309fdef131af51807dbec1b0a5ca5f2d421fbd454343f15ed9ebec918a2",
+  "nemo_version": "1.23.0rc0",
+  "export_torch_version": "2.5.1+cpu"
+}

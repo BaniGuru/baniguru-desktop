@@ -1,0 +1,13 @@
+{
+  "_target_": "nemo.collections.asr.modules.AudioToMelSpectrogramPreprocessor",
+  "sample_rate": 16000,
+  "normalize": "per_feature",
+  "window_size": 0.025,
+  "window_stride": 0.01,
+  "window": "hann",
+  "features": 80,
+  "n_fft": 512,
+  "frame_splicing": 1,
+  "dither": 1e-05,
+  "pad_to": 0
+}
