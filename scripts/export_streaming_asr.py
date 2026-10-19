@@ -154,6 +154,28 @@ class DecoderJoint(nn.Module):
         return self.joint(torch.relu(encoded + predicted)), h, c
 
 
+class Predictor(nn.Module):
+    def __init__(self, decoder):
+        super().__init__()
+        self.decoder = decoder
+
+    def forward(self, targets, input_states_1, input_states_2):
+        labels = torch.where(targets == self.decoder.blank, self.decoder.start, targets)
+        predicted, (h, c) = self.decoder.lstm(
+            self.decoder.embedding(labels).transpose(0, 1), (input_states_1, input_states_2))
+        return self.decoder.pred(predicted.transpose(0, 1)), h, c
+
+
+class Joint(nn.Module):
+    def __init__(self, decoder):
+        super().__init__()
+        self.enc, self.joint = decoder.enc, decoder.joint
+
+    def forward(self, encoder_outputs, predictor_outputs):
+        encoded = self.enc(encoder_outputs.transpose(1, 2))
+        return (self.joint(torch.relu(encoded + predictor_outputs)),)
+
+
 def describe(path):
     options = ort.SessionOptions()
     options.intra_op_num_threads = 4
@@ -266,6 +288,38 @@ def main():
              (torch.randn(1, encoder.d_model, 1), torch.tensor([[42]], dtype=torch.int64),
               torch.randn(1, 1, hidden), torch.randn(1, 1, hidden))])
 
+    # Cache predictor outputs across blank frames and batch the cheap joint
+    # across beam candidates. Weights and the local-label mapping are unchanged.
+    predictor, joint = Predictor(decoder).eval(), Joint(decoder).eval()
+    predictor_path, joint_path = output / "predictor.onnx", output / "joint.onnx"
+    predictor_names = decoder_names[1:]
+    predictor_outputs = ["predictor_outputs", "output_states_1", "output_states_2"]
+    torch.onnx.export(predictor, decoder_example[1:], str(predictor_path),
+                      input_names=predictor_names, output_names=predictor_outputs,
+                      opset_version=17, dynamic_axes={"targets": {0: "batch"},
+                      "input_states_1": {1: "batch"}, "input_states_2": {1: "batch"},
+                      "predictor_outputs": {0: "batch"},
+                      "output_states_1": {1: "batch"}, "output_states_2": {1: "batch"}})
+    joint_names = ["encoder_outputs", "predictor_outputs"]
+    joint_example = (decoder_example[0], torch.randn(1, 1, hidden))
+    torch.onnx.export(joint, joint_example, str(joint_path), input_names=joint_names,
+                      output_names=["outputs"], opset_version=17,
+                      dynamic_axes={name: {0: "batch"} for name in joint_names + ["outputs"]})
+    for batch in (1, 4):
+        example = (torch.randint(0, local_vocab + 1, (batch, 1)),
+                   torch.randn(1, batch, hidden), torch.randn(1, batch, hidden))
+        validate(predictor, predictor_path, predictor_names, [example])
+        with torch.inference_mode():
+            predicted, h, c = predictor(*example)
+            encoded = torch.randn(batch, encoder.d_model, 1)
+            split = joint(encoded, predicted)[0]
+            combined = decoder(encoded, *example)
+            for actual, expected in zip((split, h, c), combined):
+                torch.testing.assert_close(actual.reshape(expected.shape), expected)
+        validate(joint, joint_path, joint_names, [(encoded, predicted)])
+    onnx.checker.check_model(str(predictor_path))
+    onnx.checker.check_model(str(joint_path))
+
     for key, name in (("preprocessor.featurizer.fb", "mel_filterbank.npy"),
                       ("preprocessor.featurizer.window", "stft_window.npy")):
         np.save(output / name, weights[key].numpy())
@@ -278,6 +332,7 @@ def main():
         joint_blank_id=local_vocab, predictor_start_id=local_vocab, predictor_hidden_size=hidden,
         predictor_label_convention="local_ids_global_blank",
         max_symbols_per_step=10, encoder="encoder.onnx", decoder_joint="decoder_joint.onnx",
+        predictor="predictor.onnx", joint="joint.onnx",
         tokenizer="tokenizer.model", mel_filterbank="mel_filterbank.npy", stft_window="stft_window.npy",
         encoder_hidden_size=encoder.d_model, feature_left_context=8, chunk_feature_frames=204,
         encoded_frame_ms=40, trained_right_context_ms=2000,
@@ -288,9 +343,15 @@ def main():
         source_sha256=hashlib.file_digest(args.model.open("rb"), "sha256").hexdigest(),
         nemo_version=config.get("nemo_version"), export_torch_version=torch.__version__,
     )
+    language_model = output / "gurbani_3gram.bin"
+    if language_model.is_file():
+        runtime["language_model"] = dict(file=language_model.name, order=3, beam_width=4, weight=0.3,
+            sha256=hashlib.file_digest(language_model.open("rb"), "sha256").hexdigest(),
+            source="https://github.com/BaniGuru/darbar-sahib-live/raw/refs/heads/main/kirtan_stream_model/gurbani_3gram.bin")
     (output / "runtime.json").write_text(json.dumps(runtime, indent=2) + "\n")
     (output / "frontend.json").write_text(json.dumps(config["preprocessor"], indent=2) + "\n")
-    (output / "onnx_io.json").write_text(json.dumps({"encoder": describe(encoder_path), "decoder_joint": describe(decoder_path)}, indent=2) + "\n")
+    (output / "onnx_io.json").write_text(json.dumps({"encoder": describe(encoder_path), "decoder_joint": describe(decoder_path),
+        "predictor": describe(predictor_path), "joint": describe(joint_path)}, indent=2) + "\n")
     print(f"Export complete: {output}", flush=True)
 
 

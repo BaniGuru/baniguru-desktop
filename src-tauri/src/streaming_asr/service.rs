@@ -11,7 +11,7 @@ use crate::offline_asr::service::OfflineTranscriptEvent;
 use super::model::{StreamingAsrModel, StreamingProfile, StreamingUpdate};
 
 const SPEECH_RMS_THRESHOLD: f32 = 0.0035;
-pub(super) const ENDPOINT_SILENCE_MS: u64 = 2_000;
+pub(crate) const ENDPOINT_SILENCE_MS: u64 = 2_000;
 
 #[derive(Clone, Serialize)]
 struct StreamingTranscriptEvent {
@@ -41,7 +41,6 @@ pub async fn start_streaming_asr_stream_with_model(
         let mut since_refresh = 0;
         let mut first_refresh = true;
         let mut last_speech_end_ms = None;
-        let mut last_partial = String::new();
         println!(
             "Streaming ASR profile={} refresh={}ms right_context={}ms edge_max={}ms",
             if kirtan_mode { "kirtan" } else { "sehaj_paath" },
@@ -61,7 +60,7 @@ pub async fn start_streaming_asr_stream_with_model(
                     }
                     if model.has_audio() {
                         match model.update(profile, true) {
-                            Ok(update) => publish(&app, update, &mut last_partial),
+                            Ok(update) => publish(&app, update),
                             Err(error) => eprintln!("Streaming ASR stop flush: {error}"),
                         }
                     }
@@ -92,7 +91,7 @@ pub async fn start_streaming_asr_stream_with_model(
                             println!("[ASR:streaming:{}] end={:.2}s inference={:.3}s chunks={}",
                                 if kirtan_mode { "kirtan" } else { "paath" },
                                 update.end_ms as f64 / 1_000.0, started.elapsed().as_secs_f64(), model.committed_chunks);
-                            publish(&app, update, &mut last_partial);
+                            publish(&app, update);
                         }
                         Err(error) => {
                             // Never continue from a partially advanced cache if
@@ -117,7 +116,7 @@ pub async fn start_streaming_asr_stream_with_model(
     })
 }
 
-pub(super) fn push_chunk(
+pub(crate) fn push_chunk(
     model: &mut StreamingAsrModel,
     chunk: &[f32],
     input_rate: u32,
@@ -138,7 +137,7 @@ pub(super) fn push_chunk(
     audio.len()
 }
 
-fn publish(app: &AppHandle, update: StreamingUpdate, previous_partial: &mut String) {
+fn publish(app: &AppHandle, update: StreamingUpdate) {
     let final_text = update
         .finalized
         .iter()
@@ -151,10 +150,8 @@ fn publish(app: &AppHandle, update: StreamingUpdate, previous_partial: &mut Stri
         .map(|word| word.word.as_str())
         .collect::<Vec<_>>()
         .join(" ");
-    if final_text.is_empty() && partial == *previous_partial {
-        return;
-    }
-    *previous_partial = partial.clone();
+    // An unchanged hypothesis is another observation of a held word. Publish
+    // its audio clock so the pilot can confirm it without waiting for a new word.
     let _ = app.emit(
         "offline_transcript",
         StreamingTranscriptEvent {

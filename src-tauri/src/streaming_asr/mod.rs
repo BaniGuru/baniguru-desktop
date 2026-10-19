@@ -1,4 +1,6 @@
+mod beam;
 mod float_mode;
+mod language_model;
 pub mod model;
 pub mod service;
 

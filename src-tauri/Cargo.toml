@@ -64,6 +64,8 @@ ndarray-npy = "0.9"
 rustfft = "6"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 hound = "3.5"
+kenlm-rs = { version = "0.1.0", default-features = false }
+unicode-normalization = "0.1"
 
 [features]
 default = ["custom-protocol"]
@@ -86,4 +88,10 @@ opt-level = 2
 opt-level = 3
 
 [profile.test.package.sentencepiece-rs]
+opt-level = 3
+
+[profile.dev.package.kenlm-rs]
+opt-level = 3
+
+[profile.test.package.kenlm-rs]
 opt-level = 3

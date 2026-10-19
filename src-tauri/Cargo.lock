@@ -264,6 +264,7 @@ dependencies = [
  "futures-util",
  "hound",
  "include_dir",
+ "kenlm-rs",
  "local-ip-address",
  "mime_guess",
  "ndarray 0.16.1",
@@ -288,6 +289,7 @@ dependencies = [
  "tokio-stream",
  "tokio-tungstenite",
  "tungstenite",
+ "unicode-normalization",
  "url",
  "warp",
  "webrtc",
@@ -2687,6 +2689,15 @@ checksum = "5dea2b27dd239b2556ed7a25ba842fe47fd602e7fc7433c2a8d6106d4d9edd70"
 dependencies = [
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "kenlm-rs"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9027506886ff843a1be16ca7efd0be36335ab792793345dae79df0a7d9a3336"
+dependencies = [
+ "cc",
 ]
 
 [[package]]

@@ -80,3 +80,36 @@ weights and tensors.
 
 Two seconds of silence flushes the final word and resets utterance caches.
 Stopping Auto Pilot drains captured audio and flushes its remaining hypothesis.
+
+## KenLM and RNNT beam search
+
+The default decoder keeps four RNNT hypotheses and adds the supplied Gurbani
+3-gram's evidence when a SentencePiece boundary completes a word. The binary
+is `gurbani_3gram.bin`, from `BaniGuru/darbar-sahib-live/kirtan_stream_model`;
+its SHA256 is recorded in `runtime.json`. Fetch it and all ONNX assets with
+Git LFS. KenLM queries run in Rust through `kenlm-rs`'s native query-only C++
+library; Python and a KenLM server are not needed by the application.
+
+`predictor.onnx` contains the original embedding, LSTM and predictor projection.
+`joint.onnx` contains the acoustic projection and Punjabi joint head. Their
+weights and local-label convention match `decoder_joint.onnx`; the exporter
+checks split/combined equivalence and ONNX parity at batch sizes one and four.
+The runtime caches predictor outputs across blank frames and batches the joint
+over the active beam. `decoder_joint.onnx` remains an independent greedy
+reference used by the parity test.
+
+Only completed words advance the language context. The unfinished edge word
+remains acoustic and mutable. The scorer keeps the last two words, requires a
+real trigram match, and applies a bounded conditional-versus-unigram score at
+weight 0.3. Unknown words and short/backed-off contexts receive no LM reward.
+Equivalent RNNT alignments sum their probabilities. Previews copy the beam;
+final text prunes alternatives to the committed prefix so it cannot be revised.
+
+For reproducible comparisons, set `BANI_ASR_DECODING` to `greedy`, `beam`, or
+`kenlm` (default). `BANI_ASR_BEAM_WIDTH` accepts 1–8 (default 4) and
+`BANI_ASR_LM_WEIGHT` accepts 0–1 (default 0.3). These are development overrides;
+the application's kirtan/paath refresh and edge-context settings remain the same.
+
+The encoder still uses its trained right context and cache tensor contract.
+Do not substitute the other project's 202/100 encoder or CTC head: they use
+a different context/cache contract and are not inputs to this RNNT decoder.

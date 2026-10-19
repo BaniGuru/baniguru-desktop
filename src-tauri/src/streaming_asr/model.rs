@@ -6,6 +6,7 @@ use ort::{session::Session, value::Tensor};
 use sentencepiece_rs::SentencePieceProcessor;
 use serde::Deserialize;
 
+use super::beam::BeamDecoder;
 use super::float_mode::CpuFloatMode;
 use crate::offline_asr::model::{log_mel_frames, RuntimeConfig, WordTiming};
 
@@ -77,22 +78,22 @@ struct EncoderCache {
 }
 
 #[derive(Clone)]
-struct PredictorState {
-    h: Vec<f32>,
-    c: Vec<f32>,
-    label: i64,
+pub(super) struct PredictorState {
+    pub h: Vec<f32>,
+    pub c: Vec<f32>,
+    pub label: i64,
 }
 
 #[derive(Clone, Debug)]
-struct TimedToken {
-    id: usize,
-    time_ms: u64,
+pub(super) struct TimedToken {
+    pub id: usize,
+    pub time_ms: u64,
 }
 
-struct EncodedChunk {
-    values: Vec<f32>,
-    stride: usize,
-    frames: usize,
+pub(super) struct EncodedChunk {
+    pub values: Vec<f32>,
+    pub stride: usize,
+    pub frames: usize,
 }
 
 #[derive(Debug)]
@@ -158,6 +159,7 @@ pub struct StreamingAsrModel {
     pub committed_chunks: usize,
     timings: StageTimings,
     normalizer: RunningFeatureNorm,
+    beam: Option<BeamDecoder>,
 }
 
 impl StreamingAsrModel {
@@ -224,7 +226,16 @@ impl StreamingAsrModel {
             label: i64::from(config.frontend.predictor_start_id),
         };
         let log_mel = vec![Vec::new(); config.frontend.n_mels];
+        let beam = Some(BeamDecoder::load(
+            directory,
+            config.predictor_hidden_size,
+            config.encoder_hidden_size,
+            config.frontend.joint_blank_id,
+            config.frontend.max_symbols_per_step,
+            config.encoded_frame_ms,
+        )?);
         Ok(Self {
+            beam,
             config,
             encoder,
             decoder,
@@ -290,6 +301,9 @@ impl StreamingAsrModel {
         self.tokens.clear();
         self.audio.clear();
         self.suppress_continuation = false;
+        if let Some(beam) = &mut self.beam {
+            beam.reset();
+        }
     }
 
     pub fn update(
@@ -344,15 +358,7 @@ impl StreamingAsrModel {
                     self.feature_chunk(&features, feature_frames, feature_start, chunk_size)?;
                 let encoded =
                     self.encode(input, chunk_size + self.config.feature_left_context, true)?;
-                let mut predictor = self.predictor.clone();
-                let tokens = self.decode(&encoded, start_ms, &mut predictor)?;
-                self.predictor = predictor;
-                append_tokens(
-                    &self.tokenizer,
-                    &mut self.tokens,
-                    tokens,
-                    &mut self.suppress_continuation,
-                )?;
+                self.tokens = self.decode_hypothesis(&encoded, start_ms, true)?;
                 self.committed_feature_frames += chunk_size;
                 self.committed_chunks += 1;
             }
@@ -368,10 +374,12 @@ impl StreamingAsrModel {
                 let start_ms = self.feature_time_ms(self.committed_feature_frames);
                 let encoded =
                     self.encode(input, remaining + self.config.feature_left_context, false)?;
-                let mut predictor = self.predictor.clone();
-                let preview = self.decode(&encoded, start_ms, &mut predictor)?;
-                let mut suppress = self.suppress_continuation;
-                append_tokens(&self.tokenizer, &mut hypothesis, preview, &mut suppress)?;
+                hypothesis = self.decode_hypothesis(&encoded, start_ms, false)?;
+            }
+        }
+        if flush {
+            if let Some(beam) = &mut self.beam {
+                hypothesis = beam.finish()?;
             }
         }
         let words = self.words(&hypothesis)?;
@@ -382,7 +390,11 @@ impl StreamingAsrModel {
         };
         let mut finalized_tokens = 0;
         for word in &words {
-            let committed = word.token_end <= self.tokens.len();
+            let committed = word.token_end <= self.tokens.len()
+                && hypothesis[..word.token_end]
+                    .iter()
+                    .zip(&self.tokens)
+                    .all(|(a, b)| a.id == b.id);
             let age = now_ms.saturating_sub(word.timing.end_ms);
             let ready =
                 flush || (committed && word_ready(age, word.following_committed_word, profile));
@@ -402,7 +414,15 @@ impl StreamingAsrModel {
             .skip(update.finalized.len())
             .map(|word| word.timing)
             .collect();
-        self.tokens.drain(..finalized_tokens.min(self.tokens.len()));
+        let settled = finalized_tokens.min(self.tokens.len());
+        if let Some(beam) = &mut self.beam {
+            if flush {
+                beam.reset();
+            } else {
+                beam.settle(&self.tokens[..settled], self.suppress_continuation);
+            }
+        }
+        self.tokens.drain(..settled);
         // Cache raw log-mel features for normalization; compute each FFT only
         // once. Retain only enough waveform for the next centered STFT frame.
         let retain_frame = self
@@ -598,6 +618,34 @@ impl StreamingAsrModel {
         Ok(tokens)
     }
 
+    fn decode_hypothesis(
+        &mut self,
+        encoded: &EncodedChunk,
+        start_ms: u64,
+        commit: bool,
+    ) -> Result<Vec<TimedToken>, String> {
+        if let Some(beam) = &mut self.beam {
+            let started = Instant::now();
+            let tokens = beam.advance(encoded, start_ms, commit)?;
+            if commit {
+                self.predictor = beam.best_predictor();
+            }
+            self.timings.decoder_ms += started.elapsed().as_secs_f64() * 1_000.0;
+            return Ok(tokens);
+        }
+        // Retained as an independent reference for greedy split-graph parity.
+        let mut predictor = self.predictor.clone();
+        let fresh = self.decode(encoded, start_ms, &mut predictor)?;
+        let mut tokens = self.tokens.clone();
+        let mut suppress = self.suppress_continuation;
+        append_tokens(&self.tokenizer, &mut tokens, fresh, &mut suppress)?;
+        if commit {
+            self.predictor = predictor;
+            self.suppress_continuation = suppress;
+        }
+        Ok(tokens)
+    }
+
     fn words(&self, tokens: &[TimedToken]) -> Result<Vec<HypothesisWord>, String> {
         let mut groups = Vec::new();
         let mut start = 0;
@@ -740,6 +788,28 @@ mod tests {
             previous = current;
         }
         previous[hypothesis.len()]
+    }
+
+    #[test]
+    #[ignore = "loads ONNX assets to compare cached split-graph greedy with the original combined graph"]
+    fn cached_predictor_preserves_the_original_greedy_labels() {
+        let samples = fixture("darbar_sahib_kirtan.mp3");
+        let mut cached = StreamingAsrModel::load(&resources()).unwrap();
+        cached.beam.as_mut().unwrap().use_greedy();
+        let mut original = StreamingAsrModel::load(&resources()).unwrap();
+        original.beam = None;
+        let profile = StreamingProfile::for_kirtan(true);
+        let count = 16_000 * 5;
+        cached.push_audio(&samples[..count]);
+        original.push_audio(&samples[..count]);
+        let a = cached.update(profile, false).unwrap();
+        let b = original.update(profile, false).unwrap();
+        assert_eq!(text(&a.finalized), text(&b.finalized));
+        assert_eq!(text(&a.partial), text(&b.partial));
+        assert_eq!(cached.predictor.label, original.predictor.label);
+        for (a, b) in cached.predictor.h.iter().zip(&original.predictor.h) {
+            assert!((a - b).abs() < 1e-5);
+        }
     }
 
     #[test]
@@ -894,6 +964,9 @@ mod tests {
             elapsed.sort_by(f64::total_cmp);
             final_lags.sort_unstable();
             let report = serde_json::json!({
+                "decoding": std::env::var("BANI_ASR_DECODING").unwrap_or_else(|_| "kenlm".into()),
+                "beam_width": std::env::var("BANI_ASR_BEAM_WIDTH").unwrap_or_else(|_| "4".into()),
+                "lm_weight": std::env::var("BANI_ASR_LM_WEIGHT").unwrap_or_else(|_| "0.3".into()),
                 "checkpoint_sha256": model.config.source_sha256,
                 "precision": "float32", "attention_cache": model.config.attention_cache_format,
                 "online_normalization": model.config.online_normalization,

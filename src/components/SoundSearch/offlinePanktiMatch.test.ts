@@ -8,6 +8,7 @@ import {
   selectOfflineShabadFromSegments,
   buildOfflineSearchSegments,
   stabilizeOfflinePanktiMatch,
+  selectOfflineBaniFromSegments,
 } from "./offlinePanktiMatch";
 
 const candidates = [
@@ -17,6 +18,38 @@ const candidates = [
 ];
 
 describe("offline pankti matching", () => {
+  it("includes a repeated next-Shabad heading when paath approaches the boundary", () => {
+    const current = ["ਸਿਰੀਰਾਗੁ ਮਹਲਾ ਪਹਿਲਾ", "ਹੋਰਿ ਗਲਾਂ ਸਭਿ ਕੂੜੀਆ ਤੁਧੁ ਭਾਵੈ ਪਰਵਾਣੁ"].map(gurmukhi_speech => ({gurmukhi_speech}));
+    const next = ["ਸਿਰੀਰਾਗੁ ਮਹਲਾ ਪਹਿਲਾ", "ਜਾਲਿ ਮੋਹੁ ਘਸਿ ਮਸੁ ਕਰਿ ਮਤਿ ਕਾਗਦੁ ਕਰਿ ਸਾਰੁ"].map(gurmukhi_speech => ({gurmukhi_speech}));
+    expect(buildOfflineShabadMatchSequence(current, next).skippedNextPanktis).toBe(1);
+    const sequence = buildOfflineShabadMatchSequence(current, next, true);
+    expect(sequence.skippedNextPanktis).toBe(0);
+    expect(findStrongOfflinePanktiMatch(sequence.panktis,
+      "ਹੋਰਿ ਗਲਾਂ ਸਭਿ ਕੂੜੀਆ ਤੁਧੁ ਭਾਵੈ ਪਰਵਾਣੁ ਸਿਰੀਰਾਗੁ ਮਹਲਾ ਪਹਿਲਾ", 2, 1)?.panktiIdx).toBe(2);
+  });
+  it("identifies Asa Ki Vaar across Shabads without counting shared line copies twice", () => {
+    const rows = [
+      { id: "a", shabad_id: "one", bani_ids: [13], gurmukhi_speech: "ਬਲਿਹਾਰੀ ਗੁਰ ਆਪਣੇ ਦਿਉਹਾੜੀ ਸਦ ਵਾਰ" },
+      { id: "b", shabad_id: "two", bani_ids: [13], gurmukhi_speech: "ਆਪੀਨੈ ਆਪੁ ਸਾਜਿਓ ਆਪੀਨੈ ਰਚਿਓ ਨਾਉ" },
+      { id: "copy", shabad_id: "other", bani_ids: [7], gurmukhi_speech: "ਬਲਿਹਾਰੀ ਗੁਰ ਆਪਣੇ ਦਿਉਹਾੜੀ ਸਦ ਵਾਰ" },
+    ];
+    expect(selectOfflineBaniFromSegments(rows.slice(0, 2).map(row => row.gurmukhi_speech), rows))
+      .toEqual({ baniId: 13, panktiId: "b" });
+    expect(selectOfflineBaniFromSegments([rows[0].gurmukhi_speech, rows[0].gurmukhi_speech], rows)).toBeNull();
+  });
+  it("keeps absolute evidence positions after the rolling 40-word window fills", () => {
+    const panktis = [
+      { gurmukhi_speech: "ਕਰਿ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ" },
+      { gurmukhi_speech: "ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ" },
+    ];
+    const old = Array(45).fill("ਸ਼ੋਰ").join(" ");
+    const first = findStrongOfflinePanktiMatch(panktis, `${old} ਕਰਿ ਕਿਰਪਾ ਪ੍ਰਭ`, 2, 0)!;
+    const next = findStrongOfflinePanktiMatch(panktis, `${old} ਕਰਿ ਕਿਰਪਾ ਪ੍ਰਭ ਤੇਰੀ ਓਟ ਪੂਰਨ`, 2, 0)!;
+    expect(first.tokenEndIndex).toBe(47);
+    expect(next.tokenEndIndex).toBe(50);
+    expect(next.tokenEndIndex).toBeGreaterThan(first.tokenEndIndex);
+    expect(next.panktiIdx).toBe(1);
+  });
   it("does not switch between adjacent Aasa Shabads on their shared header", () => {
     const npA = [
       "ਆਸਾ ਮਹਲਾ ਪਹਿਲਾ",

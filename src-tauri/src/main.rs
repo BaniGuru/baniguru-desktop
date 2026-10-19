@@ -7,6 +7,9 @@ mod audio_bus;
 mod commands;
 mod offline_asr;
 mod streaming_asr;
+#[cfg(test)]
+#[path = "streaming_asr/evaluation.rs"]
+mod asr_reference_evaluation;
 mod p2p_audio_sender;
 mod server;
 mod settings;

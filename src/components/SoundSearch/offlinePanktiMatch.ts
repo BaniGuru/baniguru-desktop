@@ -90,11 +90,12 @@ const wordsMatchOffline = (left: string, right: string) => {
 export const buildOfflineShabadMatchSequence = <T extends Pick<OfflineCandidate, "gurmukhi_speech">>(
   currentPanktis: T[],
   nextPanktis: T[],
+  includeSharedOpening = false,
 ) => {
   const currentOpening = currentPanktis[0]?.gurmukhi_speech;
   const nextOpening = nextPanktis[0]?.gurmukhi_speech;
   const skipNextOpening = Boolean(
-    currentOpening && nextOpening &&
+    !includeSharedOpening && currentOpening && nextOpening &&
     normalizeOfflineText(currentOpening) === normalizeOfflineText(nextOpening)
   );
 
@@ -111,8 +112,9 @@ export const findStrongOfflinePanktiMatch = (
   minimumWords = 2,
   currentPanktiIdx = -1,
 ): OfflineWordMatch | null => {
-  const tokens = normalizeOfflineText(transcript).split(" ").filter(Boolean).slice(-40)
-    .map(normalizeOfflineWord);
+  const allTokens = normalizeOfflineText(transcript).split(" ").filter(Boolean);
+  const tokenOffset = Math.max(0, allTokens.length - 40);
+  const tokens = allTokens.slice(tokenOffset).map(normalizeOfflineWord);
   if (tokens.length < minimumWords) return null;
 
   const matches: OfflineWordMatch[] = [];
@@ -137,13 +139,14 @@ export const findStrongOfflinePanktiMatch = (
           panktiIdx,
           matchedWords,
           exactWords,
-          tokenEndIndex: tokenStart + matchedWords - 1,
+          tokenEndIndex: tokenOffset + tokenStart + matchedWords - 1,
         };
+        if (matchedWords < minimumWords) continue;
         if (
           !best ||
-          current.matchedWords > best.matchedWords ||
-          (current.matchedWords === best.matchedWords && current.exactWords > best.exactWords) ||
-          (current.matchedWords === best.matchedWords && current.exactWords === best.exactWords && current.tokenEndIndex > best.tokenEndIndex)
+          current.tokenEndIndex > best.tokenEndIndex ||
+          (current.tokenEndIndex === best.tokenEndIndex && current.matchedWords > best.matchedWords) ||
+          (current.tokenEndIndex === best.tokenEndIndex && current.matchedWords === best.matchedWords && current.exactWords > best.exactWords)
         ) {
           best = current;
         }
@@ -177,7 +180,7 @@ export const findStrongOfflinePanktiMatch = (
       .filter(match =>
         match.panktiIdx > currentPanktiIdx &&
         match.matchedWords >= 2 &&
-        match.tokenEndIndex >= tokens.length - 8
+        match.tokenEndIndex >= allTokens.length - 8
       )
       .sort((left, right) =>
         right.tokenEndIndex - left.tokenEndIndex ||
@@ -193,7 +196,7 @@ export const findStrongOfflinePanktiMatch = (
   // moving on, which lets short distinctive words respond without random jumps.
   if (
     best.matchedWords === 1 &&
-    (best.exactWords !== 1 || best.tokenEndIndex !== tokens.length - 1)
+    (best.exactWords !== 1 || best.tokenEndIndex !== allTokens.length - 1)
   ) {
     return null;
   }
@@ -260,22 +263,49 @@ export const findCompletedOfflinePankti = (
   return null;
 };
 
+export const findOfflinePanktiProgress = (
+  panktis: Array<Pick<OfflineCandidate, "gurmukhi_speech">>,
+  transcript: string,
+  current: number,
+  kirtan: boolean,
+  baniId: number | null,
+  currentPanktis = panktis,
+) => {
+  const advancesOnCompletion = !kirtan || baniId === 13; // Asa Ki Vaar
+  const completed = advancesOnCompletion ? findCompletedOfflinePankti(currentPanktis, transcript, current) : null;
+  if (completed) return completed;
+  const match = findStrongOfflinePanktiMatch(panktis, transcript, 2, advancesOnCompletion ? current : -1);
+  if (advancesOnCompletion && match && match.panktiIdx > current && panktis[current]) {
+    const currentEvidence = findStrongOfflinePanktiMatch([panktis[current]], transcript, 2);
+    if (currentEvidence && currentEvidence.tokenEndIndex >= match.tokenEndIndex &&
+      currentEvidence.matchedWords >= match.matchedWords) {
+      return { ...currentEvidence, panktiIdx: current };
+    }
+  }
+  return match;
+};
+
 /** Keep line changes in canonical order and require a second hypothesis for jumps. */
 export const stabilizeOfflinePanktiMatch = (
   currentIdx: number,
   match: OfflineWordMatch | null,
   pending: PendingOfflinePanktiMatch,
   immediateMatchWords = 3,
+  allowRepetition = false,
 ): { currentIdx: number; pending: PendingOfflinePanktiMatch } => {
   if (!match || match.panktiIdx === currentIdx) {
     return { currentIdx, pending: null };
   }
 
-  // Never move backward in a Shabad. Strong recent word evidence can move
-  // directly to a later canonical line, including when one earlier line was
-  // missed by ASR.
+  // Paath remains monotonic. Ordinary kirtan may repeat an earlier line,
+  // backed by a fresh transcript position in the caller's evidence clock.
   if (match.panktiIdx < currentIdx) {
-    return { currentIdx, pending: null };
+    if (!allowRepetition || match.matchedWords < 2 || match.exactWords < 2) {
+      return { currentIdx, pending: null };
+    }
+    if (match.matchedWords >= 4 && match.exactWords >= 4) {
+      return { currentIdx: match.panktiIdx, pending: null };
+    }
   }
   if (
     match.panktiIdx > currentIdx &&
@@ -294,7 +324,7 @@ export const stabilizeOfflinePanktiMatch = (
   return { currentIdx, pending: { panktiIdx: match.panktiIdx, confirmations } };
 };
 
-export const scoreOfflinePankti = (speech: string, pankti: string) => {
+const calculateOfflinePanktiScore = (speech: string, pankti: string) => {
   const a = normalizeOfflineText(speech);
   const b = normalizeOfflineText(pankti);
   if (!a || !b) return 0;
@@ -312,6 +342,10 @@ export const scoreOfflinePankti = (speech: string, pankti: string) => {
     : 0;
   return Math.max(fullLineScore, partialLineScore);
 };
+
+const phraseScoreCache = new Map<string, number>();
+export const scoreOfflinePankti = (speech: string, pankti: string) =>
+  cacheValue(phraseScoreCache, `${speech}\u0000${pankti}`, () => calculateOfflinePanktiScore(speech, pankti));
 
 export const rankOfflinePanktis = (
   speech: string,
@@ -348,6 +382,15 @@ export const buildOfflineSearchSegments = (speech: string) => {
   const suffix = words.slice(-8).join(" ");
   if (suffix && segments[segments.length - 1] !== suffix) segments.push(suffix);
   return [...new Set(segments)];
+};
+
+export const buildOfflineSearchQueries = (speech: string) => {
+  const words = speech.split(/\s+/).filter(Boolean).slice(-32);
+  return [...new Set([
+    ...[4, 6, 8, 10, 12, 16].filter(length => length < words.length).map(length => words.slice(-length).join(" ")),
+    ...buildOfflineSearchSegments(words.join(" ")),
+    words.join(" "),
+  ])].filter(Boolean);
 };
 
 /** Select a Shabad only when separate transcript segments support separate Panktis in it. */
@@ -421,4 +464,35 @@ export const selectOfflineShabadFromSegments = (
 
   const lastEvidence = best.evidence[best.evidence.length - 1];
   return { shabadId: best.shabadId, panktiId: lastEvidence.panktiId };
+};
+
+/** A Bani can span several Shabads: group evidence by membership, not Shabad. */
+export const selectOfflineBaniFromSegments = (
+  segments: string[],
+  candidates: Array<OfflineShabadCandidate & { bani_ids?: number[] }>,
+) => {
+  const evidence = new Map<number, Map<string, { id: string; segment: number; score: number }>>();
+  segments.forEach((segment, index) => {
+    const ranked = rankOfflinePanktis(segment, candidates);
+    const top = ranked[0]?.score ?? 0;
+    if (top < 0.88) return;
+    for (const row of ranked.filter(row => row.score >= 0.88 && top - row.score <= 0.03)) {
+      const candidate = candidates.find(item => item.id === row.id)!;
+      for (const baniId of candidate.bani_ids ?? []) {
+        const lines = evidence.get(baniId) ?? new Map();
+        // Database copies of a shared line cannot count as separate evidence.
+        const key = normalizeOfflineText(candidate.gurmukhi_speech);
+        const prior = lines.get(key);
+        if (!prior || index > prior.segment) lines.set(key, { id: row.id, segment: index, score: row.score });
+        evidence.set(baniId, lines);
+      }
+    }
+  });
+  const ranked = [...evidence.entries()].map(([baniId, lines]) => ({
+    baniId, lines: [...lines.values()].sort((a, b) => a.segment - b.segment),
+  })).filter(item => item.lines.length >= 2 && new Set(item.lines.map(line => line.segment)).size >= 2)
+    .sort((a, b) => b.lines.length - a.lines.length || b.lines.at(-1)!.segment - a.lines.at(-1)!.segment);
+  const best = ranked[0];
+  if (!best || ranked[1]?.lines.length === best.lines.length) return null;
+  return { baniId: best.baniId, panktiId: best.lines.at(-1)!.id };
 };

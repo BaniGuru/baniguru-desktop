@@ -159,5 +159,97 @@
         "type": "tensor(float)"
       }
     ]
+  },
+  "predictor": {
+    "inputs": [
+      {
+        "name": "targets",
+        "shape": [
+          "batch",
+          1
+        ],
+        "type": "tensor(int64)"
+      },
+      {
+        "name": "input_states_1",
+        "shape": [
+          1,
+          "batch",
+          640
+        ],
+        "type": "tensor(float)"
+      },
+      {
+        "name": "input_states_2",
+        "shape": [
+          1,
+          "batch",
+          640
+        ],
+        "type": "tensor(float)"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "predictor_outputs",
+        "shape": [
+          "batch",
+          1,
+          640
+        ],
+        "type": "tensor(float)"
+      },
+      {
+        "name": "output_states_1",
+        "shape": [
+          1,
+          "batch",
+          640
+        ],
+        "type": "tensor(float)"
+      },
+      {
+        "name": "output_states_2",
+        "shape": [
+          1,
+          "batch",
+          640
+        ],
+        "type": "tensor(float)"
+      }
+    ]
+  },
+  "joint": {
+    "inputs": [
+      {
+        "name": "encoder_outputs",
+        "shape": [
+          "batch",
+          512,
+          1
+        ],
+        "type": "tensor(float)"
+      },
+      {
+        "name": "predictor_outputs",
+        "shape": [
+          "batch",
+          1,
+          640
+        ],
+        "type": "tensor(float)"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "outputs",
+        "shape": [
+          "batch",
+          1,
+          257
+        ],
+        "type": "tensor(float)"
+      }
+    ]
   }
 }

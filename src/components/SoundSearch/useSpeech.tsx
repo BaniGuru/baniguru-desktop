@@ -440,9 +440,9 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     pauseSpeech
   );
   const baniPilot = useBaniPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript, silenceSeconds, stopSpeech);
-  const offlinePanktiPilot = useOfflinePanktiPilot(finalText, nonFinalText, status.current, startTranscription);
+  const offlinePanktiPilot = useOfflinePanktiPilot(finalText, nonFinalText, status.current, startTranscription, lastTokenTime);
   const searchPilot = useSearchPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript);
-  const offlineSearchPilot = useOfflineSearchPilot(finalText, nonFinalText, status.current, startTranscription);
+  const offlineSearchPilot = useOfflineSearchPilot(finalText, nonFinalText, status.current, startTranscription, lastTokenTime);
 
   const resetText = () => {
     transcriptRef.current = "";
@@ -510,7 +510,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
 
     offlineSearchPilot.setActive(
       offlineMode && autoSearch &&
-      appContext.state.page === PAGE_SEARCH &&
+      (appContext.state.page === PAGE_SEARCH || appContext.state.page === PAGE_SHABAD) &&
       started
     );
   }, [

@@ -3,7 +3,8 @@ import { SHABAD_PANKTI } from "../../state/ActionTypes";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
 import { useContext as useCtxSelector } from "use-context-selector";
 import { RecordState } from "./useSpeech";
-import { buildOfflineShabadMatchSequence, findCompletedOfflinePankti, findStrongOfflinePanktiMatch, stabilizeOfflinePanktiMatch } from "./offlinePanktiMatch";
+import { buildOfflineShabadMatchSequence } from "./offlinePanktiMatch";
+import { advanceOfflinePilotCursor, OfflinePilotCursor } from "./offlinePilotCursor";
 import { useSettings } from "../../state/providers/SettingContext";
 import { DB } from "../../utils/DB";
 import { formatPanktis } from "../../utils/shabadUtil";
@@ -17,22 +18,26 @@ const useOfflinePanktiPilot = (
   partialText: string,
   status: RecordState,
   startTranscription: (panktis: string[]) => Promise<void>,
+  observationMs = 0,
 ) => {
   const [active, setActive] = useState(false);
   const shabadContext = useCtxSelector(ShabadContext);
   const { kirtanMode } = useSettings();
-  const pendingMatch = useRef<ReturnType<typeof stabilizeOfflinePanktiMatch>["pending"]>(null);
-  const lastAdvancedTokenEnd = useRef(-1);
+  const cursor = useRef<OfflinePilotCursor>({ pending: null, lastTokenEnd: -1 });
   const [preloadedNextShabad, setPreloadedNextShabad] = useState<PreloadedShabad | null>(null);
   const shabadId = shabadContext.state.shabadId;
   const baniId = shabadContext.state.baniId;
+
+  useEffect(() => {
+    cursor.current.pending = null;
+  }, [shabadId, baniId]);
 
   // Keep the next canonical Shabad ready while the current one is displayed.
   // Once it becomes current, this effect automatically preloads its successor.
   useEffect(() => {
     let cancelled = false;
     setPreloadedNextShabad(null);
-    if (!active || baniId != null || !shabadId) return;
+    if (!active || kirtanMode || baniId != null || !shabadId) return;
 
     const preload = async () => {
       try {
@@ -87,7 +92,7 @@ const useOfflinePanktiPilot = (
 
     void preload();
     return () => { cancelled = true; };
-  }, [active, baniId, shabadId]);
+  }, [active, baniId, shabadId, kirtanMode]);
 
   useEffect(() => {
     if (!active || shabadContext.state.panktis.length === 0) return;
@@ -100,35 +105,25 @@ const useOfflinePanktiPilot = (
     // The offline final transcript already contains both committed and
     // provisional words merged by audio timestamp.
     const transcript = [finalText, partialText].filter(Boolean).join(" ").trim();
-    if (!transcript) return;
-
-    const current = shabadContext.state.current;
-    const nextIsReady = baniId == null &&
-      preloadedNextShabad?.currentShabadId === shabadId;
-    const matchSequence = nextIsReady
-      ? buildOfflineShabadMatchSequence(shabadContext.state.panktis, preloadedNextShabad.panktis)
-      : { panktis: shabadContext.state.panktis, skippedNextPanktis: 0 };
-    const match = !kirtanMode
-      ? findCompletedOfflinePankti(shabadContext.state.panktis, transcript, current) ??
-        findStrongOfflinePanktiMatch(matchSequence.panktis, transcript, 2, current)
-      : findStrongOfflinePanktiMatch(matchSequence.panktis, transcript, 2, current);
-    if (
-      match &&
-      match.panktiIdx > current &&
-      match.tokenEndIndex <= lastAdvancedTokenEnd.current
-    ) {
-      pendingMatch.current = null;
+    if (!transcript) {
+      cursor.current = { pending: null, lastTokenEnd: -1 };
       return;
     }
-    const next = stabilizeOfflinePanktiMatch(
-      current,
-      match,
-      pendingMatch.current,
-      3,
-    );
-    pendingMatch.current = next.pending;
+
+    const current = shabadContext.state.current;
+    const nextIsReady = !kirtanMode && baniId == null &&
+      preloadedNextShabad?.currentShabadId === shabadId;
+    const matchSequence = nextIsReady
+      ? buildOfflineShabadMatchSequence(shabadContext.state.panktis, preloadedNextShabad.panktis,
+        !kirtanMode && current >= shabadContext.state.panktis.length - 2)
+      : { panktis: shabadContext.state.panktis, skippedNextPanktis: 0 };
+    // Asa Ki Vaar follows the loaded Bani order even when sung. Other kirtan
+    // remains evidence-driven so holding/repeating a line cannot skip it.
+    const next = advanceOfflinePilotCursor(cursor.current, matchSequence.panktis,
+      shabadContext.state.panktis, transcript, current, kirtanMode,
+      baniId == null ? null : Number(baniId), observationMs);
+    cursor.current = next;
     if (next.currentIdx === shabadContext.state.current) return;
-    lastAdvancedTokenEnd.current = match?.tokenEndIndex ?? lastAdvancedTokenEnd.current;
 
     if (
       nextIsReady &&
@@ -167,12 +162,12 @@ const useOfflinePanktiPilot = (
     shabadContext.dispatch,
     kirtanMode,
     preloadedNextShabad,
+    observationMs,
   ]);
 
   useEffect(() => {
     if (!active) {
-      pendingMatch.current = null;
-      lastAdvancedTokenEnd.current = -1;
+      cursor.current = { pending: null, lastTokenEnd: -1 };
     }
   }, [active]);
 

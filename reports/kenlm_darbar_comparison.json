@@ -1,0 +1,546 @@
+[
+  {
+    "address_space_limit": "Max address space         17179869184          17179869184          bytes     ",
+    "aggregate_cer": 0.2066115702479339,
+    "aggregate_wer": 0.3225806451612903,
+    "beam_width": "4",
+    "clips": [
+      {
+        "audio": "/workspace/baniguru-desktop/test_audios/darbar_sahib_kirtan.mp3",
+        "audio_seconds": 52.0126875,
+        "cer": 0.2066115702479339,
+        "character_errors": 25,
+        "hypothesis": "ਕਰਿ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲ ਕਰਿ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਕਰਿ ਕਿਰਪਾ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਕੀ ਪੂਰਨ ਗੋਪਾਲਾ",
+        "id": "darbar-user-reference",
+        "p95_update_ms": 270.912237,
+        "processing_seconds": 13.496741605,
+        "profile": "kirtan",
+        "reference": "ਕਰ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਕਰ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਕਰ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ",
+        "reference_characters": 121,
+        "reference_words": 31,
+        "rtf": 0.2594894102520659,
+        "source": "User-provided expected transcript in this conversation; local fixture, not Hugging Face evaluation",
+        "wer": 0.3225806451612903,
+        "word_errors": 10,
+        "words": [
+          {
+            "end_ms": 1360,
+            "start_ms": 1120,
+            "word": "ਕਰਿ"
+          },
+          {
+            "end_ms": 2160,
+            "start_ms": 1480,
+            "word": "ਕਿਰਪਾ"
+          },
+          {
+            "end_ms": 4120,
+            "start_ms": 3760,
+            "word": "ਪ੍ਰਭ"
+          },
+          {
+            "end_ms": 5040,
+            "start_ms": 4320,
+            "word": "ਦੀਨ"
+          },
+          {
+            "end_ms": 6680,
+            "start_ms": 5640,
+            "word": "ਦਇਆਲਾ"
+          },
+          {
+            "end_ms": 9360,
+            "start_ms": 8760,
+            "word": "ਤੇਰੀ"
+          },
+          {
+            "end_ms": 10200,
+            "start_ms": 9640,
+            "word": "ਓਟ"
+          },
+          {
+            "end_ms": 12000,
+            "start_ms": 11240,
+            "word": "ਪੂਰਨ"
+          },
+          {
+            "end_ms": 13960,
+            "start_ms": 13000,
+            "word": "ਗੋਪਾਲ"
+          },
+          {
+            "end_ms": 18040,
+            "start_ms": 17880,
+            "word": "ਕਰਿ"
+          },
+          {
+            "end_ms": 18880,
+            "start_ms": 18280,
+            "word": "ਕਿਰਪਾ"
+          },
+          {
+            "end_ms": 20120,
+            "start_ms": 19800,
+            "word": "ਪ੍ਰਭ"
+          },
+          {
+            "end_ms": 21280,
+            "start_ms": 20400,
+            "word": "ਦੀਨ"
+          },
+          {
+            "end_ms": 22800,
+            "start_ms": 21800,
+            "word": "ਦਇਆਲਾ"
+          },
+          {
+            "end_ms": 25480,
+            "start_ms": 24880,
+            "word": "ਤੇਰੀ"
+          },
+          {
+            "end_ms": 26280,
+            "start_ms": 25640,
+            "word": "ਓਟ"
+          },
+          {
+            "end_ms": 27560,
+            "start_ms": 27080,
+            "word": "ਪੂਰਨ"
+          },
+          {
+            "end_ms": 30080,
+            "start_ms": 28600,
+            "word": "ਗੋਪਾਲਾ"
+          },
+          {
+            "end_ms": 31960,
+            "start_ms": 31760,
+            "word": "ਕਰਿ"
+          },
+          {
+            "end_ms": 32760,
+            "start_ms": 32080,
+            "word": "ਕਿਰਪਾ"
+          },
+          {
+            "end_ms": 35120,
+            "start_ms": 34320,
+            "word": "ਦੀਨ"
+          },
+          {
+            "end_ms": 36760,
+            "start_ms": 35680,
+            "word": "ਦਇਆਲਾ"
+          },
+          {
+            "end_ms": 39120,
+            "start_ms": 38760,
+            "word": "ਤੇਰੀ"
+          },
+          {
+            "end_ms": 39320,
+            "start_ms": 39280,
+            "word": "ਕੀ"
+          },
+          {
+            "end_ms": 48720,
+            "start_ms": 47960,
+            "word": "ਪੂਰਨ"
+          },
+          {
+            "end_ms": 50680,
+            "start_ms": 49000,
+            "word": "ਗੋਪਾਲਾ"
+          }
+        ]
+      }
+    ],
+    "cpu": "model name\t: AMD EPYC 9V74 80-Core Processor",
+    "decoding": "greedy",
+    "lm_weight": "0.3",
+    "manifest": "/workspace/scratch/kenlm-evaluation/local-manual-manifest.json",
+    "memory_status": [
+      "VmHWM:\t  790112 kB",
+      "VmRSS:\t  713964 kB",
+      "Cpus_allowed_list:\t0-3"
+    ],
+    "normalization": "NFC, punctuation to spaces, whitespace folding; matras retained; CER excludes spaces"
+  },
+  {
+    "address_space_limit": "Max address space         17179869184          17179869184          bytes     ",
+    "aggregate_cer": 0.08264462809917356,
+    "aggregate_wer": 0.1935483870967742,
+    "beam_width": "4",
+    "clips": [
+      {
+        "audio": "/workspace/baniguru-desktop/test_audios/darbar_sahib_kirtan.mp3",
+        "audio_seconds": 52.0126875,
+        "cer": 0.08264462809917356,
+        "character_errors": 10,
+        "hypothesis": "ਕਰਿ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲ ਕਰਿ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਕਰਿ ਕਿਰਪਾ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਕੀਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ",
+        "id": "darbar-user-reference",
+        "p95_update_ms": 271.929188,
+        "processing_seconds": 13.921358638,
+        "profile": "kirtan",
+        "reference": "ਕਰ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਕਰ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਕਰ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ",
+        "reference_characters": 121,
+        "reference_words": 31,
+        "rtf": 0.267653130555886,
+        "source": "User-provided expected transcript in this conversation; local fixture, not Hugging Face evaluation",
+        "wer": 0.1935483870967742,
+        "word_errors": 6,
+        "words": [
+          {
+            "end_ms": 1360,
+            "start_ms": 1080,
+            "word": "ਕਰਿ"
+          },
+          {
+            "end_ms": 2160,
+            "start_ms": 1480,
+            "word": "ਕਿਰਪਾ"
+          },
+          {
+            "end_ms": 4120,
+            "start_ms": 3760,
+            "word": "ਪ੍ਰਭ"
+          },
+          {
+            "end_ms": 5040,
+            "start_ms": 4320,
+            "word": "ਦੀਨ"
+          },
+          {
+            "end_ms": 6640,
+            "start_ms": 5640,
+            "word": "ਦਇਆਲਾ"
+          },
+          {
+            "end_ms": 9360,
+            "start_ms": 8760,
+            "word": "ਤੇਰੀ"
+          },
+          {
+            "end_ms": 10200,
+            "start_ms": 9640,
+            "word": "ਓਟ"
+          },
+          {
+            "end_ms": 12000,
+            "start_ms": 11240,
+            "word": "ਪੂਰਨ"
+          },
+          {
+            "end_ms": 13920,
+            "start_ms": 13000,
+            "word": "ਗੋਪਾਲ"
+          },
+          {
+            "end_ms": 18040,
+            "start_ms": 17840,
+            "word": "ਕਰਿ"
+          },
+          {
+            "end_ms": 18880,
+            "start_ms": 18240,
+            "word": "ਕਿਰਪਾ"
+          },
+          {
+            "end_ms": 20120,
+            "start_ms": 19800,
+            "word": "ਪ੍ਰਭ"
+          },
+          {
+            "end_ms": 21240,
+            "start_ms": 20400,
+            "word": "ਦੀਨ"
+          },
+          {
+            "end_ms": 22800,
+            "start_ms": 21800,
+            "word": "ਦਇਆਲਾ"
+          },
+          {
+            "end_ms": 25360,
+            "start_ms": 24760,
+            "word": "ਤੇਰੀ"
+          },
+          {
+            "end_ms": 26280,
+            "start_ms": 25640,
+            "word": "ਓਟ"
+          },
+          {
+            "end_ms": 27560,
+            "start_ms": 26920,
+            "word": "ਪੂਰਨ"
+          },
+          {
+            "end_ms": 30080,
+            "start_ms": 28600,
+            "word": "ਗੋਪਾਲਾ"
+          },
+          {
+            "end_ms": 31960,
+            "start_ms": 31760,
+            "word": "ਕਰਿ"
+          },
+          {
+            "end_ms": 32760,
+            "start_ms": 32080,
+            "word": "ਕਿਰਪਾ"
+          },
+          {
+            "end_ms": 35080,
+            "start_ms": 34320,
+            "word": "ਦੀਨ"
+          },
+          {
+            "end_ms": 36760,
+            "start_ms": 35680,
+            "word": "ਦਇਆਲਾ"
+          },
+          {
+            "end_ms": 39120,
+            "start_ms": 38760,
+            "word": "ਤੇਰੀ"
+          },
+          {
+            "end_ms": 40280,
+            "start_ms": 39280,
+            "word": "ਕੀਓਟ"
+          },
+          {
+            "end_ms": 41400,
+            "start_ms": 40840,
+            "word": "ਪੂਰਨ"
+          },
+          {
+            "end_ms": 43720,
+            "start_ms": 42360,
+            "word": "ਗੋਪਾਲਾ"
+          },
+          {
+            "end_ms": 45720,
+            "start_ms": 45320,
+            "word": "ਤੇਰੀ"
+          },
+          {
+            "end_ms": 46760,
+            "start_ms": 46160,
+            "word": "ਓਟ"
+          },
+          {
+            "end_ms": 48720,
+            "start_ms": 48000,
+            "word": "ਪੂਰਨ"
+          },
+          {
+            "end_ms": 50680,
+            "start_ms": 48960,
+            "word": "ਗੋਪਾਲਾ"
+          }
+        ]
+      }
+    ],
+    "cpu": "model name\t: AMD EPYC 9V74 80-Core Processor",
+    "decoding": "beam",
+    "lm_weight": "0.3",
+    "manifest": "/workspace/scratch/kenlm-evaluation/local-manual-manifest.json",
+    "memory_status": [
+      "VmHWM:\t  806784 kB",
+      "VmRSS:\t  694568 kB",
+      "Cpus_allowed_list:\t0-3"
+    ],
+    "normalization": "NFC, punctuation to spaces, whitespace folding; matras retained; CER excludes spaces"
+  },
+  {
+    "address_space_limit": "Max address space         17179869184          17179869184          bytes     ",
+    "aggregate_cer": 0.08264462809917356,
+    "aggregate_wer": 0.1935483870967742,
+    "beam_width": "4",
+    "clips": [
+      {
+        "audio": "/workspace/baniguru-desktop/test_audios/darbar_sahib_kirtan.mp3",
+        "audio_seconds": 52.0126875,
+        "cer": 0.08264462809917356,
+        "character_errors": 10,
+        "hypothesis": "ਕਰਿ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲ ਕਰਿ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਕਰਿ ਕਿਰਪਾ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਕੀਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ",
+        "id": "darbar-user-reference",
+        "p95_update_ms": 283.38738800000004,
+        "processing_seconds": 14.380986106,
+        "profile": "kirtan",
+        "reference": "ਕਰ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਕਰ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਕਰ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ",
+        "reference_characters": 121,
+        "reference_words": 31,
+        "rtf": 0.27648996422267164,
+        "source": "User-provided expected transcript in this conversation; local fixture, not Hugging Face evaluation",
+        "wer": 0.1935483870967742,
+        "word_errors": 6,
+        "words": [
+          {
+            "end_ms": 1360,
+            "start_ms": 1080,
+            "word": "ਕਰਿ"
+          },
+          {
+            "end_ms": 2160,
+            "start_ms": 1480,
+            "word": "ਕਿਰਪਾ"
+          },
+          {
+            "end_ms": 4120,
+            "start_ms": 3760,
+            "word": "ਪ੍ਰਭ"
+          },
+          {
+            "end_ms": 5040,
+            "start_ms": 4320,
+            "word": "ਦੀਨ"
+          },
+          {
+            "end_ms": 6640,
+            "start_ms": 5640,
+            "word": "ਦਇਆਲਾ"
+          },
+          {
+            "end_ms": 9360,
+            "start_ms": 8760,
+            "word": "ਤੇਰੀ"
+          },
+          {
+            "end_ms": 10200,
+            "start_ms": 9640,
+            "word": "ਓਟ"
+          },
+          {
+            "end_ms": 12000,
+            "start_ms": 11240,
+            "word": "ਪੂਰਨ"
+          },
+          {
+            "end_ms": 13920,
+            "start_ms": 13000,
+            "word": "ਗੋਪਾਲ"
+          },
+          {
+            "end_ms": 18040,
+            "start_ms": 17840,
+            "word": "ਕਰਿ"
+          },
+          {
+            "end_ms": 18880,
+            "start_ms": 18240,
+            "word": "ਕਿਰਪਾ"
+          },
+          {
+            "end_ms": 20120,
+            "start_ms": 19800,
+            "word": "ਪ੍ਰਭ"
+          },
+          {
+            "end_ms": 21240,
+            "start_ms": 20400,
+            "word": "ਦੀਨ"
+          },
+          {
+            "end_ms": 22800,
+            "start_ms": 21800,
+            "word": "ਦਇਆਲਾ"
+          },
+          {
+            "end_ms": 25360,
+            "start_ms": 24760,
+            "word": "ਤੇਰੀ"
+          },
+          {
+            "end_ms": 26280,
+            "start_ms": 25640,
+            "word": "ਓਟ"
+          },
+          {
+            "end_ms": 27560,
+            "start_ms": 26920,
+            "word": "ਪੂਰਨ"
+          },
+          {
+            "end_ms": 30080,
+            "start_ms": 28600,
+            "word": "ਗੋਪਾਲਾ"
+          },
+          {
+            "end_ms": 31960,
+            "start_ms": 31760,
+            "word": "ਕਰਿ"
+          },
+          {
+            "end_ms": 32760,
+            "start_ms": 32080,
+            "word": "ਕਿਰਪਾ"
+          },
+          {
+            "end_ms": 35080,
+            "start_ms": 34320,
+            "word": "ਦੀਨ"
+          },
+          {
+            "end_ms": 36760,
+            "start_ms": 35680,
+            "word": "ਦਇਆਲਾ"
+          },
+          {
+            "end_ms": 39120,
+            "start_ms": 38760,
+            "word": "ਤੇਰੀ"
+          },
+          {
+            "end_ms": 40280,
+            "start_ms": 39280,
+            "word": "ਕੀਓਟ"
+          },
+          {
+            "end_ms": 41400,
+            "start_ms": 40840,
+            "word": "ਪੂਰਨ"
+          },
+          {
+            "end_ms": 43720,
+            "start_ms": 42360,
+            "word": "ਗੋਪਾਲਾ"
+          },
+          {
+            "end_ms": 45720,
+            "start_ms": 45320,
+            "word": "ਤੇਰੀ"
+          },
+          {
+            "end_ms": 46760,
+            "start_ms": 46160,
+            "word": "ਓਟ"
+          },
+          {
+            "end_ms": 48720,
+            "start_ms": 48000,
+            "word": "ਪੂਰਨ"
+          },
+          {
+            "end_ms": 50680,
+            "start_ms": 48960,
+            "word": "ਗੋਪਾਲਾ"
+          }
+        ]
+      }
+    ],
+    "cpu": "model name\t: AMD EPYC 9V74 80-Core Processor",
+    "decoding": "kenlm",
+    "lm_weight": "0.3",
+    "manifest": "/workspace/scratch/kenlm-evaluation/local-manual-manifest.json",
+    "memory_status": [
+      "VmHWM:\t  796784 kB",
+      "VmRSS:\t  680528 kB",
+      "Cpus_allowed_list:\t0-3"
+    ],
+    "normalization": "NFC, punctuation to spaces, whitespace folding; matras retained; CER excludes spaces"
+  }
+]

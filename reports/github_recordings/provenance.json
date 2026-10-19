@@ -1,0 +1,18 @@
+[
+  {
+    "repository": "BaniGuru/speech-data-sehaj-paath",
+    "commit": "b2f29d3b3d89ad1a7cccda02287f2ac69d417c2d",
+    "transcript_path": "sggs_giani_mehnga_singh_ang_by_ang/SGGS_Ang_0016 - Giani Mehnga Singh/aligned_transcript.json",
+    "audio_sha256": "d693247becb8c0fdc7104e70130a64abd4d1ccd71efff835def08a1bff76adab",
+    "transcript_sha256": "b6dee985c7138ecd8dabc6ab4b088bc805151bf436d121e519e8432142be21de",
+    "sections": 40
+  },
+  {
+    "repository": "BaniGuru/speech-data-darbar-sahib-part-1",
+    "commit": "2dee82b69e2d898ce835f401d914ce5af72f1529",
+    "transcript_path": "Bhai Agyakar Singh (1.10pm to 2.20pm) 27-11-2025/aligned_transcript.json",
+    "audio_sha256": "afce2c3e6bab990673a0bc13e498ad18ec3ce07f913a7988ed3b90ba25622b78",
+    "transcript_sha256": "7072616195ef85551c14a72d2ee20f33725c161ba75615a495874d12d0f437c9",
+    "sections": 263
+  }
+]
