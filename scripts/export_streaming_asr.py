@@ -7,6 +7,7 @@ See scripts/streaming_asr_requirements.txt for the CPU export environment.
 """
 
 import argparse
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -67,6 +68,54 @@ class Encoder(nn.Module):
             channels[:, :, -self.encoder.streaming_cfg.last_channel_cache_size:, :],
             times, cache_lengths,
         )
+
+
+class CachedPositions(nn.Module):
+    def __init__(self, projected):
+        super().__init__()
+        self.register_buffer("projected", projected)
+
+    def forward(self, positions):
+        length = positions.shape[1]
+        start = (self.projected.shape[1] - length) // 2
+        return self.projected[:, start:start + length]
+
+
+def update_projected_cache(self, key, value, query, cache):
+    # Linear projection commutes with concatenation. Store projected K/V so
+    # the unchanged left history never passes through these matrices again.
+    key, value = self.linear_k(key), self.linear_v(value)
+    if cache is not None:
+        old_key, old_value = cache.chunk(2, dim=-1)
+        keep = query.shape[1] - self.cache_drop_size
+        next_cache = torch.cat((cache[:, keep:], torch.cat((key[:, :keep], value[:, :keep]), dim=-1)), dim=1)
+        key, value = torch.cat((old_key, key), dim=1), torch.cat((old_value, value), dim=1)
+    else:
+        next_cache = None
+    return key, value, query, next_cache
+
+
+def projected_qkv(self, query, key, value):
+    batch = query.shape[0]
+    return (
+        self.linear_q(query).view(batch, -1, self.h, self.d_k).transpose(1, 2),
+        key.view(batch, -1, self.h, self.d_k).transpose(1, 2),
+        value.view(batch, -1, self.h, self.d_k).transpose(1, 2),
+    )
+
+
+def cache_attention_projections(encoder):
+    # Position embeddings depend only on chunk length. Precompute the largest
+    # supported window, then use a centered slice for every partial chunk.
+    size = encoder.streaming_cfg.last_channel_cache_size + encoder.streaming_cfg.valid_out_len
+    center = encoder.pos_enc.pe.shape[1] // 2
+    positions = encoder.pos_enc.pe[:, center - size + 1:center + size]
+    with torch.inference_mode():
+        for layer in encoder.layers:
+            attention = layer.self_attn
+            attention.linear_pos = CachedPositions(attention.linear_pos(positions).clone())
+            attention.update_cache = types.MethodType(update_projected_cache, attention)
+            attention.forward_qkv = types.MethodType(projected_qkv, attention)
 
 
 class DecoderJoint(nn.Module):
@@ -153,8 +202,25 @@ def main():
     # Use one graph for first and subsequent chunks. The runtime prepends two
     # subsampled frames (8 mel frames), zero-filled at stream start.
     encoder.streaming_cfg.drop_extra_pre_encoded = 2
+    reference_encoder = copy.deepcopy(encoder)
+    cache_attention_projections(encoder)
     wrapped = Encoder(encoder).eval()
-    caches = encoder.get_initial_cache_state()
+    raw_caches = reference_encoder.get_initial_cache_state()
+    caches = (torch.zeros(*raw_caches[0].shape[:-1], raw_caches[0].shape[-1] * 2), raw_caches[1].clone(), raw_caches[2].clone())
+    # Verify this cache rewrite against the unchanged NeMo encoder, including
+    # sequential nonempty histories. The rewrite changes storage, not weights,
+    # attention masks, precision, or the available left/right context.
+    raw_state, projected_state = raw_caches, caches
+    with torch.inference_mode():
+        for width in (212, 76, 144):
+            features, length = torch.randn(1, 80, width), torch.tensor([width])
+            expected = reference_encoder.forward_internal(features, length, *raw_state)
+            actual = wrapped(features, length, *projected_state)
+            for index in (0, 1, 3, 4):
+                torch.testing.assert_close(expected[index], actual[index], atol=2e-4, rtol=2e-3)
+            raw_state, projected_state = tuple(expected[2:]), tuple(actual[2:])
+    print("Validated projected K/V and position caches against unchanged NeMo encoder", flush=True)
+    del reference_encoder, raw_state, projected_state
     names = ["audio_signal", "length", "cache_last_channel", "cache_last_time", "cache_last_channel_len"]
     output_names = ["outputs", "encoded_lengths", "cache_last_channel_next", "cache_last_time_next", "cache_last_channel_next_len"]
     example = (torch.randn(1, 80, 212), torch.tensor([212]), *caches)
@@ -204,7 +270,7 @@ def main():
                       ("preprocessor.featurizer.window", "stft_window.npy")):
         np.save(output / name, weights[key].numpy())
     runtime = dict(
-        format_version=1, architecture="cache_aware_conformer_rnnt", language="pa", sample_rate=16000,
+        format_version=2, architecture="cache_aware_conformer_rnnt", language="pa", sample_rate=16000,
         n_fft=512, win_length=400, hop_length=160, n_mels=80, preemph=0.97,
         log_zero_guard_value=2**-24, normalization="per_feature", subsampling_factor=4,
         local_vocab_size=local_vocab, aggregate_vocab_size=aggregate_vocab, punjabi_offset=offset,
@@ -215,6 +281,7 @@ def main():
         encoder_hidden_size=encoder.d_model, feature_left_context=8, chunk_feature_frames=204,
         encoded_frame_ms=40, trained_right_context_ms=2000,
         cache_last_channel_shape=list(caches[0].shape), cache_last_time_shape=list(caches[1].shape),
+        attention_cache_format="projected_key_value_concat", relative_positions="precomputed",
         attention_context=encoder_config["att_context_size"],
         source_checkpoint=args.model.name,
         source_sha256=hashlib.file_digest(args.model.open("rb"), "sha256").hexdigest(),

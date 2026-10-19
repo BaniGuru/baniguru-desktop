@@ -23,7 +23,7 @@
           17,
           1,
           204,
-          512
+          1024
         ],
         "type": "tensor(float)"
       },
@@ -68,7 +68,7 @@
           17,
           1,
           "Slicecache_last_channel_next_dim_2",
-          512
+          1024
         ],
         "type": "tensor(float)"
       },

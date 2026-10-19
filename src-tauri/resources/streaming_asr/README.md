@@ -14,8 +14,15 @@ Each input prepends eight mel frames for the subsampling convolution. At stream
 start these frames are zeros. For later calls they come from the preceding
 features. The graph drops the corresponding first two subsampled frames, so
 output frame zero always refers to the first new feature frame. Encoder cache
-dimensions use `[layers, batch, time, channels]` for attention and
+dimensions use `[layers, batch, time, 2 * channels]` for attention and
 `[layers, batch, channels, time]` for convolution. Batch size is one.
+
+Attention cache entries concatenate the already projected keys and values.
+Relative position projections are precomputed for the supported chunk sizes.
+Both changes preserve the original full-precision attention calculation, masks
+and context, while avoiding repeated matrix multiplications over cached history.
+The exporter verifies sequential outputs against the unchanged NeMo encoder
+before checking ONNX parity. Runtime format version 2 identifies this cache.
 
 `decoder_joint.onnx` contains the original shared embedding/LSTM, the encoder
 and predictor projections, and the original Punjabi language head. Targets are
@@ -47,3 +54,21 @@ caches, the predictor start label, and a Punjabi label with nonzero LSTM state.
 The source uses a custom multilingual NeMo head; the exporter restores the
 unchanged upstream Conformer and reconstructs that head directly from its
 weights, avoiding unrelated training and tokenizer imports.
+
+## Desktop behavior
+
+Both offline Auto Pilot modes use this model. Kirtan refreshes every 680 ms and
+sehaj paath every 340 ms. Completed words receive two seconds of right context.
+A trailing word remains provisional until a following word boundary is known,
+with a maximum hold of six seconds for kirtan and three seconds for paath. The
+commit deadline reserves one refresh interval to stay within those bounds.
+
+Complete acoustic chunks and predictor states are cached. Partial previews
+replay only the unresolved chunk from the saved state and never change that
+state. Text commits append once; the UI replaces the partial suffix without
+using rolling-window duplicate heuristics. Each STFT frame is computed once;
+raw log-mel features provide the rolling normalization context, while the
+waveform buffer retains only the overlap needed for the next FFT.
+
+Two seconds of silence flushes the final word and resets utterance caches.
+Stopping Auto Pilot drains captured audio and flushes its remaining hypothesis.

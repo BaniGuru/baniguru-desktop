@@ -1,5 +1,5 @@
 {
-  "format_version": 1,
+  "format_version": 2,
   "architecture": "cache_aware_conformer_rnnt",
   "language": "pa",
   "sample_rate": 16000,
@@ -33,7 +33,7 @@
     17,
     1,
     204,
-    512
+    1024
   ],
   "cache_last_time_shape": [
     17,
@@ -41,6 +41,8 @@
     512,
     30
   ],
+  "attention_cache_format": "projected_key_value_concat",
+  "relative_positions": "precomputed",
   "attention_context": [
     204,
     50
