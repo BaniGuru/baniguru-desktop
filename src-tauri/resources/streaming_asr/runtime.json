@@ -17,6 +17,7 @@
   "joint_blank_id": 256,
   "predictor_start_id": 256,
   "predictor_hidden_size": 640,
+  "predictor_label_convention": "local_ids_global_blank",
   "max_symbols_per_step": 10,
   "encoder": "encoder.onnx",
   "decoder_joint": "decoder_joint.onnx",

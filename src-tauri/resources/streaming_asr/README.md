@@ -19,8 +19,10 @@ dimensions use `[layers, batch, time, channels]` for attention and
 
 `decoder_joint.onnx` contains the original shared embedding/LSTM, the encoder
 and predictor projections, and the original Punjabi language head. Targets are
-Punjabi-local IDs (0–255); ID 256 starts the predictor. The graph maps these to
-the correct multilingual embedding rows. Blank output 256 advances an encoder
+Punjabi-local IDs (0–255); ID 256 starts the predictor. This checkpoint's custom
+multisoftmax predictor uses local embedding rows for emitted labels; its start
+label uses the aggregate blank row (5632). Applying the Punjabi aggregate offset
+to predictor labels produces incorrect repeated fragments. Blank output 256 advances an encoder
 frame without advancing the predictor state. Carry both LSTM states and the
 last emitted label between calls.
 

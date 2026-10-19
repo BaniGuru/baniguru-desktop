@@ -94,9 +94,11 @@ class DecoderJoint(nn.Module):
         })
 
     def forward(self, encoder_outputs, targets, input_states_1, input_states_2):
-        # Public targets remain Punjabi-local IDs. Only the shared embedding
-        # sees multilingual IDs; the local blank maps to its global blank row.
-        labels = torch.where(targets == self.blank, self.start, targets + self.offset)
+        # This checkpoint's multisoftmax RNNT predictor uses local label IDs,
+        # as does the original working Indic ONNX decoder. Punjabi's aggregate
+        # vocabulary offset applies to the head/tokenizer, not to embedding
+        # lookup. Only the start/blank label uses the global blank embedding.
+        labels = torch.where(targets == self.blank, self.start, targets)
         predicted, (h, c) = self.lstm(self.embedding(labels).transpose(0, 1), (input_states_1, input_states_2))
         encoded = self.enc(encoder_outputs.transpose(1, 2)).unsqueeze(2)
         predicted = self.pred(predicted.transpose(0, 1)).unsqueeze(1)
@@ -129,6 +131,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("model", type=Path)
     parser.add_argument("--output", type=Path, default=Path("src-tauri/resources/streaming_asr"))
+    parser.add_argument("--reuse-encoder", action="store_true", help="Validate an existing encoder graph and re-export only the decoder")
     args = parser.parse_args()
     torch.set_num_threads(4)
     torch.manual_seed(7)
@@ -156,8 +159,9 @@ def main():
     output_names = ["outputs", "encoded_lengths", "cache_last_channel_next", "cache_last_time_next", "cache_last_channel_next_len"]
     example = (torch.randn(1, 80, 212), torch.tensor([212]), *caches)
     encoder_path = output / "encoder.onnx"
-    torch.onnx.export(wrapped, example, str(encoder_path), input_names=names, output_names=output_names,
-                      opset_version=17, dynamic_axes={"audio_signal": {2: "feature_frames"}, "outputs": {2: "encoder_frames"}})
+    if not args.reuse_encoder:
+        torch.onnx.export(wrapped, example, str(encoder_path), input_names=names, output_names=output_names,
+                          opset_version=17, dynamic_axes={"audio_signal": {2: "feature_frames"}, "outputs": {2: "encoder_frames"}})
     onnx.checker.check_model(str(encoder_path))
     with torch.inference_mode():
         next_caches = tuple(t.detach() for t in wrapped(*example)[2:])
@@ -172,6 +176,19 @@ def main():
     offset = languages.index("pa") * local_vocab
     decoder = DecoderJoint(weights, offset, local_vocab, aggregate_vocab, hidden, encoder.d_model).eval()
     decoder.requires_grad_(False)
+    # Independent predictor-state check for the checkpoint's label convention.
+    # The known working Indic graph gathers local label rows directly, with
+    # aggregate_vocab reserved only for the predictor's initial blank.
+    with torch.inference_mode():
+        for label in (0, 42, local_vocab - 1, local_vocab):
+            h, c = torch.randn(1, 1, hidden), torch.randn(1, 1, hidden)
+            expected_row = aggregate_vocab if label == local_vocab else label
+            _, expected_states = decoder.lstm(
+                decoder.embedding(torch.tensor([[expected_row]])).transpose(0, 1), (h, c)
+            )
+            actual = decoder(torch.randn(1, encoder.d_model, 1), torch.tensor([[label]]), h, c)
+            for expected, actual_state in zip(expected_states, actual[1:]):
+                torch.testing.assert_close(expected, actual_state)
     decoder_names = ["encoder_outputs", "targets", "input_states_1", "input_states_2"]
     decoder_example = (torch.randn(1, encoder.d_model, 1), torch.tensor([[local_vocab]], dtype=torch.int64),
                        torch.zeros(1, 1, hidden), torch.zeros(1, 1, hidden))
@@ -192,6 +209,7 @@ def main():
         log_zero_guard_value=2**-24, normalization="per_feature", subsampling_factor=4,
         local_vocab_size=local_vocab, aggregate_vocab_size=aggregate_vocab, punjabi_offset=offset,
         joint_blank_id=local_vocab, predictor_start_id=local_vocab, predictor_hidden_size=hidden,
+        predictor_label_convention="local_ids_global_blank",
         max_symbols_per_step=10, encoder="encoder.onnx", decoder_joint="decoder_joint.onnx",
         tokenizer="tokenizer.model", mel_filterbank="mel_filterbank.npy", stft_window="stft_window.npy",
         encoder_hidden_size=encoder.d_model, feature_left_context=8, chunk_feature_frames=204,
