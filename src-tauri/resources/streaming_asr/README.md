@@ -66,9 +66,17 @@ commit deadline reserves one refresh interval to stay within those bounds.
 Complete acoustic chunks and predictor states are cached. Partial previews
 replay only the unresolved chunk from the saved state and never change that
 state. Text commits append once; the UI replaces the partial suffix without
-using rolling-window duplicate heuristics. Each STFT frame is computed once;
-raw log-mel features provide the rolling normalization context, while the
-waveform buffer retains only the overlap needed for the next FFT.
+using rolling-window duplicate heuristics. Each STFT frame is computed once.
+Running per-feature sums and variances retain the utterance's normalization
+statistics after older features leave memory. Only the subsampling overlap and
+unresolved feature chunk remain in the frontend cache, and the waveform buffer
+retains the overlap needed for the next FFT.
+
+CPU sessions disable idle spinning. During synchronous inference on x86-64,
+denormal flushing is enabled on the calling worker and its prior floating-point
+mode is restored afterwards; the ONNX pool receives the same setting. This
+avoids slow arithmetic on negligible values near zero while retaining FP32
+weights and tensors.
 
 Two seconds of silence flushes the final word and resets utterance caches.
 Stopping Auto Pilot drains captured audio and flushes its remaining hypothesis.

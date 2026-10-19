@@ -463,64 +463,86 @@ impl OfflineAsrModel {
     }
 
     pub(crate) fn preprocess(&self, audio: &[f32]) -> Result<(Vec<f32>, usize), String> {
-        if audio.is_empty() {
-            return Err("Audio is empty".into());
-        }
-
-        let mut emphasized = vec![0.0_f32; audio.len()];
-        emphasized[0] = audio[0];
-        for i in 1..audio.len() {
-            emphasized[i] = audio[i] - self.config.preemph * audio[i - 1];
-        }
-
-        let pad = self.config.n_fft / 2;
-        let padded = center_pad(&emphasized, pad);
-        let frame_count = if padded.len() < self.config.n_fft {
-            1
-        } else {
-            (padded.len() - self.config.n_fft) / self.config.hop_length + 1
-        };
-
-        let mut fft_window = vec![0.0_f32; self.config.n_fft];
-        let start = (self.config.n_fft - self.config.win_length) / 2;
-        fft_window[start..start + self.config.win_length]
-            .copy_from_slice(&self.stft_window);
-
-        let fft = FftPlanner::<f32>::new().plan_fft_forward(self.config.n_fft);
-        let fft_bins = self.config.n_fft / 2 + 1;
-        let mut mel_by_time = vec![0.0_f32; self.config.n_mels * frame_count];
-
-        for frame_index in 0..frame_count {
-            let offset = frame_index * self.config.hop_length;
-            let mut frame = vec![Complex32::new(0.0, 0.0); self.config.n_fft];
-
-            for sample_index in 0..self.config.n_fft {
-                let sample = *padded.get(offset + sample_index).unwrap_or(&0.0);
-                frame[sample_index].re = sample * fft_window[sample_index];
-            }
-
-            fft.process(&mut frame);
-
-            let mut power = vec![0.0_f32; fft_bins];
-            for bin in 0..fft_bins {
-                power[bin] = frame[bin].norm_sqr();
-            }
-
-            for mel_index in 0..self.config.n_mels {
-                let filter_offset = mel_index * fft_bins;
-                let mut energy = 0.0_f32;
-                for bin in 0..fft_bins {
-                    energy += power[bin] * self.mel_filterbank[filter_offset + bin];
-                }
-
-                mel_by_time[mel_index * frame_count + frame_index] =
-                    (energy + self.config.log_zero_guard_value).ln();
-            }
-        }
-
-        normalize_per_feature(&mut mel_by_time, self.config.n_mels, frame_count);
-        Ok((mel_by_time, frame_count))
+        preprocess_audio(&self.config, &self.mel_filterbank, &self.stft_window, audio)
     }
+}
+
+pub(crate) fn preprocess_audio(
+    config: &RuntimeConfig,
+    mel_filterbank: &[f32],
+    stft_window: &[f32],
+    audio: &[f32],
+) -> Result<(Vec<f32>, usize), String> {
+    let (mut values, frames) =
+        log_mel_frames(config, mel_filterbank, stft_window, audio, 0, usize::MAX)?;
+    normalize_per_feature(&mut values, config.n_mels, frames);
+    Ok((values, frames))
+}
+
+pub(crate) fn log_mel_frames(
+    config: &RuntimeConfig,
+    mel_filterbank: &[f32],
+    stft_window: &[f32],
+    audio: &[f32],
+    first_frame: usize,
+    requested_frames: usize,
+) -> Result<(Vec<f32>, usize), String> {
+    if audio.is_empty() {
+        return Err("Audio is empty".into());
+    }
+
+    let mut emphasized = vec![0.0_f32; audio.len()];
+    emphasized[0] = audio[0];
+    for i in 1..audio.len() {
+        emphasized[i] = audio[i] - config.preemph * audio[i - 1];
+    }
+
+    let pad = config.n_fft / 2;
+    let padded = center_pad(&emphasized, pad);
+    let total_frames = if padded.len() < config.n_fft {
+        1
+    } else {
+        (padded.len() - config.n_fft) / config.hop_length + 1
+    };
+    let frame_count = total_frames.saturating_sub(first_frame).min(requested_frames);
+
+    let mut fft_window = vec![0.0_f32; config.n_fft];
+    let start = (config.n_fft - config.win_length) / 2;
+    fft_window[start..start + config.win_length].copy_from_slice(stft_window);
+
+    let fft = FftPlanner::<f32>::new().plan_fft_forward(config.n_fft);
+    let fft_bins = config.n_fft / 2 + 1;
+    let mut mel_by_time = vec![0.0_f32; config.n_mels * frame_count];
+
+    for frame_index in 0..frame_count {
+        let offset = (first_frame + frame_index) * config.hop_length;
+        let mut frame = vec![Complex32::new(0.0, 0.0); config.n_fft];
+
+        for sample_index in 0..config.n_fft {
+            let sample = *padded.get(offset + sample_index).unwrap_or(&0.0);
+            frame[sample_index].re = sample * fft_window[sample_index];
+        }
+
+        fft.process(&mut frame);
+
+        let mut power = vec![0.0_f32; fft_bins];
+        for bin in 0..fft_bins {
+            power[bin] = frame[bin].norm_sqr();
+        }
+
+        for mel_index in 0..config.n_mels {
+            let filter_offset = mel_index * fft_bins;
+            let mut energy = 0.0_f32;
+            for bin in 0..fft_bins {
+                energy += power[bin] * mel_filterbank[filter_offset + bin];
+            }
+
+            mel_by_time[mel_index * frame_count + frame_index] =
+                (energy + config.log_zero_guard_value).ln();
+        }
+    }
+
+    Ok((mel_by_time, frame_count))
 }
 
 fn checked_file(path: PathBuf) -> Result<PathBuf, String> {
@@ -540,7 +562,7 @@ fn argmax_last_dimension(values: &[f32]) -> Option<usize> {
         .map(|(index, _)| index)
 }
 
-fn normalize_per_feature(values: &mut [f32], features: usize, frames: usize) {
+pub(crate) fn normalize_per_feature(values: &mut [f32], features: usize, frames: usize) {
     if frames == 0 {
         return;
     }

@@ -199,6 +199,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
           offlineTimedWordsRef.current,
           payload.word_timings || [],
           payload.partial_word_timings || [],
+          payload.streaming === true,
         );
         offlineTimedWordsRef.current = transcriptUpdate.committed;
         transcriptRef.current = transcriptUpdate.visible

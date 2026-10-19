@@ -10,6 +10,7 @@
   "preemph": 0.97,
   "log_zero_guard_value": 5.960464477539063e-08,
   "normalization": "per_feature",
+  "online_normalization": "running_per_feature",
   "subsampling_factor": 4,
   "local_vocab_size": 256,
   "aggregate_vocab_size": 5632,

@@ -6,6 +6,7 @@
 mod audio_bus;
 mod commands;
 mod offline_asr;
+mod streaming_asr;
 mod p2p_audio_sender;
 mod server;
 mod settings;

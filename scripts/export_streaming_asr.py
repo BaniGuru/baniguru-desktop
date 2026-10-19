@@ -273,6 +273,7 @@ def main():
         format_version=2, architecture="cache_aware_conformer_rnnt", language="pa", sample_rate=16000,
         n_fft=512, win_length=400, hop_length=160, n_mels=80, preemph=0.97,
         log_zero_guard_value=2**-24, normalization="per_feature", subsampling_factor=4,
+        online_normalization="running_per_feature",
         local_vocab_size=local_vocab, aggregate_vocab_size=aggregate_vocab, punjabi_offset=offset,
         joint_blank_id=local_vocab, predictor_start_id=local_vocab, predictor_hidden_size=hidden,
         predictor_label_convention="local_ids_global_blank",

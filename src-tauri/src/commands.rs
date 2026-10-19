@@ -7,9 +7,9 @@ use tokio::sync::Mutex;
 use cpal::traits::{DeviceTrait, HostTrait};
 
 use crate::audio_bus::AudioBus;
-use crate::offline_asr::model::OfflineAsrModel;
-use crate::offline_asr::{
-    start_offline_asr_stream_with_model, stop_offline_asr_stream, OfflineAsrStream,
+use crate::streaming_asr::model::StreamingAsrModel;
+use crate::streaming_asr::{
+    start_streaming_asr_stream_with_model, stop_streaming_asr_stream, StreamingAsrStream,
 };
 use crate::p2p_audio_sender::start_p2p_audio_stream_with_signaling;
 use crate::p2p_audio_sender::ApiConfig;
@@ -63,7 +63,7 @@ pub struct StreamState {
 // =============================
 //
 pub struct OfflineAsrState {
-    pub stream: Mutex<Option<OfflineAsrStream>>,
+    pub stream: Mutex<Option<StreamingAsrStream>>,
 }
 
 pub struct VocalPipelineState {
@@ -374,12 +374,12 @@ pub async fn start_offline_asr(
 
     let resource_dir = match app
         .path()
-        .resolve("resources/offline_asr", BaseDirectory::Resource)
+        .resolve("resources/streaming_asr", BaseDirectory::Resource)
     {
         Ok(path) => path,
         Err(error) => return Err(format!("Could not resolve offline ASR resources: {error}")),
     };
-    let offline_model = OfflineAsrModel::load(&resource_dir)?;
+    let streaming_model = StreamingAsrModel::load(&resource_dir)?;
 
     // Open the microphone only after loading ASR so recording and transcription
     // begin together without waiting for a separation model.
@@ -399,9 +399,9 @@ pub async fn start_offline_asr(
     };
     let vocals_bus = pipeline.vocals_bus();
 
-    match start_offline_asr_stream_with_model(
+    match start_streaming_asr_stream_with_model(
         app,
-        offline_model,
+        streaming_model,
         mic_config.sample_rate,
         mic_config.channels,
         kirtan_mode,
@@ -440,12 +440,19 @@ pub async fn stop_offline_asr(
         return Ok(());
     };
 
-    stop_offline_asr_stream(stream).await;
-    let recording_result = if let Some(pipeline) = vocals.pipeline.lock().await.take() {
-        pipeline.stop().await.map(Some)
-    } else {
-        Ok(None)
-    };
+    // Signal transcription and recording together so the graceful ASR flush
+    // does not add extra recording time after the user stops Auto Pilot.
+    let pipeline = vocals.pipeline.lock().await.take();
+    let (_, recording_result) = tokio::join!(
+        stop_streaming_asr_stream(stream),
+        async {
+            if let Some(pipeline) = pipeline {
+                pipeline.stop().await.map(Some)
+            } else {
+                Ok(None)
+            }
+        }
+    );
     release_mic(&audio).await;
     if let Some(path) = recording_result? {
         println!("Saved Auto Pilot recording to {}", path.display());

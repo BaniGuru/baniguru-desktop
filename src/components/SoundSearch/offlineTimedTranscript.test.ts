@@ -2,6 +2,18 @@ import { describe, expect, it } from "vitest";
 import { mergeOfflineTimedWords, mergeOfflineTranscriptUpdate } from "./offlineTimedTranscript";
 
 describe("offline timed transcript window merging", () => {
+  it("preserves fast repeated streaming words and replaces only the partial suffix", () => {
+    const first = mergeOfflineTranscriptUpdate([], [
+      { word: "ਹਰਿ", start_ms: 100, end_ms: 140 },
+      { word: "ਹਰਿ", start_ms: 140, end_ms: 180 },
+    ], [{ word: "ਰਾਮ", start_ms: 180, end_ms: 220 }], true);
+    const next = mergeOfflineTranscriptUpdate(first.committed, [
+      { word: "ਰਾਮ", start_ms: 180, end_ms: 220 },
+    ], [{ word: "ਨਾਮ", start_ms: 240, end_ms: 280 }], true);
+    expect(next.committed.map(word => word.word)).toEqual(["ਹਰਿ", "ਹਰਿ", "ਰਾਮ"]);
+    expect(next.visible.map(word => word.word)).toEqual(["ਹਰਿ", "ਹਰਿ", "ਰਾਮ", "ਨਾਮ"]);
+  });
+
   it("keeps earlier words and deduplicates the overlap", () => {
     const first = [
       { word: "ਕਰ", start_ms: 100, end_ms: 260 },

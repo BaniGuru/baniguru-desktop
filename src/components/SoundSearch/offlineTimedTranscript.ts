@@ -89,7 +89,18 @@ export const mergeOfflineTranscriptUpdate = (
   committed: OfflineTimedWord[],
   newlyCommitted: OfflineTimedWord[],
   currentPartial: OfflineTimedWord[],
+  streaming = false,
 ) => {
+  if (streaming) {
+    // Cache-aware RNNT events already contain each committed token exactly
+    // once. Timing overlap/jitter is not evidence of a duplicate: fast paath
+    // can emit adjacent identical words within one encoder frame.
+    const nextCommitted = [...committed, ...newlyCommitted.filter(isValidWord)];
+    return {
+      committed: nextCommitted,
+      visible: [...nextCommitted, ...currentPartial.filter(isValidWord)],
+    };
+  }
   const nextCommitted = mergeCommittedWords(committed, newlyCommitted);
   // A provisional changed token can revise another provisional token, but it
   // must not overwrite a committed word at the same inferred audio position.

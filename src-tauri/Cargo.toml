@@ -68,3 +68,22 @@ hound = "3.5"
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+# Streaming DSP runs in the audio refresh budget, including development builds.
+[profile.dev.package.baniguru]
+opt-level = 1
+
+[profile.dev.package.rustfft]
+opt-level = 3
+
+[profile.dev.package.sentencepiece-rs]
+opt-level = 3
+
+[profile.test.package.baniguru]
+opt-level = 2
+
+[profile.test.package.rustfft]
+opt-level = 3
+
+[profile.test.package.sentencepiece-rs]
+opt-level = 3

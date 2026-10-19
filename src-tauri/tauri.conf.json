@@ -92,7 +92,7 @@
       "binaries/meilisearch"
     ],
     "resources": {
-      "resources/offline_asr/*": "resources/offline_asr/",
+      "resources/streaming_asr/*": "resources/streaming_asr/",
       "../additional_assets/bani.db": "bani.db"
     }
   },
