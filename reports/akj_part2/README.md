@@ -52,15 +52,20 @@ full transition timeline, approximate expected IDs, corrections and misses.
 
 When the kirtan flag is off, the main display shows **four panktis per view**.
 Each block contains Gurmukhi followed by Punjabi meaning and English translation,
-matching the user's reference layout. The current pankti sits at the top without
-a background or border highlight. Upcoming panktis are visible below it, so
+matching the user's reference layout, without a current-line background or border
+highlight. The viewport stays still while speech progresses through its first
+two rows. When speech reaches the third row, that pankti scrolls to the top.
+Upcoming panktis are visible below it, so
 readers do not need to wait for the next single-line screen. Punjabi and English
-follow the visibility settings. Visible blocks scale text to fit their quarter
-of the viewport, keeping long translations inside their own pankti.
+follow the visibility settings. A complete ang is measured once and uses one
+shared text scale for all its panktis, keeping Gurmukhi and translation font sizes
+consistent throughout that ang while fitting four blocks in the viewport.
+Sizes are recalculated when the viewport, font setting or visible languages change.
 
-Following uses a cancellable 420 ms animation. Font measurements and page
-preloading do not restart it, and a new match replaces the pending target rather
-than queuing another scroll. Page eviction preserves the visible anchor and
+Following uses a gentle 1.6-second two-line animation, extending up to 2.4 seconds
+for a longer move. Font measurements and page preloading do not restart it.
+New matches during an advance let that movement finish, then scroll again only
+if speech has reached the third row of the new passage. Page eviction preserves the visible anchor and
 adjusts any animation in progress. Reduced-motion preferences use immediate
 positioning. Initial positioning does not animate through preceding angs.
 
@@ -75,10 +80,11 @@ around the current line. The kirtan display keeps its existing presentation.
 [paath-reader.png](paath-reader.png) shows the four-pankti reader using actual
 database text and translations. [ui-smoke.json](ui-smoke.json) records a Chromium
 functional check with four complete visible panktis at 1890×800 and 1000×650,
-stacked translations that fit their blocks, no visual current-line marking,
-animation frame samples, smooth ang transitions, interrupted-scroll retargeting,
+stacked translations that fit their blocks, identical font sizes for every line
+within an ang, no visual current-line marking, second-row hold and third-row
+scrolling, animation frame samples, smooth ang transitions, stable targets during new ASR observations,
 bounded page loading, manual browsing, return to following and language visibility.
-The largest observed scroll step was 12 px per rendered frame for both ordinary
+The largest observed scroll step was 7 px per rendered frame for both ordinary
 advances and ang transitions. The test uses the
 production reader with fixture-backed page I/O, rather than a Tauri WebView.
 It verifies bounded retained pages and DOM rows, not a heap-leak profile.
@@ -152,8 +158,8 @@ manual-text control. Ordinary matching, page-loading, cache and real-database
 checks run with `BANI_TEST_DB="$PWD/additional_assets/bani.db" npm test -- --run`.
 Raw decoder events, logs and the temporary browser harness are retained under
 `/workspace/scratch/akj-part2-evaluation` in this workspace.
-The revised four-pankti layout's browser checks and screenshot are retained under
-`/workspace/scratch/paath-stacked-reader`.
+The latest third-row scrolling and ang-font consistency checks and screenshot are
+retained under `/workspace/scratch/paath-batched-reader`.
 
 Validation passed: the complete native audio evaluation; 61 frontend tests
 including the separate Ang 0016 replay (40/40 exact manual line IDs), real

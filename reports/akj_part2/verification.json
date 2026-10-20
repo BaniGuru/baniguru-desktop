@@ -18,10 +18,16 @@
     "frontend_skipped": 1,
     "build": "passed",
     "chromium": "passed",
-    "normal_scroll_max_frame_step_px": 12,
-    "ang_transition_max_frame_step_px": 12,
+    "normal_scroll_max_frame_step_px": 7,
+    "ang_transition_max_frame_step_px": 7,
     "audio_replayed_again": false,
     "note": "Display-only revision; decoder and matching are unchanged. Prior full-audio results remain applicable.",
-    "artifacts": "/workspace/scratch/paath-stacked-reader"
+    "artifacts": "/workspace/scratch/paath-batched-reader",
+    "scroll_trigger": "current reaches third row",
+    "scroll_duration_ms": [
+      1600,
+      2400
+    ],
+    "fonts": "one shared text scale per complete Ang"
   }
 }

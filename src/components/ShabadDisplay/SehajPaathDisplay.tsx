@@ -22,7 +22,7 @@ const Reader = styled.div`
   button:disabled { opacity: .5; }
 `;
 
-type ScrollAnimation = { frame: number; from: number; to: number; start: number };
+type ScrollAnimation = { frame: number; from: number; to: number; start: number; duration: number };
 
 const PaathGurmukhi = ({text}: {text:string}) => <>{text.split(/(\s+)/).map((word,index) =>
   <Fragment key={index}>{/\s+/.test(word) ? word :
@@ -43,7 +43,7 @@ type Props = {
   loadAng?: typeof loadPaathAng;
 };
 
-/** Keep the spoken line at the top, with its translations and upcoming lines below. */
+/** Read four panktis at a time, advancing the passage when speech reaches row three. */
 export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, palette,
   showPunjabi, showEnglish, onSelect, resolveSource = getPaathSource, loadAng = loadPaathAng}: Props) {
   const [pages, setPages] = useState<PaathAng[]>([]);
@@ -57,8 +57,8 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
   const request = useRef(0);
   const manualAnchor = useRef<{id:string; top:number} | null>(null);
   const positioned = useRef(false);
+  const forceAlign = useRef(false);
   const animation = useRef<ScrollAnimation | null>(null);
-  const fitFrame = useRef(0);
   const fontRevision = useRef(0);
   const currentRef = useRef(current);
   currentRef.current = current;
@@ -102,9 +102,10 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
       const viewport = scrollRef.current;
       if (viewport && (preservePosition || following)) {
         const top = viewport.getBoundingClientRect().top;
-        const anchor = Array.from(viewport.querySelectorAll<HTMLElement>("[data-line-id]"))
-          .find(row => row.getBoundingClientRect().bottom > top + 30 &&
-            next.some(page => page.panktis.some(pankti => pankti.id === row.dataset.lineId)));
+        const retained = new Set(next.flatMap(page => page.panktis.map(pankti => pankti.id)));
+        const rows = Array.from(viewport.querySelectorAll<HTMLElement>("[data-line-id]"));
+        const anchor = rows.find(row => row.getBoundingClientRect().bottom > top + 30 && retained.has(row.dataset.lineId!))
+          ?? (following ? rows.find(row => row.getAttribute("aria-current") === "true" && retained.has(row.dataset.lineId!)) : undefined);
         if (anchor) manualAnchor.current = {id:anchor.dataset.lineId!,top:anchor.getBoundingClientRect().top};
       }
       setPages(next);
@@ -118,65 +119,73 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
   useEffect(() => {
     if (following) void loadWindow(activeAng);
   }, [activeAng,loadWindow,following]);
-  useEffect(() => () => { request.current++; stopScroll(); cancelAnimationFrame(fitFrame.current); }, [stopScroll]);
+  useEffect(() => () => { request.current++; stopScroll(); }, [stopScroll]);
 
-  const fitVisibleRows = useCallback(() => {
+  const fitAngs = useCallback(() => {
     const viewport = scrollRef.current;
     if (!viewport) return;
     viewport.style.setProperty("--paath-viewport-height",`${viewport.clientHeight}px`);
-    const rows = Array.from(viewport.querySelectorAll<HTMLElement>(".paath-line"));
-    const top = viewport.getBoundingClientRect().top;
-    const first = following ? rows.findIndex(row => row.getAttribute("aria-current") === "true")
-      : rows.findIndex(row => row.getBoundingClientRect().bottom > top);
     const key = `${viewport.clientWidth}:${viewport.clientHeight}:${fontSize}:${showPunjabi}:${showEnglish}:${fontRevision.current}`;
-    // Measure only the visible passage and its immediate neighbours, rather
-    // than laying out translations for every preloaded Ang on each ASR update.
-    for (const row of rows.slice(Math.max(0,first - 1),Math.max(0,first) + 6)) {
-      if (row.dataset.paathFit === key) continue;
-      const content = row.querySelector<HTMLElement>(".paath-line-content");
-      if (!content) continue;
-      const style = getComputedStyle(row);
-      const available = row.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
-      row.style.setProperty("--paath-text-scale","1");
-      if (content.scrollHeight > available) {
+    // Fit a complete Ang once, before it is read. All its panktis inherit one
+    // shared scale, including short lines, so advancing never changes the font.
+    for (const page of viewport.querySelectorAll<HTMLElement>("section[data-ang]")) {
+      const rows = Array.from(page.querySelectorAll<HTMLElement>(".paath-line"));
+      if (!rows.length) continue;
+      const pageKey = `${key}:${rows.length}:${rows[0].dataset.lineId}:${rows[rows.length - 1].dataset.lineId}`;
+      if (page.dataset.paathFit === pageKey) continue;
+      const style = getComputedStyle(rows[0]);
+      const available = rows[0].clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      const contents = rows.map(row => row.querySelector<HTMLElement>(".paath-line-content")!);
+      const fits = () => contents.every(content => content.scrollHeight <= available);
+      page.style.setProperty("--paath-text-scale","1");
+      if (!fits()) {
         let low = 0, high = 1;
         for (let i = 0; i < 9; i++) {
           const scale = (low + high) / 2;
-          row.style.setProperty("--paath-text-scale",String(scale));
-          if (content.scrollHeight <= available) low = scale;
+          page.style.setProperty("--paath-text-scale",String(scale));
+          if (fits()) low = scale;
           else high = scale;
         }
-        row.style.setProperty("--paath-text-scale",String(low));
+        page.style.setProperty("--paath-text-scale",String(low));
       }
-      row.dataset.paathFit = key;
+      page.dataset.paathFit = pageKey;
     }
-  }, [following,fontSize,showPunjabi,showEnglish]);
+  }, [fontSize,showPunjabi,showEnglish]);
 
-  const alignActive = useCallback((instant = false) => {
+  const alignActive = useCallback((instant = false): void => {
     const viewport = scrollRef.current;
     if (!viewport || !following) return;
     const row = viewport.querySelector<HTMLElement>("[aria-current=true]");
     if (!row) return;
     const offset = row.getBoundingClientRect().top - viewport.getBoundingClientRect().top;
+    const force = forceAlign.current;
+    // Let the reader finish a gentle two-line advance. New ASR observations
+    // during it do not chase the next line or restart the easing.
+    if (!instant && !force && animation.current) return;
+    if (!instant && !force && offset >= -1 && offset < viewport.clientHeight / 2 - 1) return;
+    forceAlign.current = false;
     const target = Math.max(0,Math.min(viewport.scrollHeight - viewport.clientHeight,viewport.scrollTop + offset));
-    // ResizeObserver and page preloading can report the same target several
-    // times. Keep the existing animation rather than restarting or snapping it.
-    if (!instant && animation.current && Math.abs(animation.current.to - target) < 1) return;
     stopScroll();
     if (Math.abs(target - viewport.scrollTop) < 1) return;
     if (instant || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       viewport.scrollTop = target;
       return;
     }
-    const next: ScrollAnimation = {frame:0,from:viewport.scrollTop,to:target,start:performance.now()};
+    const next: ScrollAnimation = {frame:0,from:viewport.scrollTop,to:target,start:performance.now(),
+      duration:Math.max(1600,Math.min(2400,Math.abs(target - viewport.scrollTop) * 4))};
     animation.current = next;
     const step = (now: number) => {
       if (animation.current !== next) return;
-      const t = Math.min(1,(now - next.start) / 420);
+      const t = Math.min(1,(now - next.start) / next.duration);
       const eased = t * t * (3 - 2 * t);
       viewport.scrollTop = next.from + (next.to - next.from) * eased;
       if (t < 1) next.frame = requestAnimationFrame(step);
-      else animation.current = null;
+      else {
+        animation.current = null;
+        // If speech has already reached the third row of the new passage,
+        // start its next advance only after this one has finished.
+        alignActive();
+      }
     };
     next.frame = requestAnimationFrame(step);
   }, [following,stopScroll]);
@@ -184,7 +193,7 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
   useLayoutEffect(() => {
     const viewport = scrollRef.current;
     if (!viewport) return;
-    fitVisibleRows();
+    fitAngs();
     if (manualAnchor.current) {
       const anchor = manualAnchor.current;
       const row = Array.from(viewport.querySelectorAll<HTMLElement>("[data-line-id]"))
@@ -201,26 +210,26 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
     }
     alignActive(!positioned.current);
     if (viewport.querySelector("[aria-current=true]")) positioned.current = true;
-  }, [pages,current.id,alignActive,fitVisibleRows]);
+  }, [pages,current.id,alignActive,fitAngs]);
 
   useEffect(() => {
     const viewport = scrollRef.current;
     if (!viewport) return;
     let cancelled = false;
-    const observer = new ResizeObserver(() => { fitVisibleRows(); alignActive(); });
+    const observer = new ResizeObserver(() => { fitAngs(); alignActive(); });
     observer.observe(viewport);
     const row = viewport.querySelector<HTMLElement>("[aria-current=true]");
     if (row) observer.observe(row);
     void document.fonts.ready.then(() => {
       if (!cancelled) {
         if (fontRevision.current === 0) fontRevision.current = 1;
-        fitVisibleRows(); alignActive();
+        fitAngs(); alignActive();
       }
     });
-    const fontsLoaded = () => { fontRevision.current++; fitVisibleRows(); alignActive(); };
+    const fontsLoaded = () => { fontRevision.current++; fitAngs(); alignActive(); };
     document.fonts.addEventListener("loadingdone",fontsLoaded);
     return () => { cancelled = true; observer.disconnect(); document.fonts.removeEventListener("loadingdone",fontsLoaded); };
-  }, [pages,current.id,alignActive,following,fitVisibleRows]);
+  }, [pages,current.id,alignActive,following,fitAngs]);
 
   const nextAng = pages.length ? pages[pages.length - 1].ang + 1 : activeAng + 1;
   const more = Boolean(source && nextAng <= source.length);
@@ -248,7 +257,7 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
     "--paath-controls-bg":dark ? "#20242a" : "#eee"} as React.CSSProperties}>
     {(!following || error || (loading && !pages.length)) && <div className="paath-toolbar">
       {!following && <span>{source?.pageName ?? "Ang"} {activeAng}</span>}
-      {!following && <button onClick={() => { setFollowing(true); void loadWindow(Number(currentRef.current.source_page)); }}>Follow paath</button>}
+      {!following && <button onClick={() => { forceAlign.current = true; setFollowing(true); void loadWindow(Number(currentRef.current.source_page)); }}>Follow paath</button>}
       {loading && <span role="status">Loading…</span>}
       {error && <><span role="alert">{error}</span><button onClick={() => {
         if (source) void loadWindow(activeAng);
@@ -256,10 +265,6 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
       }}>Retry</button></>}
     </div>}
     <div ref={scrollRef} className="paath-scroll" data-following={following} tabIndex={0} aria-label="Paath panktis"
-      onScroll={() => {
-        cancelAnimationFrame(fitFrame.current);
-        fitFrame.current = requestAnimationFrame(fitVisibleRows);
-      }}
       onWheel={pauseFollowing} onTouchStart={pauseFollowing}
       onPointerDown={event => { if (event.target === scrollRef.current) pauseFollowing(); }}
       onKeyDown={event => {
@@ -271,8 +276,8 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
         <h2 className="paath-ang-heading">{source?.pageName ?? "Ang"} {page.ang}</h2>
         {page.panktis.map(pankti => <div key={pankti.id} role="button" tabIndex={0}
           data-line-id={pankti.id} className="paath-line" aria-current={pankti.id === current.id ? "true" : undefined}
-          onClick={() => { setFollowing(true); onSelect(pankti); }}
-          onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); setFollowing(true); onSelect(pankti); } }}>
+          onClick={() => { forceAlign.current = true; setFollowing(true); onSelect(pankti); }}
+          onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); forceAlign.current = true; setFollowing(true); onSelect(pankti); } }}>
           <div className="paath-line-content">
             <div lang="pa-Guru" style={{fontFamily:"Open Gurbani Akhar",fontSize:`calc(${gurmukhiSize}px * var(--paath-text-scale, 1))`,lineHeight:1.35}}><PaathGurmukhi text={pankti.gurmukhi} /></div>
             {showPunjabi && <div className="paath-translation" lang="pa" style={{fontFamily:"Open Anmol Uni, sans-serif",fontSize:`calc(${translationSize}px * var(--paath-text-scale, 1))`,lineHeight:1.45,color:palette.punjabi}}>{pankti.punjabi_translation || "—"}</div>}
