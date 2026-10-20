@@ -4,6 +4,7 @@ import { Pankti } from "../../models/Pankti";
 import { ThemeColors } from "../../utils/useTheme";
 import { getPaathSource, loadPaathAng, PaathAng, PaathAngCache, paathAngRange, PaathSource } from "../../utils/paathAngs";
 import Format from "../../utils/Format";
+import { joinedPaathTranslation, paathDisplayRows } from "../../utils/paathDisplayRows";
 
 const Reader = styled.div`
   position: relative; height: 100%; width: 100%; overflow: hidden; display: flex; box-sizing: border-box;
@@ -44,7 +45,7 @@ type Props = {
   loadAng?: typeof loadPaathAng;
 };
 
-/** Read four panktis at a time, advancing the passage when speech reaches row three. */
+/** Read four rows at a time, advancing the passage when speech reaches row three. */
 export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, palette,
   showPunjabi, showEnglish, onSelect, resolveSource = getPaathSource, loadAng = loadPaathAng}: Props) {
   const [pages, setPages] = useState<PaathAng[]>([]);
@@ -133,12 +134,12 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
     for (const page of viewport.querySelectorAll<HTMLElement>("section[data-ang]")) {
       const rows = Array.from(page.querySelectorAll<HTMLElement>(".paath-line"));
       if (!rows.length) continue;
-      const pageKey = `${key}:${rows.length}:${rows[0].dataset.lineId}:${rows[rows.length - 1].dataset.lineId}`;
+      const pageKey = `${key}:${rows.map(row => row.dataset.lineIds).join(",")}`;
       if (page.dataset.paathFit === pageKey) continue;
       const style = getComputedStyle(rows[0]);
       const available = rows[0].clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
       const contents = rows.map(row => row.querySelector<HTMLElement>(".paath-line-content")!);
-      const fits = () => contents.every(content => content.scrollHeight <= available);
+      const fits = () => contents.every(content => content.scrollHeight <= available && content.scrollWidth <= content.clientWidth);
       page.style.setProperty("--paath-text-scale","1");
       if (!fits()) {
         let low = 0, high = 1;
@@ -258,6 +259,7 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
   const loadedCurrent = pages.some(page => page.ang === activeAng);
   const shown = pages.length && (!following || loadedCurrent) ? pages : [{ang:activeAng,
     panktis:fallbackIndex < 0 ? [current] : fallbackPanktis.slice(Math.max(0,fallbackIndex - 3),fallbackIndex + 12)}];
+  const displayPages = paathDisplayRows(shown);
   const dark = !appearance && palette.gurmukhi !== "#000000" && !["#1A191A","#000"].includes(palette.gurmukhi);
   const gurmukhiSize = Math.max(28,Math.min(appearance?.gurmukhiMaxSize ?? 60,fontSize * (appearance?.gurmukhiRatio ?? 1)));
   const translationSize = Math.max(18,Math.min(appearance?.translationMaxSize ?? 30,fontSize * (appearance?.translationRatio ?? .55)));
@@ -288,17 +290,19 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
           event.stopPropagation(); pauseFollowing();
         }
       }}>
-      {shown.map(page => <section key={page.ang} data-ang={page.ang} aria-label={`${source?.pageName ?? "Ang"} ${page.ang}`}>
+      {displayPages.map(page => <section key={page.ang} data-ang={page.ang} aria-label={`${source?.pageName ?? "Ang"} ${page.ang}`}>
         <h2 className="paath-ang-heading">{source?.pageName ?? "Ang"} {page.ang}</h2>
-        {page.panktis.map(pankti => <div key={pankti.id} role="button" tabIndex={0}
-          data-line-id={pankti.id} className="paath-line" aria-current={pankti.id === current.id ? "true" : undefined}
-          onClick={() => { forceAlign.current = true; setFollowing(true); onSelect(pankti); }}
-          onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); forceAlign.current = true; setFollowing(true); onSelect(pankti); } }}>
+        {page.rows.map(row => <div key={row[0].id} role="button" tabIndex={0}
+          data-line-id={row[0].id} data-line-ids={row.map(pankti => pankti.id).join(" ")} className="paath-line"
+          aria-current={row.some(pankti => pankti.id === current.id) ? "true" : undefined}
+          onClick={() => { forceAlign.current = true; setFollowing(true); onSelect(row[0]); }}
+          onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); forceAlign.current = true; setFollowing(true); onSelect(row[0]); } }}>
           <div className="paath-line-content">
             <div lang="pa-Guru" style={{fontFamily:"Open Gurbani Akhar",fontWeight:appearance?.gurmukhiWeight,
-              fontSize:`calc(${gurmukhiSize}px * var(--paath-text-scale, 1))`,lineHeight:appearance?.gurmukhiLineHeight ?? 1.35}}><PaathGurmukhi text={pankti.gurmukhi} colors={palette.vishraam} /></div>
-            {showPunjabi && <div className="paath-translation" lang="pa" style={{fontFamily:"Open Anmol Uni, sans-serif",fontSize:`calc(${translationSize}px * var(--paath-text-scale, 1))`,lineHeight:appearance?.translationLineHeight ?? 1.45,color:palette.punjabi}}>{pankti.punjabi_translation || "—"}</div>}
-            {showEnglish && <div className="paath-translation" lang="en" style={{fontFamily:"Noto Sans, sans-serif",fontSize:`calc(${translationSize}px * var(--paath-text-scale, 1))`,lineHeight:appearance?.translationLineHeight ?? 1.45,color:palette.english}}>{pankti.english_translation || "—"}</div>}
+              fontSize:`calc(${gurmukhiSize}px * var(--paath-text-scale, 1))`,whiteSpace:row.length === 2 ? "nowrap" : undefined,
+              lineHeight:appearance?.gurmukhiLineHeight ?? 1.35}}><PaathGurmukhi text={row.map(pankti => pankti.gurmukhi).join(" ")} colors={palette.vishraam} /></div>
+            {showPunjabi && <div className="paath-translation" lang="pa" style={{fontFamily:"Open Anmol Uni, sans-serif",fontSize:`calc(${translationSize}px * var(--paath-text-scale, 1))`,lineHeight:appearance?.translationLineHeight ?? 1.45,color:palette.punjabi}}>{joinedPaathTranslation(row,"punjabi_translation")}</div>}
+            {showEnglish && <div className="paath-translation" lang="en" style={{fontFamily:"Noto Sans, sans-serif",fontSize:`calc(${translationSize}px * var(--paath-text-scale, 1))`,lineHeight:appearance?.translationLineHeight ?? 1.45,color:palette.english}}>{joinedPaathTranslation(row,"english_translation")}</div>}
           </div>
         </div>)}
       </section>)}

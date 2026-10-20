@@ -24,8 +24,21 @@ export async function getPaathSource(shabadId: string): Promise<PaathSource | nu
 export async function loadPaathAng(sourceId: number, ang: number): Promise<Pankti[]> {
   if (!Number.isInteger(sourceId) || sourceId < 1 || !Number.isInteger(ang) || ang < 1) return [];
   const db = await DB.getInstance();
+  // Bani 12 is Sukhmani Sahib. Rank complete Shabads so an ang boundary
+  // cannot shift its couplets; salok Shabads and headings remain unpaired.
   const rows: any[] = await db.select(`
-    SELECT lines.*, panktis.source_id, panktis.gurmukhi_speech,
+    WITH sukhmani_pairs AS (
+      SELECT verse.id, verse.shabad_id || ':' ||
+        ((ROW_NUMBER() OVER (PARTITION BY verse.shabad_id ORDER BY verse.order_id) - 1) / 2) AS pair_id
+      FROM bani_lines membership JOIN lines verse ON verse.id = membership.line_id
+      WHERE membership.bani_id = 12 AND ${sourceId} = 1 AND verse.type_id IN (3,4)
+        AND verse.shabad_id IN (SELECT shabad_id FROM lines WHERE source_page = ${ang})
+        AND NOT EXISTS (
+          SELECT 1 FROM lines heading WHERE heading.shabad_id = verse.shabad_id AND heading.type_id = 2
+            AND (heading.gurmukhi_unicode LIKE 'ਸਲੋਕ%' OR heading.gurmukhi LIKE 'slok%')
+        )
+    )
+    SELECT lines.*, sukhmani_pairs.pair_id AS paath_pair_id, panktis.source_id, panktis.gurmukhi_speech,
       panktis.vishraam_idx, panktis.vishraam_ridx,
       panktis.gurmukhi_words, panktis.gurmukhi_rwords, -1 AS line_group,
       (SELECT translation FROM translations WHERE line_id = lines.id AND
@@ -35,6 +48,7 @@ export async function loadPaathAng(sourceId: number, ang: number): Promise<Pankt
         translation_source_id IN (${sourceId === 1 ? "1" : "7,9,10,12,14,16,18,20,22,24"})
         ORDER BY translation_source_id LIMIT 1) AS english_translation
     FROM lines JOIN panktis ON panktis.id = lines.id
+    LEFT JOIN sukhmani_pairs ON sukhmani_pairs.id = lines.id
     WHERE panktis.source_id = ${sourceId} AND lines.source_page = ${ang}
     ORDER BY lines.order_id
   `);
