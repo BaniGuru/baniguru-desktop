@@ -54,7 +54,11 @@ export const decideOfflineSearch = (
       new Set(normalized.slice(fresh.tokenEndIndex - fresh.matchedWords + 1, fresh.tokenEndIndex + 1)).size < (option.multiple ? 3 : 4)) continue;
     // Keep Bani evidence attached to the option that established it. Stale
     // Bani evidence must not override a fresh different Shabad at the edge.
-    const baniId = kirtan ? (option.baniId === 13 ? 13 : null) : option.baniId ?? row.bani_ids?.[0] ?? null;
+    // Continuous Sehaj paath follows the source's canonical Shabads. A shared
+    // SGGS line can also belong to Rehras/Aarti, whose anthology order leaves
+    // the Ang being read and strands the cursor. Named Banis can still be
+    // selected explicitly; automatic paath acquisition anchors a Shabad.
+    const baniId = kirtan && option.baniId === 13 ? 13 : null;
     if (row.shabad_id === context.shabadId && baniId === context.baniId) continue;
     if (baniId != null && baniId === context.baniId) continue;
     const selection = {row,baniId};

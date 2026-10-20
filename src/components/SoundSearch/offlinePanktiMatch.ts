@@ -180,6 +180,7 @@ export const findStrongOfflinePanktiMatch = (
       .filter(match =>
         match.panktiIdx > currentPanktiIdx &&
         match.matchedWords >= 2 &&
+        (best.matchedWords < 2 || match.tokenEndIndex >= best.tokenEndIndex) &&
         match.tokenEndIndex >= allTokens.length - 8
       )
       .sort((left, right) =>
@@ -274,7 +275,20 @@ export const findOfflinePanktiProgress = (
   const advancesOnCompletion = !kirtan || baniId === 13; // Asa Ki Vaar
   const completed = advancesOnCompletion ? findCompletedOfflinePankti(currentPanktis, transcript, current) : null;
   if (completed) return completed;
-  const match = findStrongOfflinePanktiMatch(panktis, transcript, 2, advancesOnCompletion ? current : -1);
+  // Sehaj paath is continuous reading. Searching the entire Bani lets a short
+  // common phrase match a line many pages ahead. Look nearby, including two
+  // lines behind so a mistaken advance can recover on fresh speech evidence.
+  const start = !kirtan ? Math.max(0, current - 2) : 0;
+  const nearby = !kirtan ? panktis.slice(start, current + 4) : panktis;
+  const local = findStrongOfflinePanktiMatch(nearby, transcript, 2,
+    advancesOnCompletion ? current - start : -1);
+  const match = local ? {...local, panktiIdx:local.panktiIdx + start} : null;
+  if (!kirtan && match) {
+    const tokens = normalizeOfflineText(transcript).split(" ").filter(Boolean);
+    if (match.tokenEndIndex < tokens.length - 3) return null;
+    if (Math.abs(match.panktiIdx - current) > 1 && match.exactWords < 3) return null;
+    if (match.panktiIdx < current && match.exactWords < 3) return null;
+  }
   if (advancesOnCompletion && match && match.panktiIdx > current && panktis[current]) {
     const currentEvidence = findStrongOfflinePanktiMatch([panktis[current]], transcript, 2);
     if (currentEvidence && currentEvidence.tokenEndIndex >= match.tokenEndIndex &&

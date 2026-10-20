@@ -1,0 +1,15 @@
+{
+  "native_complete_recording": "passed",
+  "frontend_with_ang16": {
+    "passed": 61,
+    "failed": 0
+  },
+  "frontend_with_part2": {
+    "passed": 61,
+    "failed": 0
+  },
+  "production_build": "passed",
+  "chromium_reader": "passed",
+  "whitespace_check": "passed",
+  "raw_artifacts": "/workspace/scratch/akj-part2-evaluation"
+}

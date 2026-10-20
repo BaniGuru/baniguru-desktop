@@ -7,6 +7,11 @@ const refrain = {id:"refrain",shabad_id:"song",gurmukhi_speech:"ਤੇਰੀ ਓ
 const context = {shabadId:"song",baniId:null,panktis:[opening,refrain]};
 
 describe("offline recording search decisions", () => {
+  it("anchors continuous paath to the source rather than a shared anthology membership", () => {
+    const row = {...opening,bani_ids:[7,8]};
+    expect(decideOfflineSearch(opening.gurmukhi_speech,[row],
+      {shabadId:null,baniId:null,panktis:[]},false,null).selection?.baniId).toBeNull();
+  });
   it("counts fresh audio observations of a held phrase, without counting a React rerender twice", () => {
     const speech = "ਕਰਿ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਕਰਿ ਕਿਰਪਾ ਪ੍ਰਭ";
     const first = advanceOfflinePilotCursor({pending:null,lastTokenEnd:8},context.panktis,context.panktis,speech,1,true,null,1000);

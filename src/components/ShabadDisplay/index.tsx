@@ -5,7 +5,7 @@ import { DB } from "../../utils/DB";
 import styled from "styled-components";
 import { Pankti } from "../../models/Pankti";
 import { ShabadContext } from "../../state/providers/ShabadProvider";
-import { RECENT_SEARCH_UPDATE, RECENT_VISITED_UPDATE, SHABAD_UPDATE } from "../../state/ActionTypes";
+import { RECENT_SEARCH_UPDATE, RECENT_VISITED_UPDATE, SEARCH_SHABAD_PANKTI, SHABAD_PANKTI, SHABAD_RESET, SHABAD_UPDATE } from "../../state/ActionTypes";
 import { useSettings } from "../../state/providers/SettingContext";
 import { updateServerPankti } from "../../utils/TauriCommands";
 import FormatAndBreakText from "../../ui/FormatAndBreakText";
@@ -16,6 +16,7 @@ import { formatPanktis, getShabadIds } from "../../utils/shabadUtil";
 import { useContext as useCtxSelector } from "use-context-selector";
 import useFitTextToTwoLines from "../../utils/useFitTextToTwoLines";
 import { ApiClient } from "../../utils/apiClient";
+import SehajPaathDisplay from "./SehajPaathDisplay";
 
 interface PanelProps {
     fontSize: number;
@@ -77,7 +78,7 @@ const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
     const baniContext = useContext(BaniContext);
     const {state, dispatch } = useCtxSelector(ShabadContext);
     const {state: appState, fontSize} = useContext(AppContext);
-    const { activeThemeName, visibility } = useSettings();
+    const { activeThemeName, visibility, kirtanMode } = useSettings();
     const current = state.current;
 
     const mainRef = useRef<HTMLDivElement>(null); 
@@ -92,7 +93,7 @@ const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
     const punjabiRef = useRef<HTMLDivElement>(null);
     const { fontSize: punjabiFontSize, isClamped: punjabiClamped } = useFitTextToTwoLines(
         punjabiRef,
-        state.panktis[current]?.punjabi_translation ?? '',
+        kirtanMode ? state.panktis[current]?.punjabi_translation ?? '' : '',
         fontSize * 0.5,
         3
     );
@@ -100,7 +101,7 @@ const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
     const englishRef = useRef<HTMLDivElement>(null);
     const { fontSize: englishFontSize, isClamped: englishClamped } = useFitTextToTwoLines(
         englishRef,
-        state.panktis[current]?.english_translation ?? '',
+        kirtanMode ? state.panktis[current]?.english_translation ?? '' : '',
         fontSize * 0.45,
     );
 
@@ -139,7 +140,7 @@ const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
         calculateGap();
 
         return () => observer.disconnect();
-    }, [fontSize, state.current]);
+    }, [fontSize, state.current, kirtanMode]);
 
     useEffect(() => {
         const sendDataToBackend = async () => {
@@ -272,7 +273,7 @@ const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
         if (nextPankti) {
             resizeFontToFit();
         }
-    }, [nextPankti, fontSize]);
+    }, [nextPankti, fontSize, kirtanMode]);
 
     useEffect(() => {
         let adjustIdx = 0;
@@ -328,6 +329,21 @@ const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
 
     if (current < 0) {
         return null;
+    }
+
+    if (!kirtanMode && state.panktis[current]) {
+        return <div className="w-screen h-screen" style={{visibility:appState.page === PAGE_ANNOUNCEMENT ? "hidden" : "visible"}}>
+            <SehajPaathDisplay current={state.panktis[current]} fallbackPanktis={state.panktis}
+                fontSize={fontSize} palette={palette} showPunjabi={visibility.ਪੰਜਾਬੀ} showEnglish={visibility.English}
+                onSelect={pankti => {
+                    const index = state.panktis.findIndex(row => row.id === pankti.id);
+                    if (index >= 0) dispatch({type:SHABAD_PANKTI,payload:{current:index}});
+                    else {
+                        dispatch({type:SHABAD_RESET});
+                        searchContext.dispatch({type:SEARCH_SHABAD_PANKTI,payload:{pankti}});
+                    }
+                }} />
+        </div>;
     }
 
     return (

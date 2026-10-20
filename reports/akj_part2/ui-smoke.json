@@ -1,0 +1,47 @@
+{
+  "passed": true,
+  "first": {
+    "angs": [
+      15,
+      16,
+      17,
+      18
+    ],
+    "rows": 164,
+    "columns": 3,
+    "activeTop": 214.25,
+    "viewportHeight": 856,
+    "punjabi": "ਪਰਮਾਤਮਾ ਦਾ ਨਾਮ ਤੇ ਸਿਫ਼ਤ-ਸਾਲਾਹ ਹੋਰ ਸਭ ਦਾਤਾਂ ਨਾਲੋਂ ਵਧੀਆ ਦਾਤ ਹੈ, ਸਿਫ਼ਤ-ਸਾਲਾਹ ਨਾਲ ਹੀ ਮਨੁੱਖ ਦਾ ਮੂੰਹ ਸੋਹਣਾ ਲੱਗਦਾ ਹੈ।",
+    "english": "and your face shall become radiant. This is the gift of 100,000 gifts."
+  },
+  "browsed": {
+    "angs": [
+      30,
+      31,
+      32,
+      33
+    ],
+    "rows": 157
+  },
+  "anchorErrors": [
+    0.3125,
+    0.25,
+    0.4375,
+    0.5,
+    0.4375,
+    0.1875,
+    0.5
+  ],
+  "loadsBefore": 5,
+  "final": {
+    "angs": [
+      39,
+      40,
+      41,
+      42
+    ],
+    "rows": 148,
+    "loads": 31
+  },
+  "browserExceptions": []
+}

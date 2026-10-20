@@ -161,17 +161,36 @@ print(json.dumps(dict(rows=rows,banis=banis,successor=nexts),ensure_ascii=False)
       const eligible = expected.filter((ids: Set<string>) => ids.size > 0).length;
       const matched = firstSeen.filter((at: number | null) => at != null).length;
       const result = { id: clip.id, kind: control ? "manual_text_control" : "ASR_events", kirtan,
-        expected_label_source: kirtan ? "candidate database lines sharing manual-reference trigrams; approximate" : "manual JSON line_id",
+        expected_label_source: sections.every((section: any) => section.line_id)
+          ? "manual JSON line_id" : "candidate database lines sharing manual-reference trigrams; approximate",
         sections: sections.length, eligible, matched, coverage: eligible ? matched / eligible : null,
         found_at_seconds: foundAt, search_count: searchCount, shabads_selected: [...shabadSelections], transitions,
         section_results: sections.map((s: any, i: number) => ({section_id:s.section_id, expected_ids:[...expected[i]], first_seen:firstSeen[i], start:s.start_time,end:s.end_time,transcript:s.transcript})),
       };
+      if (!kirtan) {
+        const jumps = transitions.slice(1).flatMap((row, index) => {
+          if (row.reason !== "pankti") return [];
+          const previous = byId.get(transitions[index].id);
+          const next = byId.get(row.id);
+          return [{at:row.at,from:previous.id,to:next.id,delta:next.order_id - previous.order_id}];
+        });
+        // Three nearby lines, plus a skipped shared heading at a Shabad edge.
+        expect(jumps.every(jump => jump.delta >= -2 && jump.delta <= 4)).toBe(true);
+        Object.assign(result,{max_forward_lines:Math.max(0,...jumps.map(jump => jump.delta)),
+          max_backward_lines:Math.max(0,...jumps.map(jump => -jump.delta)),
+          corrections:jumps.filter(jump => jump.delta < 0)});
+      }
       console.log("REPLAY_RESULT", JSON.stringify({...result, transitions:undefined,section_results:undefined}));
       expect(transitions.length).toBeGreaterThan(0);
       if (clip.id === "sehaj-ang16") {
         expect(matched).toBe(sections.length);
         const order = transitions.map(row => byId.get(row.id).order_id);
         expect(order).toEqual([...order].sort((a,b) => a-b));
+      }
+      if (clip.id === "akj-part2") {
+        expect(matched / eligible).toBeGreaterThanOrEqual(.98);
+        expect(shabadSelections.size).toBeGreaterThanOrEqual(35);
+        expect(transitions.at(-1).at).toBeGreaterThan(sections.at(-1).start_time);
       }
       if (clip.id === "agyakar-kirtan") {
         expect(shabadSelections.size).toBeGreaterThanOrEqual(3);

@@ -77,7 +77,7 @@ function App() {
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const appRef = useRef<number>(0);
-  const {panelSetting, version, updateVersion, panelLocation, setPanelLocation, apiToken} = useSettings();
+  const {panelSetting, version, updateVersion, panelLocation, setPanelLocation, apiToken, kirtanMode} = useSettings();
   const { palette } = useThemeColors();
   const [splashVisible, setSplashVisible] = useState(true);
   
@@ -485,7 +485,7 @@ function App() {
             <AnnouncementDisplay />
         }
 
-        {speechStarted && (baniId == 13 || baniId == 12)
+        {kirtanMode && speechStarted && (baniId == 13 || baniId == 12)
             ? <BaniGroupDisplay apiClient={apiClientRef.current ?? null} />
             : <ShabadDisplay apiClient={apiClientRef.current ?? null} />
         }
