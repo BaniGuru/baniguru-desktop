@@ -11,5 +11,17 @@
   "production_build": "passed",
   "chromium_reader": "passed",
   "whitespace_check": "passed",
-  "raw_artifacts": "/workspace/scratch/akj-part2-evaluation"
+  "raw_artifacts": "/workspace/scratch/akj-part2-evaluation",
+  "reader_revision": {
+    "visible_panktis": 4,
+    "frontend_passed": 60,
+    "frontend_skipped": 1,
+    "build": "passed",
+    "chromium": "passed",
+    "normal_scroll_max_frame_step_px": 12,
+    "ang_transition_max_frame_step_px": 12,
+    "audio_replayed_again": false,
+    "note": "Display-only revision; decoder and matching are unchanged. Prior full-audio results remain applicable.",
+    "artifacts": "/workspace/scratch/paath-stacked-reader"
+  }
 }

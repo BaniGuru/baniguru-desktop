@@ -41,7 +41,7 @@ stall occurs in this replay. The remaining mapped miss is section 231,
 `ਵਣਜੁ ਕਰਹੁ ਵਣਜਾਰਿਹੋ ਵਖਰੁ ਲੇਹੁ ਸਮਾਲਿ`.
 
 Strict time-weighted candidate agreement is **69.93%**, so reaching almost all
-sections does not establish timely highlighting throughout them. Upcoming
+sections does not establish timely cursor tracking throughout them. Upcoming
 rows remain visible independently. Initial acquisition takes 4.426 seconds;
 four global searches occur before acquisition, with subsequent progression
 using local matching and canonical preloading. Ten reference sections cannot
@@ -50,10 +50,19 @@ full transition timeline, approximate expected IDs, corrections and misses.
 
 ## Scrolling reader
 
-When the kirtan flag is off, the main display now shows Gurmukhi, Punjabi meaning
-and English translation in adjacent columns. Upcoming lines are already visible
-before ASR confirms their highlight, so readers do not need to wait for the next
-single-line screen. Punjabi and English columns follow the visibility settings.
+When the kirtan flag is off, the main display shows **four panktis per view**.
+Each block contains Gurmukhi followed by Punjabi meaning and English translation,
+matching the user's reference layout. The current pankti sits at the top without
+a background or border highlight. Upcoming panktis are visible below it, so
+readers do not need to wait for the next single-line screen. Punjabi and English
+follow the visibility settings. Visible blocks scale text to fit their quarter
+of the viewport, keeping long translations inside their own pankti.
+
+Following uses a cancellable 420 ms animation. Font measurements and page
+preloading do not restart it, and a new match replaces the pending target rather
+than queuing another scroll. Page eviction preserves the visible anchor and
+adjusts any animation in progress. Reduced-motion preferences use immediate
+positioning. Initial positioning does not animate through preceding angs.
 
 The reader keeps the preceding ang, the active ang and upcoming angs ready,
 with a maximum of four adjacent angs in its page cache and rendered document.
@@ -63,13 +72,15 @@ following; **Follow paath** returns to the active line. Selecting a row moves
 the active pankti. Loading failures expose Retry and retain a bounded fallback
 around the current line. The kirtan display keeps its existing presentation.
 
-[paath-reader.png](paath-reader.png) shows the three-column reader using actual
+[paath-reader.png](paath-reader.png) shows the four-pankti reader using actual
 database text and translations. [ui-smoke.json](ui-smoke.json) records a Chromium
-functional check with four-page loading, forward eviction, row selection,
-manual browsing and return to following, language visibility, keyboard-event
-isolation and recovery from an injected database failure. The test uses the
+functional check with four complete visible panktis at 1890×800 and 1000×650,
+stacked translations that fit their blocks, no visual current-line marking,
+animation frame samples, smooth ang transitions, interrupted-scroll retargeting,
+bounded page loading, manual browsing, return to following and language visibility.
+The largest observed scroll step was 12 px per rendered frame for both ordinary
+advances and ang transitions. The test uses the
 production reader with fixture-backed page I/O, rather than a Tauri WebView.
-The largest measured shift of a retained visible row during eviction is 0.5 px.
 It verifies bounded retained pages and DOM rows, not a heap-leak profile.
 
 ## Matching safeguards
@@ -141,6 +152,8 @@ manual-text control. Ordinary matching, page-loading, cache and real-database
 checks run with `BANI_TEST_DB="$PWD/additional_assets/bani.db" npm test -- --run`.
 Raw decoder events, logs and the temporary browser harness are retained under
 `/workspace/scratch/akj-part2-evaluation` in this workspace.
+The revised four-pankti layout's browser checks and screenshot are retained under
+`/workspace/scratch/paath-stacked-reader`.
 
 Validation passed: the complete native audio evaluation; 61 frontend tests
 including the separate Ang 0016 replay (40/40 exact manual line IDs), real
@@ -148,3 +161,8 @@ SQLite ang/translation loading and cache traversal through all 1,430 angs;
 the full part-2 matching replay; Chromium functional checks; and the production
 frontend build. The ordinary suite can also include the full part-2 replay by
 setting `BANI_RECORDING_REPLAY` to its raw decoder report.
+
+For the subsequent display-only revision, 60 ordinary frontend/database tests,
+the build and the new Chromium motion/layout checks passed. The opt-in audio
+replay test was skipped in that invocation. Decoder and matching code did not
+change, so the complete-audio results above were retained without rerunning ASR.
