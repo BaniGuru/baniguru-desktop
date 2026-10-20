@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { setPassword, getPassword } from "tauri-plugin-keyring-api";
+import { HARMANDIR_THEME_NAME } from "../../ui/harmandirTheme";
 
 const KEYRING_SERVICE = "BaniGuru";
 
@@ -84,6 +85,7 @@ const defaultSpeechJpToken = "";
 
 const defaultThemes: Theme[] = [
   {name: "BaniGuru"},
+  {name: HARMANDIR_THEME_NAME},
   { name: "Light" },
   { name: "Blue" },
   { name: "Dark" },
@@ -154,7 +156,9 @@ const getInitialSettings = () => {
           width: parsed.width ?? defaultWidth,
           height: parsed.height ?? defaultHeight,
           version: parsed.version ?? "",
-          themes: parsed.themes ?? defaultThemes,
+          themes: Array.isArray(parsed.themes)
+            ? [...parsed.themes, ...defaultThemes.filter(theme => !parsed.themes.some((saved: Theme) => saved?.name === theme.name))]
+            : defaultThemes,
           activeThemeName: parsed.activeThemeName ?? defaultThemes[0],
           micName: parsed.micName ?? "",
           speechRegion: parsed.speechRegion ?? defaultRegion,

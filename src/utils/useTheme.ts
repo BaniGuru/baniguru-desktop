@@ -10,6 +10,7 @@ import bg2 from './../assets/images/guru-granth-sahib-ji-theme2.png';
 
 import shabados1 from './../assets/images/logo-shabados-1.png';
 import shabados2 from './../assets/images/logo-shabados-2.png';
+import { HARMANDIR_THEME, HARMANDIR_THEME_NAME } from "../ui/harmandirTheme";
 
 /** Define the color palette shape your UI needs */
 export type ThemeColors = {
@@ -17,6 +18,21 @@ export type ThemeColors = {
   punjabi: string;
   english: string;
   background: any;
+  vishraam?: { heavy: string; medium: string; light: string };
+  reader?: {
+    topInsetVh: number;
+    bottomInsetVh: number;
+    inlineInsetVw: number;
+    rowGapPx: number;
+    translationGapPx: number;
+    gurmukhiWeight: number;
+    gurmukhiRatio: number;
+    gurmukhiMaxSize: number;
+    translationRatio: number;
+    translationMaxSize: number;
+    gurmukhiLineHeight: number;
+    translationLineHeight: number;
+  };
   // optional extras if you ever want:
   // accent?: string;
   // muted?: string;
@@ -38,6 +54,7 @@ const THEME_CATALOG: Record<string, ThemeColors> = {
     "english": "#413F3E",
     background: `url(${baniGuruBg}) center center / 100% 100% no-repeat`
   },
+  [HARMANDIR_THEME_NAME]: HARMANDIR_THEME,
   Light: {
     gurmukhi: "#000000",
     punjabi: "#111827",   // gray-900

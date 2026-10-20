@@ -1,5 +1,6 @@
 import { useRef, useState, CSSProperties, Fragment, useLayoutEffect, useMemo } from "react";
 import { useSettings } from "../state/providers/SettingContext";
+import { HARMANDIR_THEME, HARMANDIR_THEME_NAME } from "./harmandirTheme";
 
 type Props = {
   text: string;
@@ -19,6 +20,11 @@ const FormatAndBreakText: React.FC<Props> = ({
   const { activeThemeName } = useSettings();
 
   const vishraamStyles = useMemo(() => {
+    if (activeThemeName === HARMANDIR_THEME_NAME) return {
+      heavy:{color:HARMANDIR_THEME.vishraam!.heavy},
+      medium:{color:HARMANDIR_THEME.vishraam!.medium},
+      light:{color:HARMANDIR_THEME.vishraam!.light},
+    };
     if (activeThemeName === "Dark" || activeThemeName === "Darker") {
       return {
         heavy: { color: "#FB8C00" },

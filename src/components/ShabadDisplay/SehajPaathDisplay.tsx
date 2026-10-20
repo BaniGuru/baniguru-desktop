@@ -6,14 +6,15 @@ import { getPaathSource, loadPaathAng, PaathAng, PaathAngCache, paathAngRange, P
 import Format from "../../utils/Format";
 
 const Reader = styled.div`
-  position: relative; height: 100%; width: 100%; overflow: hidden; display: flex;
+  position: relative; height: 100%; width: 100%; overflow: hidden; display: flex; box-sizing: border-box;
   .paath-scroll { overflow-y: auto; overflow-anchor: none; scroll-behavior: auto;
-    flex: 1; min-height: 0; padding: 0 5.4vw 32vh; }
-  .paath-scroll[data-following="true"] { padding-bottom: 100vh; }
+    flex: 1; min-height: 0; padding: 0 var(--paath-inline-inset, 5.4vw) 32vh; }
+  .paath-scroll[data-following="true"] { padding-bottom: 0; }
+  .paath-scroll[data-following="true"]::after { content: ""; display: block; height: 100vh; }
   .paath-line { height: calc(var(--paath-viewport-height, 100vh) / 4); box-sizing: border-box;
-    padding: 10px 0 22px; cursor: pointer; overflow-wrap: anywhere; overflow: hidden; }
+    padding: var(--paath-row-top, 10px) 0 var(--paath-row-gap, 22px); cursor: pointer; overflow-wrap: anywhere; overflow: hidden; }
   .paath-line:focus-visible { outline: 2px solid #888; outline-offset: 4px; }
-  .paath-translation { margin-top: calc(6px * var(--paath-text-scale, 1)); }
+  .paath-translation { margin-top: calc(var(--paath-translation-gap, 6px) * var(--paath-text-scale, 1)); }
   .paath-ang-heading { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .paath-toolbar { position: absolute; right: 16px; top: 12px; z-index: 1;
     display: flex; gap: 12px; align-items: center; padding: 8px 12px;
@@ -24,9 +25,9 @@ const Reader = styled.div`
 
 type ScrollAnimation = { frame: number; from: number; to: number; start: number; duration: number };
 
-const PaathGurmukhi = ({text}: {text:string}) => <>{text.split(/(\s+)/).map((word,index) =>
+const PaathGurmukhi = ({text,colors}: {text:string;colors?:ThemeColors["vishraam"]}) => <>{text.split(/(\s+)/).map((word,index) =>
   <Fragment key={index}>{/\s+/.test(word) ? word :
-    <span style={{color:/;|<>|ੴ/.test(word) ? "#e65c00" : /[,.]/.test(word) ? "#2ca44f" : undefined}}>
+    <span style={{color:/;|<>|ੴ/.test(word) ? colors?.heavy ?? "#e65c00" : /[,.]/.test(word) ? colors?.medium ?? "#2ca44f" : undefined}}>
       {Format.removeVishraams(word)}
     </span>}</Fragment>
 )}</>;
@@ -63,6 +64,7 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
   const currentRef = useRef(current);
   currentRef.current = current;
   const activeAng = Number(current.source_page);
+  const appearance = palette.reader;
 
   const stopScroll = useCallback(() => {
     if (animation.current) cancelAnimationFrame(animation.current.frame);
@@ -125,7 +127,7 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
     const viewport = scrollRef.current;
     if (!viewport) return;
     viewport.style.setProperty("--paath-viewport-height",`${viewport.clientHeight}px`);
-    const key = `${viewport.clientWidth}:${viewport.clientHeight}:${fontSize}:${showPunjabi}:${showEnglish}:${fontRevision.current}`;
+    const key = `${viewport.clientWidth}:${viewport.clientHeight}:${fontSize}:${showPunjabi}:${showEnglish}:${fontRevision.current}:${JSON.stringify(appearance)}`;
     // Fit a complete Ang once, before it is read. All its panktis inherit one
     // shared scale, including short lines, so advancing never changes the font.
     for (const page of viewport.querySelectorAll<HTMLElement>("section[data-ang]")) {
@@ -150,7 +152,7 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
       }
       page.dataset.paathFit = pageKey;
     }
-  }, [fontSize,showPunjabi,showEnglish]);
+  }, [fontSize,showPunjabi,showEnglish,appearance]);
 
   const alignActive = useCallback((instant = false): void => {
     const viewport = scrollRef.current;
@@ -189,6 +191,13 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
     };
     next.frame = requestAnimationFrame(step);
   }, [following,stopScroll]);
+
+  useLayoutEffect(() => {
+    // A theme can change the reading area's insets and all row heights.
+    // Re-anchor the current pankti before resuming normal batch scrolling.
+    stopScroll();
+    positioned.current = false;
+  }, [appearance,stopScroll]);
 
   useLayoutEffect(() => {
     const viewport = scrollRef.current;
@@ -249,11 +258,18 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
   const loadedCurrent = pages.some(page => page.ang === activeAng);
   const shown = pages.length && (!following || loadedCurrent) ? pages : [{ang:activeAng,
     panktis:fallbackIndex < 0 ? [current] : fallbackPanktis.slice(Math.max(0,fallbackIndex - 3),fallbackIndex + 12)}];
-  const dark = palette.gurmukhi !== "#000000" && !["#1A191A","#000"].includes(palette.gurmukhi);
-  const gurmukhiSize = Math.max(28,Math.min(60,fontSize));
-  const translationSize = Math.max(18,Math.min(30,fontSize * .55));
+  const dark = !appearance && palette.gurmukhi !== "#000000" && !["#1A191A","#000"].includes(palette.gurmukhi);
+  const gurmukhiSize = Math.max(28,Math.min(appearance?.gurmukhiMaxSize ?? 60,fontSize * (appearance?.gurmukhiRatio ?? 1)));
+  const translationSize = Math.max(18,Math.min(appearance?.translationMaxSize ?? 30,fontSize * (appearance?.translationRatio ?? .55)));
   return <Reader aria-label="Sehaj paath reader" style={{color:palette.gurmukhi,
+    background:appearance ? palette.background : undefined,
     backgroundColor:palette.background === "none" ? "#e7e7e7" : undefined,
+    paddingTop:appearance ? `${appearance.topInsetVh}vh` : undefined,
+    paddingBottom:appearance ? `${appearance.bottomInsetVh}vh` : undefined,
+    "--paath-inline-inset":appearance ? `${appearance.inlineInsetVw}vw` : undefined,
+    "--paath-row-top":appearance ? "0px" : undefined,
+    "--paath-row-gap":appearance ? `${appearance.rowGapPx}px` : undefined,
+    "--paath-translation-gap":appearance ? `${appearance.translationGapPx}px` : undefined,
     "--paath-controls-bg":dark ? "#20242a" : "#eee"} as React.CSSProperties}>
     {(!following || error || (loading && !pages.length)) && <div className="paath-toolbar">
       {!following && <span>{source?.pageName ?? "Ang"} {activeAng}</span>}
@@ -279,9 +295,10 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
           onClick={() => { forceAlign.current = true; setFollowing(true); onSelect(pankti); }}
           onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); forceAlign.current = true; setFollowing(true); onSelect(pankti); } }}>
           <div className="paath-line-content">
-            <div lang="pa-Guru" style={{fontFamily:"Open Gurbani Akhar",fontSize:`calc(${gurmukhiSize}px * var(--paath-text-scale, 1))`,lineHeight:1.35}}><PaathGurmukhi text={pankti.gurmukhi} /></div>
-            {showPunjabi && <div className="paath-translation" lang="pa" style={{fontFamily:"Open Anmol Uni, sans-serif",fontSize:`calc(${translationSize}px * var(--paath-text-scale, 1))`,lineHeight:1.45,color:palette.punjabi}}>{pankti.punjabi_translation || "—"}</div>}
-            {showEnglish && <div className="paath-translation" lang="en" style={{fontFamily:"Noto Sans, sans-serif",fontSize:`calc(${translationSize}px * var(--paath-text-scale, 1))`,lineHeight:1.45,color:palette.english}}>{pankti.english_translation || "—"}</div>}
+            <div lang="pa-Guru" style={{fontFamily:"Open Gurbani Akhar",fontWeight:appearance?.gurmukhiWeight,
+              fontSize:`calc(${gurmukhiSize}px * var(--paath-text-scale, 1))`,lineHeight:appearance?.gurmukhiLineHeight ?? 1.35}}><PaathGurmukhi text={pankti.gurmukhi} colors={palette.vishraam} /></div>
+            {showPunjabi && <div className="paath-translation" lang="pa" style={{fontFamily:"Open Anmol Uni, sans-serif",fontSize:`calc(${translationSize}px * var(--paath-text-scale, 1))`,lineHeight:appearance?.translationLineHeight ?? 1.45,color:palette.punjabi}}>{pankti.punjabi_translation || "—"}</div>}
+            {showEnglish && <div className="paath-translation" lang="en" style={{fontFamily:"Noto Sans, sans-serif",fontSize:`calc(${translationSize}px * var(--paath-text-scale, 1))`,lineHeight:appearance?.translationLineHeight ?? 1.45,color:palette.english}}>{pankti.english_translation || "—"}</div>}
           </div>
         </div>)}
       </section>)}

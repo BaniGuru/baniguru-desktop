@@ -353,7 +353,7 @@ const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
             // style={palette.background}
             style={{
                 visibility: (appState.page === PAGE_ANNOUNCEMENT ? 'hidden' : 'visible'),
-                backgroundColor: activeThemeName === "Bandi Chorh Diwas" ?  "rgb(200 200 200 / 80%)": "rgb(200 200 200 / 20%)"}}
+                backgroundColor: palette.reader ? "transparent" : activeThemeName === "Bandi Chorh Diwas" ?  "rgb(200 200 200 / 80%)": "rgb(200 200 200 / 20%)"}}
         >
             <div
                 ref={mainRef}
@@ -369,7 +369,7 @@ const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
                                 fontSize: fontSize + "px",
                                 lineHeight: 1.25,
                                 fontFamily: "Open Gurbani Akhar",
-                                fontWeight: 900
+                                fontWeight: palette.reader?.gurmukhiWeight ?? 900
                             }}
                             text={state.panktis[current]?.gurmukhi || ""}
                         />

@@ -17,6 +17,7 @@ import SettingInput from "../../ui/SettingInput";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ShabadTheme } from "../../ui/ShabadTheme";
+import { HARMANDIR_THEME_NAME } from "../../ui/harmandirTheme";
 import { LangType, useSettings } from "../../state/providers/SettingContext";
 import { DB } from "../../utils/DB";
 
@@ -200,6 +201,7 @@ export const SettingPanel = () => {
 
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <ShabadTheme name="BaniGuru" />
+              <ShabadTheme name={HARMANDIR_THEME_NAME} />
               <ShabadTheme name="Light" />
               <ShabadTheme name="Blue" />
               <ShabadTheme name="Dark" />
