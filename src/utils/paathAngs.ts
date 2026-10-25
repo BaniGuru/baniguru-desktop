@@ -24,22 +24,31 @@ export async function getPaathSource(shabadId: string): Promise<PaathSource | nu
 export async function loadPaathAng(sourceId: number, ang: number): Promise<Pankti[]> {
   if (!Number.isInteger(sourceId) || sourceId < 1 || !Number.isInteger(ang) || ang < 1) return [];
   const db = await DB.getInstance();
-  // Bani 12 is Sukhmani Sahib. Rank complete Shabads so an ang boundary
-  // cannot shift its couplets; salok Shabads and headings remain unpaired.
+  // Rank complete paragraphs, rather than resetting couplets at an ang
+  // boundary. Headings and numbered endings anchor the next pair of verses.
   const rows: any[] = await db.select(`
-    WITH sukhmani_pairs AS (
-      SELECT verse.id, verse.shabad_id || ':' ||
-        ((ROW_NUMBER() OVER (PARTITION BY verse.shabad_id ORDER BY verse.order_id) - 1) / 2) AS pair_id
-      FROM bani_lines membership JOIN lines verse ON verse.id = membership.line_id
-      WHERE membership.bani_id = 12 AND ${sourceId} = 1 AND verse.type_id IN (3,4)
-        AND verse.shabad_id IN (SELECT shabad_id FROM lines WHERE source_page = ${ang})
-        AND NOT EXISTS (
-          SELECT 1 FROM lines heading WHERE heading.shabad_id = verse.shabad_id AND heading.type_id = 2
-            AND (heading.gurmukhi_unicode LIKE 'ਸਲੋਕ%' OR heading.gurmukhi LIKE 'slok%')
-        )
+    WITH paragraph_lines AS (
+      SELECT verse.*,
+        COALESCE(SUM(CASE WHEN verse.type_id < 3 OR
+          verse.gurmukhi GLOB '*][0-9੦-੯]*]*' OR
+          verse.gurmukhi_unicode GLOB '*॥[0-9੦-੯]*॥*' OR
+          verse.gurmukhi LIKE '%rhwau%' THEN 1 ELSE 0 END)
+          OVER (PARTITION BY verse.shabad_id ORDER BY verse.order_id
+            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING),0) AS paragraph
+      FROM lines verse
+      WHERE verse.shabad_id IN (SELECT shabad_id FROM lines WHERE source_page = ${ang})
+    ), verse_pairs AS (
+      SELECT verse.id, verse.shabad_id || ':' || verse.paragraph || ':' ||
+        ((ROW_NUMBER() OVER (PARTITION BY verse.shabad_id,verse.paragraph ORDER BY verse.order_id) - 1) / 2) AS pair_id
+      FROM paragraph_lines verse
+      WHERE verse.type_id IN (3,4) AND NOT EXISTS (
+        SELECT 1 FROM bani_lines membership JOIN lines heading ON heading.shabad_id = verse.shabad_id
+        WHERE membership.line_id = verse.id AND membership.bani_id = 12 AND heading.type_id = 2
+          AND (heading.gurmukhi_unicode LIKE 'ਸਲੋਕ%' OR heading.gurmukhi LIKE 'slok%')
+      )
     )
-    SELECT lines.*, sukhmani_pairs.pair_id AS paath_pair_id,
-      (sukhmani_pairs.id IS NULL AND EXISTS (
+    SELECT lines.*, verse_pairs.pair_id AS paath_pair_id,
+      (verse_pairs.id IS NULL AND EXISTS (
         SELECT 1 FROM bani_lines membership WHERE membership.line_id = lines.id AND membership.bani_id = 12
       )) AS paath_keep_single,
       panktis.source_id, panktis.gurmukhi_speech,
@@ -52,7 +61,7 @@ export async function loadPaathAng(sourceId: number, ang: number): Promise<Pankt
         translation_source_id IN (${sourceId === 1 ? "1" : "7,9,10,12,14,16,18,20,22,24"})
         ORDER BY translation_source_id LIMIT 1) AS english_translation
     FROM lines JOIN panktis ON panktis.id = lines.id
-    LEFT JOIN sukhmani_pairs ON sukhmani_pairs.id = lines.id
+    LEFT JOIN verse_pairs ON verse_pairs.id = lines.id
     WHERE panktis.source_id = ${sourceId} AND lines.source_page = ${ang}
     ORDER BY lines.order_id
   `);

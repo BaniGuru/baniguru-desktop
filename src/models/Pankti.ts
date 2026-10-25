@@ -29,7 +29,7 @@ export type Pankti = {
     auto_next: boolean;
     bani_names?: string[];
     bani_ids?: number[];
-    /** Canonical couplet within a Sukhmani Sahib ashtpadi; absent for saloks. */
+    /** Canonical pair slot within a paragraph; absent for headings and Sukhmani saloks. */
     paath_pair_id?: string | null;
     paath_keep_single?: boolean | number;
 };
