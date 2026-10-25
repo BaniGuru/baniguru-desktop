@@ -14,6 +14,13 @@ dist-ssr
 *.local
 .env
 
+# Local ASR verification artifacts (kept outside version control)
+/reports/
+/test_audios/
+
+# Retired model exports; the app bundles resources/streaming_asr instead
+/src-tauri/resources/offline_asr/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

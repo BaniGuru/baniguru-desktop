@@ -1,8 +1,0 @@
-{
-  "audio_sha256": "c2ac02b4b9a63486e95733c4ea2ebc690697fe60fec1092efcea969ef3f2f92b",
-  "transcript_sha256": "87f097a6117dd04314009ad52300610a791c4de12077cd5326ac62ad0f09010d",
-  "audio_file": "akhand_paath_sahib_akj_2019_04_15_part_2.mp3",
-  "sections": 261,
-  "source": "https://huggingface.co/datasets/sukhpalsingh/speech_data_recordings/tree/main/speech-data-sehaj-paath/akhand_paath_sahib_akj_2019_04_15_part_2",
-  "acquisition": "User-provided attachments; Hugging Face proxy access is blocked"
-}
