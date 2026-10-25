@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { setPassword, getPassword } from "tauri-plugin-keyring-api";
 import { HARMANDIR_THEME_NAME } from "../../ui/harmandirTheme";
 
@@ -163,7 +163,7 @@ const getInitialSettings = () => {
           micName: parsed.micName ?? "",
           speechRegion: parsed.speechRegion ?? defaultRegion,
           offlineMode: parsed.offlineMode ?? false,
-          kirtanMode: parsed.kirtanMode ?? true,
+          kirtanMode: parsed.offlineMode ? parsed.kirtanMode ?? true : true,
           audioStream: parsed.audioStream ?? false,
           recordingEnabled: parsed.recordingEnabled ?? true,
         };
@@ -216,8 +216,12 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
   const [version, setVersion] = useState(initial.version);
   const [micName, setMicName] = useState(initial.micName);
   const [panelLocation, setPanelLocation] = useState(initial.panelLocation);
-  const [offlineMode, setOfflineMode] = useState(initial.offlineMode);
+  const [offlineMode, setOfflineModeState] = useState(initial.offlineMode);
   const [kirtanMode, setKirtanMode] = useState(initial.kirtanMode);
+  const setOfflineMode = useCallback((enabled: boolean) => {
+    setOfflineModeState(enabled);
+    if (!enabled) setKirtanMode(true);
+  }, []);
   const [audioStream, setAudioStream] = useState(initial.audioStream);
   const [recordingEnabled, setRecordingEnabled] = useState(initial.recordingEnabled);
   const [autoNext, setAutoNext] = useState(true);
