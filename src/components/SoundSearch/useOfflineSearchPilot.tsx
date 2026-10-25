@@ -184,7 +184,7 @@ const useOfflineSearchPilot = (
           tracking.current.pending = null;
           tracking.current.recovery = undefined;
         }
-        appDispatch({type:SET_APP_PAGE,payload:{page:"shabad",prev_page:"search",show_panel:true}});
+        appDispatch({type:SET_APP_PAGE,payload:{page:"shabad",prev_page:"search",show_panel:false}});
       } catch (error) {
         // Leave this speech eligible for retry, including when the DB/index
         // becomes ready without another word being emitted.
