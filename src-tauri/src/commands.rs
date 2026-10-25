@@ -7,13 +7,13 @@ use tokio::sync::Mutex;
 use cpal::traits::{DeviceTrait, HostTrait};
 
 use crate::audio_bus::AudioBus;
+use crate::p2p_audio_sender::start_p2p_audio_stream_with_signaling;
+use crate::p2p_audio_sender::ApiConfig;
+use crate::soniox::{start_soniox_stream, stop_soniox_stream, SonioxStream};
 use crate::streaming_asr::model::StreamingAsrModel;
 use crate::streaming_asr::{
     start_streaming_asr_stream_with_model, stop_streaming_asr_stream, StreamingAsrStream,
 };
-use crate::p2p_audio_sender::start_p2p_audio_stream_with_signaling;
-use crate::p2p_audio_sender::ApiConfig;
-use crate::soniox::{start_soniox_stream, stop_soniox_stream, SonioxStream};
 use crate::vocal_pipeline::VocalAudioPipeline;
 use tauri::async_runtime::JoinHandle;
 
@@ -189,6 +189,7 @@ pub async fn start_soniox(
     api_key: String,
     mic_name: String,
     panktis: Vec<String>,
+    recording_enabled: Option<bool>,
     state: State<'_, StreamState>,
     vocals: State<'_, VocalPipelineState>,
     audio: State<'_, AudioState>,
@@ -210,6 +211,7 @@ pub async fn start_soniox(
         audio.bus.clone(),
         mic_config.sample_rate,
         mic_config.channels,
+        recording_enabled.unwrap_or(true),
     ) {
         Ok(pipeline) => pipeline,
         Err(error) => {
@@ -219,16 +221,8 @@ pub async fn start_soniox(
     };
     let vocals_bus = pipeline.vocals_bus();
 
-    let stream_result = start_soniox_stream(
-        app,
-        soniox_url,
-        api_key,
-        panktis,
-        mic_config.sample_rate,
-        mic_config.channels,
-        vocals_bus,
-    )
-    .await;
+    let stream_result =
+        start_soniox_stream(app, soniox_url, api_key, panktis, 16_000, 1, vocals_bus).await;
 
     let stream = match stream_result {
         Ok(stream) => stream,
@@ -262,10 +256,14 @@ pub async fn stop_soniox(
     let mut guard = state.stream.lock().await;
 
     if let Some(stream) = guard.take() {
+        let mut pipeline = vocals.pipeline.lock().await.take();
+        if let Some(pipeline) = pipeline.as_mut() {
+            pipeline.stop_audio().await;
+        }
         stop_soniox_stream(stream).await;
 
-        let recording_result = if let Some(pipeline) = vocals.pipeline.lock().await.take() {
-            pipeline.stop().await.map(Some)
+        let recording_result = if let Some(pipeline) = pipeline {
+            pipeline.stop().await
         } else {
             Ok(None)
         };
@@ -321,17 +319,8 @@ pub async fn restart_soniox(
 
     // Start again
     acquire_mic(mic_name, &audio).await?;
-    let mic_config = audio.mic_config.lock().await.ok_or("Mic config missing")?;
-    let new_stream = start_soniox_stream(
-        app,
-        soniox_url,
-        api_key,
-        panktis,
-        mic_config.sample_rate,
-        mic_config.channels,
-        vocals_bus,
-    )
-    .await;
+    let new_stream =
+        start_soniox_stream(app, soniox_url, api_key, panktis, 16_000, 1, vocals_bus).await;
 
     let new_stream = match new_stream {
         Ok(stream) => stream,
@@ -358,6 +347,7 @@ pub async fn start_offline_asr(
     app: AppHandle,
     mic_name: String,
     kirtan_mode: bool,
+    recording_enabled: Option<bool>,
     state: State<'_, OfflineAsrState>,
     vocals: State<'_, VocalPipelineState>,
     audio: State<'_, AudioState>,
@@ -390,6 +380,7 @@ pub async fn start_offline_asr(
         audio.bus.clone(),
         mic_config.sample_rate,
         mic_config.channels,
+        recording_enabled.unwrap_or(true),
     ) {
         Ok(pipeline) => pipeline,
         Err(error) => {
@@ -402,8 +393,8 @@ pub async fn start_offline_asr(
     match start_streaming_asr_stream_with_model(
         app,
         streaming_model,
-        mic_config.sample_rate,
-        mic_config.channels,
+        16_000,
+        1,
         kirtan_mode,
         vocals_bus,
     )
@@ -442,17 +433,17 @@ pub async fn stop_offline_asr(
 
     // Signal transcription and recording together so the graceful ASR flush
     // does not add extra recording time after the user stops Auto Pilot.
-    let pipeline = vocals.pipeline.lock().await.take();
-    let (_, recording_result) = tokio::join!(
-        stop_streaming_asr_stream(stream),
-        async {
-            if let Some(pipeline) = pipeline {
-                pipeline.stop().await.map(Some)
-            } else {
-                Ok(None)
-            }
+    let mut pipeline = vocals.pipeline.lock().await.take();
+    if let Some(pipeline) = pipeline.as_mut() {
+        pipeline.stop_audio().await;
+    }
+    let (_, recording_result) = tokio::join!(stop_streaming_asr_stream(stream), async {
+        if let Some(pipeline) = pipeline {
+            pipeline.stop().await
+        } else {
+            Ok(None)
         }
-    );
+    });
     release_mic(&audio).await;
     if let Some(path) = recording_result? {
         println!("Saved Auto Pilot recording to {}", path.display());
@@ -590,4 +581,18 @@ pub fn request_admin_permission() -> Result<bool, String> {
 
     #[allow(unreachable_code)]
     Ok(false)
+}
+
+#[tauri::command]
+pub async fn set_auto_pilot_recording(
+    app: AppHandle,
+    enabled: bool,
+    vocals: State<'_, VocalPipelineState>,
+) -> Result<(), String> {
+    if let Some(pipeline) = vocals.pipeline.lock().await.as_mut() {
+        if let Some(path) = pipeline.set_recording(&app, enabled).await? {
+            println!("Saved Auto Pilot recording to {}", path.display());
+        }
+    }
+    Ok(())
 }

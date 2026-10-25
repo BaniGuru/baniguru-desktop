@@ -71,3 +71,13 @@ it("recovers the uploaded Oct 25 recording's stalled ਭੈ ਸਾਗਰ passage
   expect(first.currentIdx).toBe(0);
   expect(advanceOfflinePilotCursor(first,source,source,speech,0,false,null,35340).currentIdx).toBe(4);
 });
+
+it("weak common words do not postpone reacquiring a different ang forever",()=>{
+ const lines=[{gurmukhi_speech:'ਹਰਿ ਨਾਮੁ ਅੰਮ੍ਰਿਤੁ ਮਨਿ ਵਸਾਵਹੁ'}];
+ const cursor={pending:null,lastTokenEnd:-1,lastEvidenceMs:1000,lastEvidenceTokenEnd:0,lastStrongEvidenceMs:1000,lastStrongTokenEnd:0};
+ const weak=advanceOfflinePilotCursor(cursor,lines,lines,'ਗਲਤ ਸ਼ਬਦ ਹਰਿ ਨਾਮੁ',0,false,null,13000);
+ expect(weak.lastEvidenceMs).toBe(13000);
+ expect(weak.lastStrongEvidenceMs).toBe(1000);
+ const strong=advanceOfflinePilotCursor(weak,lines,lines,'ਗਲਤ ਸ਼ਬਦ ਹਰਿ ਨਾਮੁ ਅੰਮ੍ਰਿਤੁ ਮਨਿ',0,false,null,13340);
+ expect(strong.lastStrongEvidenceMs).toBe(13340);
+});

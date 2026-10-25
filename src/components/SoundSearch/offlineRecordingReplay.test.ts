@@ -7,7 +7,7 @@ import {
   buildOfflineSearchQueries, buildOfflineShabadMatchSequence, normalizeOfflineText,
 } from "./offlinePanktiMatch";
 import { advanceOfflinePilotCursor, OfflinePilotCursor } from "./offlinePilotCursor";
-import { decideOfflineSearch, needsOfflineSearch, PendingOfflineSearch } from "./offlineSearchDecision";
+import { decideOfflineSearch, needsOfflineSearch, PendingOfflineSearch, relocationShabadIds } from "./offlineSearchDecision";
 
 const database = vi.hoisted(() => ({ rows: [] as any[] }));
 vi.mock("../../utils/DB", () => ({ DB: {
@@ -26,7 +26,7 @@ describe.skipIf(!process.env.BANI_RECORDING_REPLAY)("timestamped recording Auto 
     const data = JSON.parse(execFileSync("python3", ["-c", `
 import sqlite3,json,sys
 c=sqlite3.connect(sys.argv[1]); c.row_factory=sqlite3.Row
-rows=[dict(r) for r in c.execute('SELECT p.id,p.gurmukhi_speech,p.source_id,l.shabad_id,l.order_id,l.source_page FROM panktis p JOIN lines l ON l.id=p.id ORDER BY l.order_id')]
+rows=[dict(r) for r in c.execute('SELECT p.id,p.gurmukhi_speech,p.source_id,l.shabad_id,l.order_id,l.source_page,l.type_id FROM panktis p JOIN lines l ON l.id=p.id ORDER BY l.order_id')]
 members={};banis={}
 for r in c.execute('SELECT b.line_id,b.bani_id FROM bani_lines b JOIN lines l ON l.id=b.line_id ORDER BY b.bani_id,b.line_group,l.order_id'):
  members.setdefault(r['line_id'],[]).append(r['bani_id']);banis.setdefault(r['bani_id'],[]).append(r['line_id'])
@@ -110,8 +110,9 @@ print(json.dumps(dict(rows=rows,banis=banis,successor=nexts),ensure_ascii=False)
         lastVisible = speech;
         const recent = speech.split(/\s+/).slice(-32).join(" ");
         const context = {shabadId,baniId,panktis:loaded,current,
-          recovering:!kirtan && event.end_ms - (cursor.lastEvidenceMs ?? event.end_ms) >= 10_000 &&
-            normalizeOfflineText(speech).split(" ").length > (cursor.lastEvidenceTokenEnd ?? -1) + 4};
+          recovering:!kirtan && event.end_ms - (cursor.lastStrongEvidenceMs ?? cursor.lastEvidenceMs ?? event.end_ms) >= 10_000 &&
+            normalizeOfflineText(speech).split(" ").length > (cursor.lastStrongTokenEnd ?? -1) + 4,
+          relocating:!kirtan && event.end_ms - (cursor.lastStrongEvidenceMs ?? cursor.lastEvidenceMs ?? event.end_ms) >= 12_000};
         let selectedNew = false;
         if ((changed || pendingSearch) && needsOfflineSearch(recent, context, kirtan)) {
           if ((recent !== lastSearch || pendingSearch) && recent.split(" ").length >= 4) {
@@ -120,6 +121,10 @@ print(json.dumps(dict(rows=rows,banis=banis,successor=nexts),ensure_ascii=False)
               lastSearch = recent; searchCount++;
               const candidates = await gurbaniSearch.search(buildOfflineSearchQueries(recent), "search");
               cachedRows = candidates.slice(0, 120).map(row => byId.get(row.id));
+            }
+            if (context.relocating) {
+              const neighbors = relocationShabadIds(recent,cachedRows).flatMap(id => shabads.get(id) ?? []);
+              cachedRows = [...new Map([...cachedRows,...neighbors].map(row => [row.id,row])).values()];
             }
             const decision = decideOfflineSearch(recent, cachedRows, context, kirtan, pendingSearch, event.end_ms);
             pendingSearch = decision.pending;
@@ -133,6 +138,8 @@ print(json.dumps(dict(rows=rows,banis=banis,successor=nexts),ensure_ascii=False)
               selectedNew = true;
               cursor.pending = null;
               cursor.lastEvidenceMs = event.end_ms;
+              cursor.lastStrongEvidenceMs = event.end_ms;
+              cursor.lastStrongTokenEnd = normalizeOfflineText(speech).split(" ").length - 1;
               shabadSelections.add(shabadId!);
               transitions.push({ at: event.end_ms / 1_000, id: row.id, shabadId, baniId, reason: "search" });
             }
@@ -217,6 +224,14 @@ print(json.dumps(dict(rows=rows,banis=banis,successor=nexts),ensure_ascii=False)
         // not an accuracy score against a human transcript.
         expect(transitions.at(-1).at).toBeGreaterThan(clip.audio_seconds - 3);
         expect(shabadSelections.size).toBeGreaterThanOrEqual(10);
+      }
+      if (!control && clip.id === "autopilot-ang-change") {
+        // The recording leaves Ang 115/116 for Ang 127. Only confirmed
+        // reacquisition can bridge this discontinuity in the canonical order.
+        expect(transitions.at(-1).at).toBeGreaterThan(clip.audio_seconds - 3);
+        expect(byId.get(transitions.at(-1).id).source_page).toBe(127);
+        expect(transitions.some((row,index) => index > 0 && row.reason === "search" &&
+          byId.get(row.id).source_page === 127)).toBe(true);
       }
       results.push(result);
     }

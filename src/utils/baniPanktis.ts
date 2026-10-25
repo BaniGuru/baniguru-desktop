@@ -9,6 +9,7 @@ export async function loadBaniPanktis(baniId: number): Promise<Pankti[]> {
   const rows: any[] = await db.select(`
     SELECT
       lines.*,
+      panktis.source_id,
       panktis.gurmukhi_speech,
       panktis.vishraam_idx,
       panktis.vishraam_ridx,

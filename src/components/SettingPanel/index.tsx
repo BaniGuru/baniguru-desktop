@@ -50,14 +50,14 @@ export const SettingPanel = () => {
   const {
     micName,
     setMicName,
-    autoSearch,
-    setAutoSearch,
     offlineMode,
     setOfflineMode,
     kirtanMode,
     setKirtanMode,
     audioStream,
     setAudioStream,
+    recordingEnabled,
+    setRecordingEnabled,
     autoNext,
     setAutoNext,
     speechRegion,
@@ -350,19 +350,13 @@ export const SettingPanel = () => {
           <section>
             <div className="mb-4 text-2xl font-semibold">Automation</div>
 
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-              <ToggleRow
-                label="Auto Search"
-                description="Automatically search when speech is detected."
-                value={autoSearch}
-                onClick={() => setAutoSearch(!autoSearch)}
-              />
-
+            <div className="mb-5 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
               <ToggleRow
                 label="Offline"
                 description="Use the bundled ONNX speech model instead of Soniox."
                 value={offlineMode}
                 onClick={() => setOfflineMode(!offlineMode)}
+                isLast={!offlineMode}
               />
 
               {offlineMode && (
@@ -371,9 +365,12 @@ export const SettingPanel = () => {
                   description="Use the longer rolling window for melodic Kirtan."
                   value={kirtanMode}
                   onClick={() => setKirtanMode(!kirtanMode)}
+                  isLast
                 />
               )}
+            </div>
 
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
               <ToggleRow
                 label="Auto Next"
                 description="Move to the next pankti automatically."
@@ -386,6 +383,12 @@ export const SettingPanel = () => {
                 description="Enable live audio stream for recognition."
                 value={audioStream}
                 onClick={() => setAudioStream(!audioStream)}
+              />
+              <ToggleRow
+                label="Recording"
+                description="Save Auto Pilot audio in Music/BaniGuru. Recordings older than seven days are removed."
+                value={recordingEnabled}
+                onClick={() => setRecordingEnabled(!recordingEnabled)}
                 isLast
               />
             </div>
@@ -411,6 +414,8 @@ const ToggleRow = ({
 }) => (
   <button
     type="button"
+    aria-label={label}
+    aria-pressed={value}
     onClick={onClick}
     className={`
       flex w-full items-center px-4 py-3 text-left transition-colors hover:bg-gray-50

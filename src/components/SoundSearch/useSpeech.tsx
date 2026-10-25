@@ -47,6 +47,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const transcriptRef = useRef("");
   const offlineTimedWordsRef = useRef<OfflineTimedWord[]>([]);
   const activeProviderRef = useRef<"soniox" | "offline" | null>(null);
+  const recordingPreference = useRef(true);
   const audioStreaming = useRef(false);
   const searchReady = useRef(false);
   const [finalText, setFinalText] = useState("");
@@ -55,10 +56,10 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const [nonFinalText, setNonFinalText] = useState("");
   const [lastTokenTime, setLastTokenTime] = useState(0);
   const {
-    autoSearch,
     offlineMode,
     kirtanMode,
     audioStream,
+    recordingEnabled,
     micName,
     speechRegion,
     apiToken,
@@ -66,6 +67,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     speechJpToken,
    } = useSettings();
   const [silenceSeconds, setSilenceSeconds] = useState(0);
+  recordingPreference.current = recordingEnabled;
   const [silenceStart, setSilenceStart] = useState<number|null>(null);
   const prevLastEndMsRef = useRef<number|null>(null);
   const [pauseSpeech, setPauseSpeech] = useState<boolean>(false);
@@ -307,16 +309,20 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
 
     try {
       if (offlineMode) {
-        await invoke('start_offline_asr', { micName, kirtanMode });
+        await invoke('start_offline_asr', { micName, kirtanMode, recordingEnabled });
         activeProviderRef.current = "offline";
       } else {
         await invoke('start_soniox', {
           micName: micName,
+          recordingEnabled,
           sonioxUrl: speechUrl,
           apiKey: apiKey,
           panktis
         });
         activeProviderRef.current = "soniox";
+      }
+      if (recordingPreference.current !== recordingEnabled) {
+        await invoke('set_auto_pilot_recording', {enabled:recordingPreference.current});
       }
     } catch (error) {
       setStarted(false);
@@ -342,6 +348,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     speechRegion,
     offlineMode,
     kirtanMode,
+    recordingEnabled,
   ]);
 
   const stopTranscription = useCallback(async () => {
@@ -444,6 +451,15 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const searchPilot = useSearchPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript);
   const offlineSearchPilot = useOfflineSearchPilot(finalText, nonFinalText, status.current, startTranscription, lastTokenTime, offlinePanktiPilot.cursor);
 
+  useEffect(() => {
+    if (started && activeProviderRef.current) {
+      invoke('set_auto_pilot_recording', {enabled:recordingEnabled}).catch(error => {
+        console.error('Could not update Auto Pilot recording',error);
+        setErrorText('Recording: ' + error);
+      });
+    }
+  }, [recordingEnabled,started]);
+
   const resetText = () => {
     transcriptRef.current = "";
     setFinalText("");
@@ -460,11 +476,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     if (started &&
       (
         appContext.state.page === PAGE_RECENT ||
-        appContext.state.page === PAGE_BANI ||
-        (
-          appContext.state.page === PAGE_SEARCH &&
-          !autoSearch
-        )
+        appContext.state.page === PAGE_BANI
       ) &&
       status.current !== 'Init') {
       stopTranscription();
@@ -503,13 +515,13 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     );
 
     searchPilot.setActive(
-      !offlineMode && autoSearch &&
+      !offlineMode &&
       appContext.state.page === PAGE_SEARCH &&
       started
     );
 
     offlineSearchPilot.setActive(
-      offlineMode && autoSearch &&
+      offlineMode &&
       (appContext.state.page === PAGE_SEARCH || appContext.state.page === PAGE_SHABAD) &&
       started
     );
@@ -521,18 +533,17 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
     baniPilot.setActive,
     offlinePanktiPilot.setActive,
     resetText,
-    autoSearch,
     offlineMode,
     offlineSearchPilot.setActive,
     searchPilot.setActive
   ]);
 
   useEffect(() => {
-    if (!offlineMode && !searchReady.current && autoSearch && appContext.dbPath) {
+    if (!offlineMode && !searchReady.current && appContext.dbPath) {
       ensurePanktiIndex();
       searchReady.current = true;
     }
-  }, [autoSearch, offlineMode, appContext.dbPath]);
+  }, [offlineMode, appContext.dbPath]);
 
   const updateLastTokenElapse = useCallback((finalText: string, nonFinalText: string) => {
     // Silence begins when:

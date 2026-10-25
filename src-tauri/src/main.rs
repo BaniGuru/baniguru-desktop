@@ -237,6 +237,7 @@ fn main() {
             update_pankti,
             get_local_ip,
             start_soniox,
+            commands::set_auto_pilot_recording,
             stop_soniox,
             restart_soniox,
             start_offline_asr,
@@ -283,6 +284,7 @@ fn main() {
             app.manage(VocalPipelineState {
                 pipeline: Mutex::new(None),
             });
+            vocal_pipeline::start_recording_retention(app.handle().clone());
             app.manage(AudioState {
                 bus: AudioBus::new(),
                 mic_stream: Mutex::new(None),

@@ -16,10 +16,10 @@ type Settings = {
     panelWidth: number;
     panelHeight: number;
   };
-  autoSearch: boolean;
   offlineMode: boolean;
   kirtanMode: boolean;
   audioStream: boolean;
+  recordingEnabled: boolean;
   autoNext: boolean;
   panelLocation: string;
   width: number;
@@ -44,10 +44,10 @@ type Settings = {
   setSpeechRegion: (region: string) => void;
   settingVersion: string;
   setPanelLocation: (location: string) => void;
-  setAutoSearch: (autoSearch: boolean) => void;
   setOfflineMode: (offlineMode: boolean) => void;
   setKirtanMode: (kirtanMode: boolean) => void;
   setAudioStream: (audioStream: boolean) => void;
+  setRecordingEnabled: (enabled: boolean) => void;
   setAutoNext: (autoNext: boolean) => void;
 
   apiToken: string;
@@ -110,10 +110,10 @@ const getDefaultSettings = (): Settings => ({
   activeThemeName: "ShabadOs2",
   visibility: defaultVisibility,
   micName: "",
-  autoSearch: false,
   offlineMode: false,
   kirtanMode: true,
   audioStream: false,
+  recordingEnabled: true,
   autoNext: false,
   apiToken: defaultApiToken,
   speechUsToken: defaultSpeechUsToken,
@@ -130,10 +130,10 @@ const getDefaultSettings = (): Settings => ({
   speechRegion: defaultRegion,
   setSpeechRegion: () => {},
   settingVersion: settingVersion,
-  setAutoSearch: () => { },
   setOfflineMode: () => { },
   setKirtanMode: () => { },
   setAudioStream: () => { },
+  setRecordingEnabled: () => { },
   setAutoNext: () => { },
   setApiToken: () => {},
   setSpeechUsToken: () => {},
@@ -162,10 +162,10 @@ const getInitialSettings = () => {
           activeThemeName: parsed.activeThemeName ?? defaultThemes[0],
           micName: parsed.micName ?? "",
           speechRegion: parsed.speechRegion ?? defaultRegion,
-          autoSearch: parsed.autoSearch ?? false,
           offlineMode: parsed.offlineMode ?? false,
           kirtanMode: parsed.kirtanMode ?? true,
           audioStream: parsed.audioStream ?? false,
+          recordingEnabled: parsed.recordingEnabled ?? true,
         };
         storageSettings = true;
       }
@@ -197,11 +197,11 @@ const storeSettings = (settings: any) => {
       activeThemeName: settings.activeThemeName,
       micName: settings.micName,
       settingVersion: settingVersion,
-      autoSearch: settings.autoSearch,
       offlineMode: settings.offlineMode,
       kirtanMode: settings.kirtanMode,
       speechRegion: settings.speechRegion,
       audioStream: settings.audioStream,
+      recordingEnabled: settings.recordingEnabled,
     })
   );
 };
@@ -216,10 +216,10 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
   const [version, setVersion] = useState(initial.version);
   const [micName, setMicName] = useState(initial.micName);
   const [panelLocation, setPanelLocation] = useState(initial.panelLocation);
-  const [autoSearch, setAutoSearch] = useState(initial.autoSearch);
   const [offlineMode, setOfflineMode] = useState(initial.offlineMode);
   const [kirtanMode, setKirtanMode] = useState(initial.kirtanMode);
   const [audioStream, setAudioStream] = useState(initial.audioStream);
+  const [recordingEnabled, setRecordingEnabled] = useState(initial.recordingEnabled);
   const [autoNext, setAutoNext] = useState(true);
   const [speechRegion, setSpeechRegion] = useState<string>(initial.speechRegion);
   const [apiToken, setApiToken] = useState(initial.apiToken);
@@ -318,22 +318,22 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
       activeThemeName,
       micName,
       panelLocation,
-      autoSearch,
       offlineMode,
       kirtanMode,
       speechRegion,
       audioStream,
+      recordingEnabled,
       apiToken,
       speechUsToken,
       speechJpToken,
     });
   }, [
     visibility, width, height, version, panelSetting, themes, activeThemeName, micName, panelLocation,
-    autoSearch,
     offlineMode,
     kirtanMode,
     speechRegion,
     audioStream,
+    recordingEnabled,
     apiToken,
     speechUsToken,
     speechJpToken,
@@ -381,14 +381,14 @@ export const SettingProvider = ({ children }: { children: React.ReactNode }) => 
         setVisibility,
         setMicName,
         micName,
-        autoSearch,
-        setAutoSearch,
         offlineMode,
         setOfflineMode,
         kirtanMode,
         setKirtanMode,
         audioStream,
+        recordingEnabled,
         setAudioStream,
+        setRecordingEnabled,
         autoNext,
         setAutoNext,
         speechRegion,

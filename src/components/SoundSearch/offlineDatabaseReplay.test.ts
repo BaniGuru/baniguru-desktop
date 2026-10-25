@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
 import { gurbaniSearch } from "../../utils/gurbaniSearch";
 import { buildOfflineSearchSegments, buildOfflineSearchQueries, findOfflinePanktiProgress, selectOfflineBaniFromSegments, selectOfflineShabadFromSegments, stabilizeOfflinePanktiMatch } from "./offlinePanktiMatch";
-import { decideOfflineSearch } from "./offlineSearchDecision";
+import { decideOfflineSearch, relocationShabadIds } from "./offlineSearchDecision";
 
 const fixture = vi.hoisted(() => ({ rows: [] as any[] }));
 vi.mock("../../utils/DB", () => ({ DB: {
@@ -20,7 +20,7 @@ describe.skipIf(!process.env.BANI_TEST_DB)("offline matching with the complete G
     const output = execFileSync("python3", ["-c", `
 import sqlite3,json,sys
 c=sqlite3.connect(sys.argv[1]);c.row_factory=sqlite3.Row
-rows=[dict(r) for r in c.execute('SELECT p.id,p.gurmukhi_speech,l.shabad_id,l.order_id FROM panktis p JOIN lines l ON l.id=p.id')]
+rows=[dict(r) for r in c.execute('SELECT p.id,p.gurmukhi_speech,p.source_id,l.shabad_id,l.order_id,l.source_page,l.type_id FROM panktis p JOIN lines l ON l.id=p.id')]
 members={}
 for line,bani in c.execute('SELECT line_id,bani_id FROM bani_lines'):
  members.setdefault(line,[]).append(bani)
@@ -89,4 +89,19 @@ print(json.dumps(dict(rows=rows,asa=asa,sehaj=sehaj),ensure_ascii=False))
     expect(visited.size).toBeGreaterThan(sehaj.length / 2);
     expect(new Set([...visited].map(index => sehaj[index].shabad_id)).size).toBeGreaterThan(1);
   });
+  it("loads the preceding verse when a global shortlist is insufficient to confirm an ang change",async()=>{
+    const current=fixture.rows.find(row=>row.id==='C1XB');
+    const target=fixture.rows.find(row=>row.id==='1JDS');
+    const previous=fixture.rows.find(row=>row.id==='W72C');
+    const speech=previous.gurmukhi_speech+' '+target.gurmukhi_speech;
+    const context={shabadId:current.shabad_id,baniId:null,panktis:[current],current:0,recovering:true,relocating:true};
+    const ids=relocationShabadIds(speech,[target]);
+    expect(ids).toEqual(['SHZ']);
+    const expanded=fixture.rows.filter(row=>ids.includes(row.shabad_id));
+    const first=decideOfflineSearch(speech,expanded,context,false,null,13000);
+    const next=decideOfflineSearch(speech,expanded,context,false,first.pending,13340);
+    expect(next.selection?.row.id).toBe('1JDS');
+    expect(next.selection?.row.source_page).toBe(115);
+  });
+
 });

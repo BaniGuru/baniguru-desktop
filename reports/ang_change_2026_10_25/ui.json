@@ -1,0 +1,29 @@
+{
+  "passed": true,
+  "layout": {
+    "names": [
+      "Offline",
+      "Kirtan",
+      "Auto Next",
+      "Audio Stream",
+      "Recording"
+    ],
+    "gap": 22
+  },
+  "autoSearchAlwaysOn": true,
+  "kirtanOnlyOffline": true,
+  "liveRecordingToggle": true,
+  "recordingToggleDuringStartup": true,
+  "noModelRestart": true,
+  "forward": {
+    "line": "C1XB",
+    "page": 127,
+    "at": 15020
+  },
+  "backward": {
+    "line": "GGL1",
+    "page": 115,
+    "at": 36360
+  },
+  "browserExceptions": []
+}

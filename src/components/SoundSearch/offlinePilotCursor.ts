@@ -6,6 +6,7 @@ import {
 export type OfflinePilotCursor = {
   pending: PendingOfflinePanktiMatch; lastTokenEnd: number; observationMs?: number;
   lastEvidenceMs?: number; lastEvidenceTokenEnd?: number;
+  lastStrongEvidenceMs?: number; lastStrongTokenEnd?: number;
   recovery?: {panktiIdx:number; confirmations:number};
 };
 
@@ -25,6 +26,8 @@ export const advanceOfflinePilotCursor = (
   let match = findOfflinePanktiProgress(panktis, transcript, current, kirtan, baniId, currentPanktis);
   let evidenceMs = cursor.lastEvidenceMs ?? observationMs;
   let evidenceEnd = cursor.lastEvidenceTokenEnd ?? -1;
+  let strongMs = cursor.lastStrongEvidenceMs ?? observationMs;
+  let strongEnd = cursor.lastStrongTokenEnd ?? -1;
   let recovery: OfflinePilotCursor["recovery"];
   // Normal paath remains tightly bounded. After noisy lines have stalled it,
   // search a small forward corridor, requiring distinct audio observations of
@@ -47,7 +50,15 @@ export const advanceOfflinePilotCursor = (
     evidenceMs = observationMs;
     evidenceEnd = match.tokenEndIndex;
   }
-  const health = {lastEvidenceMs:evidenceMs,lastEvidenceTokenEnd:evidenceEnd,recovery};
+  if (match && match.exactWords >= 3 && match.tokenEndIndex > strongEnd) {
+    const words = normalizeOfflineText(transcript).split(" ");
+    if (new Set(words.slice(match.tokenEndIndex - match.matchedWords + 1,match.tokenEndIndex + 1)).size >= 3) {
+      strongMs = observationMs;
+      strongEnd = match.tokenEndIndex;
+    }
+  }
+  const health = {lastEvidenceMs:evidenceMs,lastEvidenceTokenEnd:evidenceEnd,
+    lastStrongEvidenceMs:strongMs,lastStrongTokenEnd:strongEnd,recovery};
   if (match && match.panktiIdx !== current && match.tokenEndIndex <= cursor.lastTokenEnd) {
     return { ...health, currentIdx: current, pending: null, lastTokenEnd: cursor.lastTokenEnd, observationMs };
   }

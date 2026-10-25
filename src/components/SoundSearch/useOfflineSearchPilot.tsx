@@ -14,7 +14,7 @@ import { getShabadIds } from "../../utils/shabadUtil";
 import { loadBaniPanktis } from "../../utils/baniPanktis";
 import { useSettings } from "../../state/providers/SettingContext";
 import { buildOfflineSearchQueries } from "./offlinePanktiMatch";
-import { decideOfflineSearch, needsOfflineSearch, PendingOfflineSearch } from "./offlineSearchDecision";
+import { decideOfflineSearch, needsOfflineSearch, PendingOfflineSearch, relocationShabadIds } from "./offlineSearchDecision";
 
 import { OfflinePilotCursor } from "./offlinePilotCursor";
 import { stabilizeOfflineSearchResults, OfflineSearchResults } from "./offlineSearchResults";
@@ -34,10 +34,11 @@ const useOfflineSearchPilot = (
   const { state: baniState, dispatch: baniDispatch } = useContext(BaniContext);
   const { state: appState, dispatch: appDispatch } = useContext(AppContext);
   const { kirtanMode } = useSettings();
-  const loadPanktis = useCallback(async (ids: string[]): Promise<Pankti[]> => {
-    if (!ids.length) return [];
+  const loadPanktis = useCallback(async (ids: string[], shabads:string[] = []): Promise<Pankti[]> => {
+    if (!ids.length && !shabads.length) return [];
     const db = await DB.getInstance();
     const quoted = ids.map(id => `'${id.replaceAll("'", "''")}'`).join(",");
+    const shabadIds = shabads.map(id => `'${id.replaceAll("'", "''")}'`).join(",");
     const rows: any[] = await db.select(`
       SELECT lines.*, panktis.source_id, panktis.gurmukhi_speech, panktis.vishraam_idx,
              panktis.vishraam_ridx, panktis.gurmukhi_words, panktis.gurmukhi_rwords,
@@ -46,7 +47,8 @@ const useOfflineSearchPilot = (
       INNER JOIN panktis ON lines.id = panktis.id
       LEFT JOIN bani_lines ON bani_lines.line_id = panktis.id
       LEFT JOIN banis ON banis.id = bani_lines.bani_id
-      WHERE lines.id IN (${quoted})
+      WHERE ${ids.length ? `lines.id IN (${quoted})` : "0"}
+        OR ${shabads.length ? `lines.shabad_id IN (${shabadIds})` : "0"}
       ORDER BY bani_lines.bani_id
     `);
     const byId = new Map<string, any>();
@@ -66,7 +68,9 @@ const useOfflineSearchPilot = (
       }
       byId.set(row.id, existing);
     }
-    return ids.map(id => byId.get(id)).filter(Boolean) as Pankti[];
+    const selected = new Set(ids);
+    return [...ids.map(id => byId.get(id)).filter(Boolean),
+      ...[...byId.values()].filter(row => !selected.has(row.id))] as Pankti[];
   }, []);
 
   // Stream updates replace this snapshot. Searches run one at a time and read
@@ -85,7 +89,7 @@ const useOfflineSearchPilot = (
     let lastRun = {key:"",observationMs:-1};
     let contextKey = "";
     let pending: PendingOfflineSearch = null;
-    let cached: {speech:string;rows:Pankti[];at:number} | null = null;
+    let cached: {speech:string;rows:Pankti[];at:number;relocation?:boolean} | null = null;
     let results: OfflineSearchResults<Pankti> = {rows:[],publishedAt:0};
 
     const run = async () => {
@@ -104,14 +108,15 @@ const useOfflineSearchPilot = (
       const fullSpeech = args.finalText.trim() || args.partialText.trim();
       const speech = fullSpeech.split(/\s+/).filter(Boolean).slice(-32).join(" ");
       const onSearch = args.appState.page === "search";
-      const lastEvidence = tracking?.current.lastEvidenceMs ?? args.observationMs;
+      const lastEvidence = tracking?.current.lastStrongEvidenceMs ?? tracking?.current.lastEvidenceMs ?? args.observationMs;
       const context = onSearch ? {shabadId:null,baniId:null,panktis:[]} : {
         shabadId:args.displayState.shabadId,baniId:args.displayState.baniId,
         panktis:args.displayState.panktis,current:args.displayState.current,
         recovering:!args.kirtanMode && args.observationMs - lastEvidence >= 10_000 &&
-          normalizeOfflineText(fullSpeech).split(" ").length > (tracking?.current.lastEvidenceTokenEnd ?? -1) + 4,
+          normalizeOfflineText(fullSpeech).split(" ").length > (tracking?.current.lastStrongTokenEnd ?? -1) + 4,
+        relocating:!args.kirtanMode && args.observationMs - lastEvidence >= 12_000,
       };
-      const mode = `${args.appState.page}:${context.shabadId}:${context.baniId}:${context.current}:${context.recovering}`;
+      const mode = `${args.appState.page}:${context.shabadId}:${context.baniId}:${context.current}:${context.recovering}:${context.relocating}`;
       if (contextKey !== mode) {
         pending = null;
         if (onSearch) {
@@ -134,6 +139,12 @@ const useOfflineSearchPilot = (
           if (cancelled) return;
           candidates = await loadPanktis(found.map(row => row.id));
           cached = {speech,rows:candidates,at:Date.now()};
+        }
+        if (context.relocating && !cached?.relocation) {
+          const neighbors = await loadPanktis([],relocationShabadIds(speech,candidates));
+          const merged = new Map([...candidates,...neighbors].map(row => [row.id,row]));
+          candidates = [...merged.values()];
+          if (cached) cached = {...cached,rows:candidates,relocation:true};
         }
         if (cancelled || latest.current.appState.page !== args.appState.page ||
             latest.current.displayState.shabadId !== args.displayState.shabadId ||
@@ -166,6 +177,12 @@ const useOfflineSearchPilot = (
         } else {
           shabadDispatch({type:SHABAD_RESET});
           searchDispatch({type:SEARCH_SHABAD_PANKTI,payload:{pankti}});
+        }
+        if (tracking) {
+          tracking.current.lastStrongEvidenceMs = args.observationMs;
+          tracking.current.lastStrongTokenEnd = normalizeOfflineText(fullSpeech).split(" ").length - 1;
+          tracking.current.pending = null;
+          tracking.current.recovery = undefined;
         }
         appDispatch({type:SET_APP_PAGE,payload:{page:"shabad",prev_page:"search",show_panel:true}});
       } catch (error) {

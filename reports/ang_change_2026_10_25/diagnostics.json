@@ -1,0 +1,123 @@
+{
+  "recording": {
+    "file": "BaniGuru_AutoPilot_2026-10-25_21-10-03_574.mp3",
+    "sha256": "4bb40dde5082e2b5ccaaf844e2b86a2f32ba1914d9c9e6bee46a170e093f114f",
+    "decoded_seconds": 237.06,
+    "human_reference": false
+  },
+  "asr": {
+    "profile": "sehaj_paath",
+    "processing_seconds": 149.173023579,
+    "rtf": 0.6292627333966084,
+    "p95_update_ms": 398.525631,
+    "wer": null,
+    "cer": null
+  },
+  "before": {
+    "display_transitions": 52,
+    "shabads": 4,
+    "broad_searches": 38,
+    "first_selection_seconds": 5.106,
+    "last_transition": {
+      "at": 214.206,
+      "id": "1T43",
+      "shabadId": "2RZ",
+      "baniId": null,
+      "reason": "pankti",
+      "source_page": 116,
+      "order_id": 4735,
+      "gurmukhi_unicode": "ਸਚੇ ਸੇਵਹਿ ਸਚਿ ਸਮਾਵਹਿ, ਸਚੇ ਕੇ ਗੁਣ ਗਾਵਣਿਅਾ ॥ ਰਹਾੳੁ ॥"
+    },
+    "search_selections": [
+      {
+        "at": 5.106,
+        "id": "W72C",
+        "shabadId": "SHZ",
+        "baniId": null,
+        "reason": "search",
+        "source_page": 115,
+        "order_id": 4673,
+        "gurmukhi_unicode": "ਸਤਿਗੁਰੁ ਦਾਤਾ, ਮਿਲੈ ਮਿਲਾਇਅਾ ॥"
+      }
+    ]
+  },
+  "after": {
+    "display_transitions": 68,
+    "shabads": 5,
+    "broad_searches": 11,
+    "first_selection_seconds": 5.106,
+    "last_transition": {
+      "at": 236.306,
+      "id": "W4QM",
+      "shabadId": "67P",
+      "baniId": null,
+      "reason": "pankti",
+      "source_page": 127,
+      "order_id": 5203,
+      "gurmukhi_unicode": "ਬਿਖੁ ਕਾ ਕੀੜਾ ਬਿਖੁ ਮਹਿ ਰਾਤਾ, ਬਿਖੁ ਹੀ ਮਾਹਿ ਪਚਾਵਣਿਅਾ ॥"
+    },
+    "search_selections": [
+      {
+        "at": 5.106,
+        "id": "W72C",
+        "shabadId": "SHZ",
+        "baniId": null,
+        "reason": "search",
+        "source_page": 115,
+        "order_id": 4673,
+        "gurmukhi_unicode": "ਸਤਿਗੁਰੁ ਦਾਤਾ, ਮਿਲੈ ਮਿਲਾਇਅਾ ॥"
+      },
+      {
+        "at": 181.566,
+        "id": "0N2L",
+        "shabadId": "LLM",
+        "baniId": null,
+        "reason": "search",
+        "source_page": 127,
+        "order_id": 5182,
+        "gurmukhi_unicode": "ਖਰੀ ਕੁਅਾਲਿਓ ਕੁਰੂਪਿ ਕੁਲਖਣੀ, ਸੁਪਨੈ ਪਿਰੁ ਨਹੀ ਪਾਵਣਿਅਾ ॥"
+      }
+    ]
+  },
+  "recording_conversion_benchmark": {
+    "format": "16 kHz mono 16-bit PCM",
+    "input_seconds": 237.06,
+    "processing_seconds": 0.104640576,
+    "recorded_samples": 3778144,
+    "wav_bytes": 7556332
+  },
+  "regressions": [
+    {
+      "id": "autopilot-ang-change",
+      "matched": 0,
+      "eligible": 0,
+      "coverage": null,
+      "last_transition_seconds": 236.306
+    },
+    {
+      "id": "autopilot-oct25",
+      "matched": 0,
+      "eligible": 0,
+      "coverage": null,
+      "last_transition_seconds": 571.67
+    },
+    {
+      "id": "akj-part2",
+      "matched": 250,
+      "eligible": 251,
+      "coverage": 0.9960159362549801,
+      "last_transition_seconds": 1783.986
+    }
+  ],
+  "validation": {
+    "frontend_tests": 79,
+    "native_recording_tests": 3,
+    "native_full_recording_benchmark": true,
+    "production_build": true
+  },
+  "limits": [
+    "No human transcript or timed expected pankti labels were supplied; WER/CER and pankti accuracy are unscored.",
+    "Reaching the final region is a continuity diagnostic, not proof of perfect alignment.",
+    "Microphone and live Soniox network operation were not available in this test environment."
+  ]
+}

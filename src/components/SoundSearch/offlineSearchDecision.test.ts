@@ -91,3 +91,35 @@ describe("paath search recovery safeguards", () => {
     expect(decideOfflineSearch(next.gurmukhi_speech,ambiguous,empty,false,a.pending,680).selection).toBeNull();
   });
 });
+
+describe("confirmed reacquisition of another ang",()=>{
+  const current={...opening,order_id:1000,source_page:50,source_id:1};
+  const previous={...opening,id:"earlier-a",shabad_id:"earlier",order_id:100,source_page:5,source_id:1,type_id:4};
+  const target={...refrain,id:"earlier-b",shabad_id:"earlier",order_id:101,source_page:5,source_id:1,type_id:4};
+  const lost={shabadId:"song",baniId:null,panktis:[current],current:0,recovering:true,relocating:true};
+  it("moves backwards to a different ang only with repeated, ordered verse evidence",()=>{
+    const speech=previous.gurmukhi_speech+' '+target.gurmukhi_speech;
+    const a=decideOfflineSearch(speech,[previous,target],lost,false,null,13000);
+    expect(a.selection).toBeNull();
+    expect(decideOfflineSearch(speech,[previous,target],lost,false,a.pending,13000).selection).toBeNull();
+    expect(decideOfflineSearch(speech,[previous,target],lost,false,a.pending,13340).selection?.row.id).toBe(target.id);
+  });
+  it("does not relocate on a held four-word phrase or to another source",()=>{
+    let pending=null;
+    for(let ms=13000;ms<17000;ms+=340){
+      const next=decideOfflineSearch(target.gurmukhi_speech,[target],lost,false,pending,ms);
+      expect(next.selection).toBeNull();pending=next.pending;
+    }
+    const foreign=[{...previous,source_id:2},{...target,source_id:2}];
+    const speech=previous.gurmukhi_speech+' '+target.gurmukhi_speech;
+    const a=decideOfflineSearch(speech,foreign,lost,false,null,13000);
+    expect(decideOfflineSearch(speech,foreign,lost,false,a.pending,13340).selection).toBeNull();
+  });
+  it("can leave an explicitly loaded Bani when another ang is confirmed",()=>{
+    const context={...lost,baniId:12};
+    const speech=previous.gurmukhi_speech+' '+target.gurmukhi_speech;
+    const a=decideOfflineSearch(speech,[previous,target],context,false,null,13000);
+    const next=decideOfflineSearch(speech,[previous,target],context,false,a.pending,13340);
+    expect(next.selection?.baniId).toBeNull();expect(next.selection?.row.id).toBe(target.id);
+  });
+});
