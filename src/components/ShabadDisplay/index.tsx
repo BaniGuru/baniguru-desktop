@@ -191,6 +191,7 @@ const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
             instance.select(`
                 SELECT
                     lines.*,
+                    panktis.source_id,
                     panktis.gurmukhi_speech,
                     panktis.vishraam_idx,
                     panktis.vishraam_ridx,

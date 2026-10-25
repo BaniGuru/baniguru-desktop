@@ -17,6 +17,7 @@ class GurbaniSearch {
   private wordIndex = new Map<string, number[]>();
   private data: PanktiRow[] = [];
   private initialized = false;
+  private initializing: Promise<void> | null = null;
 
   /**
    * Initialize once
@@ -26,6 +27,13 @@ class GurbaniSearch {
 
     // no db path yet
     if (! DB.getDbPath()) return;
+
+    if (this.initializing) return this.initializing;
+    this.initializing = this.loadIndex();
+    try { await this.initializing; } finally { this.initializing = null; }
+  }
+
+  private async loadIndex() {
 
     const db = await DB.getInstance();
 

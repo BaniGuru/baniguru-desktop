@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState, MutableRefObject } from "react";
 import { useContext as useCtxSelector } from "use-context-selector";
 import { AppContext } from "../../state/providers/AppProvider";
 import { SearchContext } from "../../state/providers/SearchProvider";
@@ -8,13 +8,16 @@ import { DB } from "../../utils/DB";
 import { gurbaniSearch } from "../../utils/gurbaniSearch";
 import { Pankti } from "../../models/Pankti";
 import { RecordState } from "./useSpeech";
-import { rankOfflinePanktis } from "./offlinePanktiMatch";
+import { normalizeOfflineText, rankOfflinePanktis } from "./offlinePanktiMatch";
 import { BANI_ACTION_Add, BANI_ACTION_UPDATE, BaniContext } from "../../state/providers/BaniProvider";
 import { getShabadIds } from "../../utils/shabadUtil";
 import { loadBaniPanktis } from "../../utils/baniPanktis";
 import { useSettings } from "../../state/providers/SettingContext";
 import { buildOfflineSearchQueries } from "./offlinePanktiMatch";
 import { decideOfflineSearch, needsOfflineSearch, PendingOfflineSearch } from "./offlineSearchDecision";
+
+import { OfflinePilotCursor } from "./offlinePilotCursor";
+import { stabilizeOfflineSearchResults, OfflineSearchResults } from "./offlineSearchResults";
 
 /** Search-only pilot used by the bundled offline ASR path. */
 const useOfflineSearchPilot = (
@@ -23,24 +26,20 @@ const useOfflineSearchPilot = (
   status: RecordState,
   startTranscription: (panktis: string[]) => Promise<void>,
   observationMs = 0,
+  tracking?: MutableRefObject<OfflinePilotCursor>,
 ) => {
   const [active, setActive] = useState(false);
   const { searchTerm, dispatch: searchDispatch } = useContext(SearchContext);
   const { state: displayState, dispatch: shabadDispatch } = useCtxSelector(ShabadContext);
   const { state: baniState, dispatch: baniDispatch } = useContext(BaniContext);
-  const { dispatch: appDispatch } = useContext(AppContext);
+  const { state: appState, dispatch: appDispatch } = useContext(AppContext);
   const { kirtanMode } = useSettings();
-  const requestId = useRef(0);
-  const lastSpeech = useRef("");
-  const pendingSearch = useRef<PendingOfflineSearch>(null);
-  const cachedCandidates = useRef<{ speech: string; rows: Pankti[] } | null>(null);
-
   const loadPanktis = useCallback(async (ids: string[]): Promise<Pankti[]> => {
     if (!ids.length) return [];
     const db = await DB.getInstance();
     const quoted = ids.map(id => `'${id.replaceAll("'", "''")}'`).join(",");
     const rows: any[] = await db.select(`
-      SELECT lines.*, panktis.gurmukhi_speech, panktis.vishraam_idx,
+      SELECT lines.*, panktis.source_id, panktis.gurmukhi_speech, panktis.vishraam_idx,
              panktis.vishraam_ridx, panktis.gurmukhi_words, panktis.gurmukhi_rwords,
              bani_lines.bani_id, banis.name_gurmukhi AS bani_name_gurmukhi
       FROM lines
@@ -70,115 +69,117 @@ const useOfflineSearchPilot = (
     return ids.map(id => byId.get(id)).filter(Boolean) as Pankti[];
   }, []);
 
+  // Stream updates replace this snapshot. Searches run one at a time and read
+  // the latest snapshot on each tick; a slower database call cannot be
+  // invalidated forever by faster ASR events.
+  const latest = useRef({finalText,partialText,status,startTranscription,searchTerm,
+    displayState,baniState,appState,kirtanMode,observationMs});
+  latest.current = {finalText,partialText,status,startTranscription,searchTerm,
+    displayState,baniState,appState,kirtanMode,observationMs};
+
   useEffect(() => {
-    if (!active) {
-      requestId.current += 1; // invalidate any search already in flight
-      lastSpeech.current = "";
-      pendingSearch.current = null;
-      cachedCandidates.current = null;
-      return;
-    }
-    if (status === "Init") startTranscription([]);
-    if (searchTerm) return;
-
-    // Offline finalText is rebuilt from the accumulated timed-word history on
-    // every rolling ASR event. Searching only partialText throws away the
-    // preceding Panktis needed to identify a Kirtan Shabad reliably.
-    const latestText = finalText.trim() || partialText.trim();
-    const words = latestText
-      .replace(/\s+/g, " ")
-      .trim()
-      .split(" ")
-      .filter(Boolean)
-      .slice(-32);
-    const speech = words.join(" ");
-    const sameSpeech = speech === lastSpeech.current;
-    if (speech.split(" ").filter(Boolean).length < 2 || (sameSpeech && !pendingSearch.current)) return;
-    lastSpeech.current = speech;
-    const context = {
-      shabadId: displayState.shabadId,
-      baniId: displayState.baniId,
-      panktis: displayState.panktis,
-    };
-    if (!needsOfflineSearch(speech, context, kirtanMode)) {
-      requestId.current += 1;
-      pendingSearch.current = null;
-      return;
-    }
-    const myRequest = ++requestId.current;
-
-    // Fuse is more reliable with several phrase-sized searches than with one
-    // long sentence spanning multiple panktis. Ranking still uses the whole
-    // recent transcript window below.
-    const searchQueries = buildOfflineSearchQueries(speech);
+    if (!active) return;
+    let cancelled = false;
+    let busy = false;
+    let starting = false;
+    let lastRun = {key:"",observationMs:-1};
+    let contextKey = "";
+    let pending: PendingOfflineSearch = null;
+    let cached: {speech:string;rows:Pankti[];at:number} | null = null;
+    let results: OfflineSearchResults<Pankti> = {rows:[],publishedAt:0};
 
     const run = async () => {
-      let loadedCandidates: Pankti[];
-      if (sameSpeech && cachedCandidates.current?.speech === speech) {
-        loadedCandidates = cachedCandidates.current.rows;
-      } else {
-        const candidates = (await gurbaniSearch.search(searchQueries, "search")).slice(0, 120);
-        if (myRequest !== requestId.current || !active) return;
-        loadedCandidates = await loadPanktis(candidates.map(row => row.id));
-        cachedCandidates.current = {speech,rows:loadedCandidates};
-      }
-      if (myRequest !== requestId.current || !active) return;
-
-      const rankedPanktis = (context.panktis.length ? [] : rankOfflinePanktis(speech, loadedCandidates))
-        .slice(0, 8)
-        .map(row => loadedCandidates.find(pankti => pankti.id === row.id))
-        .filter(Boolean) as Pankti[];
-      // Prefer accumulated evidence across multiple Panktis to a one-line
-      // match so repeated lines and noisy suffixes do not trigger a fallback.
-      const decision = decideOfflineSearch(speech, loadedCandidates, context, kirtanMode, pendingSearch.current, observationMs);
-      pendingSearch.current = decision.pending;
-      const selectedId = decision.selection?.row.id;
-
-      if (selectedId) {
-        const pankti = loadedCandidates.find(row => row.id === selectedId);
-        if (!pankti) return;
-
-        const baniId = decision.selection?.baniId;
-        if (baniId) {
-          const baniPanktis = await loadBaniPanktis(baniId);
-          if (myRequest !== requestId.current || !active) return;
-          const current = baniPanktis.findIndex(row => String(row.id) === String(pankti.id));
-          if (current >= 0) {
-            const payload = {
-              baniId,
-              panktis: baniPanktis,
-              shabadIds: getShabadIds(baniPanktis),
-              current,
-              home: current,
-            };
-            if (baniState.banis.some(recent => recent.baniId === baniId)) {
-              baniDispatch({ type: BANI_ACTION_UPDATE, payload });
-            } else {
-              baniDispatch({ type: BANI_ACTION_Add, payload });
-            }
-            shabadDispatch({ type: SHABAD_RESET });
-            shabadDispatch({ type: SHABAD_UPDATE, payload: {
-              ...payload,
-              panktis: baniPanktis,
-            } });
-            appDispatch({ type: SET_APP_PAGE, payload: { page: "shabad", prev_page: "search", show_panel: true } });
-            return;
-          }
+      if (cancelled || busy) return;
+      const args = latest.current;
+      if (args.status === "Init") {
+        if (!starting) {
+          starting = true;
+          try { await args.startTranscription([]); }
+          catch (error) { starting = false; console.error("Could not start offline transcription",error); }
         }
-
-        shabadDispatch({ type: SHABAD_RESET });
-        searchDispatch({ type: SEARCH_SHABAD_PANKTI, payload: { pankti } });
-        appDispatch({ type: SET_APP_PAGE, payload: { page: "shabad", prev_page: "search", show_panel: true } });
         return;
       }
-
-      // Ambiguous speech stays on Search and shows the best choices instead of
-      // jumping to the wrong shabad.
-      if (rankedPanktis.length) searchDispatch({ type: SET_PANKTIS, payload: rankedPanktis });
+      starting = false;
+      if (args.status !== "Running" || (args.appState.page === "search" && args.searchTerm.trim()) || !DB.getDbPath()) return;
+      const fullSpeech = args.finalText.trim() || args.partialText.trim();
+      const speech = fullSpeech.split(/\s+/).filter(Boolean).slice(-32).join(" ");
+      const onSearch = args.appState.page === "search";
+      const lastEvidence = tracking?.current.lastEvidenceMs ?? args.observationMs;
+      const context = onSearch ? {shabadId:null,baniId:null,panktis:[]} : {
+        shabadId:args.displayState.shabadId,baniId:args.displayState.baniId,
+        panktis:args.displayState.panktis,current:args.displayState.current,
+        recovering:!args.kirtanMode && args.observationMs - lastEvidence >= 10_000 &&
+          normalizeOfflineText(fullSpeech).split(" ").length > (tracking?.current.lastEvidenceTokenEnd ?? -1) + 4,
+      };
+      const mode = `${args.appState.page}:${context.shabadId}:${context.baniId}:${context.current}:${context.recovering}`;
+      if (contextKey !== mode) {
+        pending = null;
+        if (onSearch) {
+          results = {rows:[],publishedAt:0};
+          if (cached?.speech !== speech) cached = null;
+          searchDispatch({type:SET_PANKTIS,payload:[]});
+        }
+        contextKey = mode;
+      }
+      if (!needsOfflineSearch(speech,context,args.kirtanMode)) { pending = null; return; }
+      const key = `${mode}:${speech}`;
+      const queryDue = !cached || ((cached.speech !== speech || !cached.rows.length) && Date.now() - cached.at >= 900);
+      const awaiting = pending || results.challenger || (results.refreshAfter != null && args.observationMs >= results.refreshAfter);
+      if (lastRun.key === key && (!awaiting || lastRun.observationMs === args.observationMs) && !queryDue) return;
+      busy = true;
+      try {
+        let candidates = cached?.rows ?? [];
+        if (queryDue) {
+          const found = (await gurbaniSearch.search(buildOfflineSearchQueries(speech),"search")).slice(0,120);
+          if (cancelled) return;
+          candidates = await loadPanktis(found.map(row => row.id));
+          cached = {speech,rows:candidates,at:Date.now()};
+        }
+        if (cancelled || latest.current.appState.page !== args.appState.page ||
+            latest.current.displayState.shabadId !== args.displayState.shabadId ||
+            latest.current.displayState.current !== args.displayState.current ||
+            latest.current.searchTerm !== args.searchTerm) return;
+        lastRun = {key,observationMs:args.observationMs};
+        if (onSearch) {
+          const ranked = rankOfflinePanktis(speech,candidates).slice(0,8)
+            .map(row => candidates.find(pankti => pankti.id === row.id)!).filter(Boolean);
+          const stable = stabilizeOfflineSearchResults(results,ranked,args.observationMs);
+          if (stable.rows !== results.rows) searchDispatch({type:SET_PANKTIS,payload:stable.rows});
+          results = stable;
+        }
+        const decision = decideOfflineSearch(speech,candidates,context,args.kirtanMode,pending,args.observationMs);
+        pending = decision.pending;
+        const pankti = decision.selection?.row as Pankti | undefined;
+        if (!pankti) return;
+        const baniId = decision.selection!.baniId;
+        if (baniId) {
+          const baniPanktis = await loadBaniPanktis(baniId);
+          if (cancelled || latest.current.appState.page !== args.appState.page ||
+              latest.current.displayState.shabadId !== args.displayState.shabadId ||
+              latest.current.displayState.current !== args.displayState.current ||
+              latest.current.searchTerm !== args.searchTerm) return;
+          const current = baniPanktis.findIndex(row => row.id === pankti.id);
+          if (current < 0) return;
+          const payload = {baniId,panktis:baniPanktis,shabadIds:getShabadIds(baniPanktis),current,home:current};
+          baniDispatch({type:args.baniState.banis.some(bani => bani.baniId === baniId) ? BANI_ACTION_UPDATE : BANI_ACTION_Add,payload});
+          shabadDispatch({type:SHABAD_UPDATE,payload});
+        } else {
+          shabadDispatch({type:SHABAD_RESET});
+          searchDispatch({type:SEARCH_SHABAD_PANKTI,payload:{pankti}});
+        }
+        appDispatch({type:SET_APP_PAGE,payload:{page:"shabad",prev_page:"search",show_panel:true}});
+      } catch (error) {
+        // Leave this speech eligible for retry, including when the DB/index
+        // becomes ready without another word being emitted.
+        lastRun = {key:"",observationMs:-1};
+        cached = null;
+        console.error("Offline pankti search failed",error);
+      } finally { busy = false; }
     };
-
-    run().catch(error => console.error("Offline pankti search failed", error));
-  }, [active, finalText, partialText, status, startTranscription, searchTerm, loadPanktis, loadBaniPanktis, baniState.banis, baniDispatch, shabadDispatch, searchDispatch, appDispatch, kirtanMode, displayState.shabadId, displayState.baniId, displayState.panktis, observationMs]);
+    void run();
+    const timer = setInterval(() => { void run(); },340);
+    return () => {cancelled = true;clearInterval(timer);};
+  }, [active,loadPanktis,baniDispatch,shabadDispatch,searchDispatch,appDispatch,tracking]);
 
   return { setActive };
 };

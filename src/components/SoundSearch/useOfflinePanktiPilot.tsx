@@ -10,7 +10,7 @@ import { DB } from "../../utils/DB";
 import { formatPanktis } from "../../utils/shabadUtil";
 import { Pankti } from "../../models/Pankti";
 
-type PreloadedShabad = { currentShabadId: string; shabadId: string; panktis: Pankti[] };
+type PreloadedShabad = { currentShabadId: string; shabads: Array<{shabadId:string;panktis:Pankti[]}> };
 
 /** Word-based active-Pankti tracking for the offline RNNT transcript. */
 const useOfflinePanktiPilot = (
@@ -30,10 +30,12 @@ const useOfflinePanktiPilot = (
 
   useEffect(() => {
     cursor.current.pending = null;
+    cursor.current.recovery = undefined;
+    cursor.current.lastEvidenceMs = observationMs;
   }, [shabadId, baniId]);
 
-  // Keep the next canonical Shabad ready while the current one is displayed.
-  // Once it becomes current, this effect automatically preloads its successor.
+  // Keep three canonical successors ready for normal progression and recovery
+  // over missed lines. Loading happens on Shabad changes, not ASR refreshes.
   useEffect(() => {
     let cancelled = false;
     setPreloadedNextShabad(null);
@@ -46,6 +48,7 @@ const useOfflinePanktiPilot = (
         const rows: any[] = await db.select(`
           SELECT
             lines.*,
+            panktis.source_id,
             panktis.gurmukhi_speech,
             panktis.vishraam_idx,
             panktis.vishraam_ridx,
@@ -57,11 +60,12 @@ const useOfflinePanktiPilot = (
           FROM shabads AS current_shabad
           INNER JOIN shabads AS next_shabad
             ON next_shabad.source_id = current_shabad.source_id
-            AND next_shabad.order_id = (
-              SELECT MIN(order_id)
+            AND next_shabad.order_id IN (
+              SELECT order_id
               FROM shabads
               WHERE source_id = current_shabad.source_id
                 AND order_id > current_shabad.order_id
+              ORDER BY order_id LIMIT 3
             )
           INNER JOIN lines ON lines.shabad_id = next_shabad.id
           INNER JOIN panktis ON panktis.id = lines.id
@@ -80,11 +84,14 @@ const useOfflinePanktiPilot = (
 
         const panktis = formatPanktis(rows) as Pankti[];
         panktis.forEach(pankti => { pankti.visited = false; });
-        setPreloadedNextShabad({
-          currentShabadId: shabadId,
-          shabadId: String(rows[0].shabad_id),
-          panktis,
-        });
+        const groups = new Map<string,Pankti[]>();
+        for (const pankti of panktis) {
+          const group = groups.get(pankti.shabad_id) ?? [];
+          group.push(pankti);
+          groups.set(pankti.shabad_id,group);
+        }
+        setPreloadedNextShabad({currentShabadId:shabadId,
+          shabads:[...groups].map(([shabadId,panktis]) => ({shabadId,panktis}))});
       } catch (error) {
         console.error("Could not preload the next offline Shabad", error);
       }
@@ -114,7 +121,7 @@ const useOfflinePanktiPilot = (
     const nextIsReady = !kirtanMode && baniId == null &&
       preloadedNextShabad?.currentShabadId === shabadId;
     const matchSequence = nextIsReady
-      ? buildOfflineShabadMatchSequence(shabadContext.state.panktis, preloadedNextShabad.panktis,
+      ? buildOfflineShabadMatchSequence(shabadContext.state.panktis, preloadedNextShabad.shabads.flatMap(shabad => shabad.panktis),
         !kirtanMode && current >= shabadContext.state.panktis.length - 2)
       : { panktis: shabadContext.state.panktis, skippedNextPanktis: 0 };
     // Asa Ki Vaar follows the loaded Bani order even when sung. Other kirtan
@@ -129,15 +136,17 @@ const useOfflinePanktiPilot = (
       nextIsReady &&
       next.currentIdx >= shabadContext.state.panktis.length
     ) {
-      const nextCurrent = next.currentIdx - shabadContext.state.panktis.length +
-        matchSequence.skippedNextPanktis;
+      const target = matchSequence.panktis[next.currentIdx];
+      const nextShabad = preloadedNextShabad.shabads.find(shabad => shabad.panktis.some(pankti => pankti.id === target.id));
+      if (!nextShabad) return;
+      const nextCurrent = nextShabad.panktis.findIndex(pankti => pankti.id === target.id);
       shabadContext.dispatch({
         type: "SHABAD_UPDATE",
         payload: {
           baniId: null,
-          shabadId: preloadedNextShabad.shabadId,
-          shabadIds: [preloadedNextShabad.shabadId],
-          panktis: preloadedNextShabad.panktis,
+          shabadId: nextShabad.shabadId,
+          shabadIds: [nextShabad.shabadId],
+          panktis: nextShabad.panktis,
           current: nextCurrent,
           home: nextCurrent,
         },
@@ -171,7 +180,7 @@ const useOfflinePanktiPilot = (
     }
   }, [active]);
 
-  return { setActive };
+  return { setActive, cursor };
 };
 
 export default useOfflinePanktiPilot;

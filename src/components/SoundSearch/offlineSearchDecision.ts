@@ -3,8 +3,10 @@ import {
   selectOfflineBaniFromSegments, selectOfflinePankti, selectOfflineShabadFromSegments,
 } from "./offlinePanktiMatch";
 
-export type OfflineSearchRow = { id: string; shabad_id: string; gurmukhi_speech: string; bani_ids?: number[] };
-export type OfflineSearchContext = { shabadId: string | null; baniId: number | null; panktis: OfflineSearchRow[] };
+export type OfflineSearchRow = { id: string; shabad_id: string; gurmukhi_speech: string; bani_ids?: number[];
+  order_id?: number; source_page?: number; source_id?: number };
+export type OfflineSearchContext = { shabadId: string | null; baniId: number | null; panktis: OfflineSearchRow[];
+  current?:number; recovering?:boolean };
 export type PendingOfflineSearch = { key: string; confirmations: number; speech: string; observationMs?: number } | null;
 
 export const hasOfflineSearchEvidence = (speech: string) => {
@@ -17,7 +19,7 @@ export const hasOfflineSearchEvidence = (speech: string) => {
 export const needsOfflineSearch = (speech: string, context: OfflineSearchContext, kirtan: boolean) => {
   if (!hasOfflineSearchEvidence(speech)) return false;
   if (!context.panktis.length) return true;
-  if (!kirtan) return false;
+  if (!kirtan) return context.recovering === true;
   const suffix = speech.split(/\s+/).slice(-12).join(" ");
   const latest = normalizeOfflineText(suffix).split(" ").length - 3;
   return !context.panktis.some(line => {
@@ -33,6 +35,19 @@ export const decideOfflineSearch = (
 ) => {
   const none = { selection: null, pending: null };
   if (!hasOfflineSearchEvidence(speech)) return none;
+  if (!kirtan && context.panktis.length) {
+    if (!context.recovering) return none;
+    const current = context.panktis[context.current ?? 0];
+    // Recovery can bridge missed lines in this ang or the next, but a common
+    // phrase must not teleport the reader elsewhere in the corpus.
+    candidates = candidates.filter(row => {
+      if (context.baniId != null && !context.panktis.some(line => line.id === row.id)) return false;
+      if (current?.source_id != null && row.source_id != null && current.source_id !== row.source_id) return false;
+      return current?.order_id != null && row.order_id != null && row.order_id > current.order_id &&
+        row.order_id <= current.order_id + 60 &&
+        (current.source_page == null || row.source_page == null || row.source_page <= current.source_page + 1);
+    });
+  }
   const segments = buildOfflineSearchSegments(speech);
   const bani = selectOfflineBaniFromSegments(segments, candidates);
   const shabad = selectOfflineShabadFromSegments(segments, candidates);
@@ -58,10 +73,26 @@ export const decideOfflineSearch = (
     // SGGS line can also belong to Rehras/Aarti, whose anthology order leaves
     // the Ang being read and strands the cursor. Named Banis can still be
     // selected explicitly; automatic paath acquisition anchors a Shabad.
-    const baniId = kirtan && option.baniId === 13 ? 13 : null;
-    if (row.shabad_id === context.shabadId && baniId === context.baniId) continue;
-    if (baniId != null && baniId === context.baniId) continue;
+    const baniId = !kirtan && context.recovering ? context.baniId : kirtan && option.baniId === 13 ? 13 : null;
+    if (!context.recovering && row.shabad_id === context.shabadId && baniId === context.baniId) continue;
+    if (!context.recovering && baniId != null && baniId === context.baniId) continue;
     const selection = {row,baniId};
+    if (!kirtan) {
+      if (fresh.matchedWords < 4 || fresh.exactWords < 3) continue;
+      // Reject equally strong live-edge evidence in another Shabad. Initial
+      // acquisition needs a second audio observation, just like recovery.
+      const ambiguous = candidates.some(other => {
+        if (other.shabad_id === row.shabad_id) return false;
+        const rival = findStrongOfflinePanktiMatch([other],suffix,4);
+        return rival && rival.tokenEndIndex >= fresh.tokenEndIndex && rival.exactWords >= fresh.exactWords;
+      });
+      if (ambiguous) continue;
+      const key = `${baniId ?? "shabad"}:${row.shabad_id}`;
+      const confirmations = pending?.key === key ? pending.confirmations +
+        Number(observationMs > 0 ? pending.observationMs !== observationMs : pending.speech !== speech) : 1;
+      if (confirmations < 2) return {selection:null,pending:{key,confirmations,speech,observationMs}};
+      return {selection,pending:null};
+    }
     if (!context.panktis.length) return {selection,pending:null};
 
     if (fresh.matchedWords < (option.multiple ? 3 : 4) || fresh.exactWords < 3) continue;

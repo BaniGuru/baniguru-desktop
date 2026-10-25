@@ -59,6 +59,8 @@ describe.skipIf(!process.env.BANI_TEST_DB)("complete Sukhmani Sahib reading layo
     expect(salokHeaders).toHaveLength(24);
     expect(expectedPaired.size).toBe(1922);
     expect(new Set(all.filter(pankti => pankti.paath_pair_id).map(pankti => pankti.id))).toEqual(expectedPaired);
+    expect(all.filter(pankti => pankti.order_id >= 11567 && pankti.order_id <= 13593 &&
+      !expectedPaired.has(pankti.id)).every(pankti => Boolean(pankti.paath_keep_single))).toBe(true);
     const rows = paathDisplayRows(pages).flatMap(page => page.rows);
     expect(rows.filter(row => row.length===2)).toHaveLength(961);
     expect(rows.filter(row => row.length===2 && row[0].source_page!==row[1].source_page)).toHaveLength(20);
@@ -77,4 +79,20 @@ describe.skipIf(!process.env.BANI_TEST_DB)("complete Sukhmani Sahib reading layo
       for (const page of pages) writeFileSync(`${process.env.PAATH_LAYOUT_FIXTURES}/paath-ui-fixture-${page.ang}.json`,JSON.stringify(page.panktis));
     }
   }, 30_000);
+});
+
+describe("measured paath row merging",()=>{
+  const verse=(id:string,extra:Partial<Pankti>={})=>({id,type_id:4,shabad_id:"one",source_page:179,gurmukhi:"pMkqI ]",...extra} as Pankti);
+  it("uses measured fit rather than a word count, and never merges a third line",()=>{
+    const panktis=[verse("a"),verse("b",{gurmukhi:"a very long phrase that fits in the measured font"}),verse("c"),verse("d")];
+    const rows=paathDisplayRows([{ang:179,panktis}],(a,b)=>a.id==="a"&&b.id==="b")[0].rows;
+    expect(rows.map(row=>row.map(p=>p.id))).toEqual([["a","b"],["c"],["d"]]);
+    expect(joinedPaathTranslation([{...panktis[0],english_translation:"First."},{...panktis[1],english_translation:"Second."}],"english_translation")).toBe("First. Second.");
+  });
+  it("preserves headings, Sukhmani saloks, stanza and ang boundaries",()=>{
+    for (const extra of [{type_id:2},{paath_keep_single:1},{gurmukhi:"pMkqI ]1]"},{shabad_id:"other"},{source_page:180}]) {
+      const rows=paathDisplayRows([{ang:179,panktis:[verse("a",extra),verse("b")]}],()=>true)[0].rows;
+      expect(rows).toHaveLength(2);
+    }
+  });
 });

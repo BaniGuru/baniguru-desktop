@@ -9,8 +9,10 @@ const context = {shabadId:"song",baniId:null,panktis:[opening,refrain]};
 describe("offline recording search decisions", () => {
   it("anchors continuous paath to the source rather than a shared anthology membership", () => {
     const row = {...opening,bani_ids:[7,8]};
-    expect(decideOfflineSearch(opening.gurmukhi_speech,[row],
-      {shabadId:null,baniId:null,panktis:[]},false,null).selection?.baniId).toBeNull();
+    const empty = {shabadId:null,baniId:null,panktis:[]};
+    const first = decideOfflineSearch(opening.gurmukhi_speech,[row],empty,false,null,340);
+    expect(first.selection).toBeNull();
+    expect(decideOfflineSearch(opening.gurmukhi_speech,[row],empty,false,first.pending,680).selection?.baniId).toBeNull();
   });
   it("counts fresh audio observations of a held phrase, without counting a React rerender twice", () => {
     const speech = "ਕਰਿ ਕਿਰਪਾ ਪ੍ਰਭ ਦੀਨ ਦਇਆਲਾ ਤੇਰੀ ਓਟ ਪੂਰਨ ਗੋਪਾਲਾ ਕਰਿ ਕਿਰਪਾ ਪ੍ਰਭ";
@@ -61,5 +63,31 @@ describe("offline recording search decisions", () => {
     expect(paath.currentIdx).toBe(1);
     const stale = advanceOfflinePilotCursor({...cursor,lastTokenEnd:20},context.panktis,context.panktis,speech,1,true,null);
     expect(stale.currentIdx).toBe(1);
+  });
+});
+
+describe("paath search recovery safeguards", () => {
+  const first = {...opening,order_id:100,source_page:10,source_id:1};
+  const next = {id:"later",shabad_id:"later-song",gurmukhi_speech:"ਮੋਹਿ ਨਿਰਗੁਨ ਸਭ ਗੁਣ ਤੇਰੇ",order_id:120,source_page:11,source_id:1};
+  const lost = {shabadId:"song",baniId:null,panktis:[first],current:0,recovering:true};
+  it("allows recovery only after sequential tracking declares itself lost", () => {
+    expect(needsOfflineSearch(next.gurmukhi_speech,{...lost,recovering:false},false)).toBe(false);
+    expect(needsOfflineSearch(next.gurmukhi_speech,lost,false)).toBe(true);
+    const a=decideOfflineSearch(next.gurmukhi_speech,[next],lost,false,null,10000);
+    expect(a.selection).toBeNull();
+    expect(decideOfflineSearch(next.gurmukhi_speech,[next],lost,false,a.pending,10000).selection).toBeNull();
+    expect(decideOfflineSearch(next.gurmukhi_speech,[next],lost,false,a.pending,10340).selection?.row.id).toBe("later");
+  });
+  it("rejects distant lines, backwards matches and other sources", () => {
+    for(const row of [{...next,order_id:300},{...next,order_id:99},{...next,source_id:2},{...next,source_page:50}]) {
+      const a=decideOfflineSearch(row.gurmukhi_speech,[row],lost,false,null,10000);
+      expect(decideOfflineSearch(row.gurmukhi_speech,[row],lost,false,a.pending,10340).selection).toBeNull();
+    }
+  });
+  it("leaves ambiguous acquisition on Search rather than choosing a random Shabad", () => {
+    const ambiguous=[next,{...next,id:"duplicate",shabad_id:"another-song"}];
+    const empty={shabadId:null,baniId:null,panktis:[]};
+    const a=decideOfflineSearch(next.gurmukhi_speech,ambiguous,empty,false,null,340);
+    expect(decideOfflineSearch(next.gurmukhi_speech,ambiguous,empty,false,a.pending,680).selection).toBeNull();
   });
 });

@@ -42,3 +42,32 @@ describe("sehaj paath nearby progression", () => {
     expect(advanceOfflinePilotCursor(first,panktis,panktis,speech,2,false,null,680).currentIdx).toBe(1);
   });
 });
+
+describe("paath recovery after noisy skipped lines", () => {
+  it("opens only a bounded forward corridor after a stall and confirms on new audio", () => {
+    const speech = panktis[7].gurmukhi_speech;
+    const stalled = {pending:null,lastTokenEnd:-1,lastEvidenceMs:1000,lastEvidenceTokenEnd:-1};
+    const first = advanceOfflinePilotCursor(stalled,panktis,panktis,speech,0,false,null,5340);
+    expect(first.currentIdx).toBe(0);
+    expect(first.recovery?.panktiIdx).toBe(7);
+    expect(advanceOfflinePilotCursor(first,panktis,panktis,speech,0,false,null,5340).currentIdx).toBe(0);
+    expect(advanceOfflinePilotCursor(first,panktis,panktis,speech,0,false,null,5680).currentIdx).toBe(7);
+  });
+  it("never widens backwards or reuses old supported text during silence", () => {
+    const stalled = {pending:null,lastTokenEnd:10,lastEvidenceMs:1000,lastEvidenceTokenEnd:10};
+    expect(advanceOfflinePilotCursor(stalled,panktis,panktis,panktis[7].gurmukhi_speech,0,false,null,9000).currentIdx).toBe(0);
+    expect(advanceOfflinePilotCursor(stalled,panktis,panktis,panktis[0].gurmukhi_speech,7,false,null,9000).currentIdx).toBe(7);
+  });
+});
+
+it("recovers the uploaded Oct 25 recording's stalled ਭੈ ਸਾਗਰ passage",()=>{
+  const source=[
+    "ਜਿਉ ਬੋਹਿਥੁ ਭੈ ਸਾਗਰ ਮਾਹਿ", "ਅੰਧਕਾਰ ਦੀਪਕ ਦੀਪਾਹਿ", "ਅਗਨਿ ਸੀਤ ਕਾ ਲਾਹਸਿ ਦੂਖ",
+    "ਨਾਮੁ ਜਪਤ ਮਨਿ ਹੋਵਤ ਸੂਖ", "ਉਤਰਿ ਜਾਇ ਤੇਰੇ ਮਨ ਕੀ ਪਿਆਸ", "ਪੂਰਨ ਹੋਵੈ ਸਗਲੀ ਆਸ",
+  ].map(gurmukhi_speech=>({gurmukhi_speech}));
+  // Actual noisy words from the recording; several intervening lines fail.
+  const speech="ਜਿਉ ਬੋਇ ਪਹਿ ਸਾਗਰ ਮਾਹਿ ਅੰਧ ਕਾਢਿ ਦੀ ਭੁਗਤੀ ਪਾਹਿ ਅਗਨਿ ਛੇਦਕਾ ਲਾਹ ਦੂਖ ਨਾਹ ਜਉ ਮਰਿ ਹੋਵਤ ਸੂਖ ਉਤਰਿ ਜੈ ਤੇ ਮਨ ਕੀ ਪਿਆਸ";
+  const first=advanceOfflinePilotCursor({pending:null,lastTokenEnd:5,lastEvidenceTokenEnd:5,lastEvidenceMs:26000},source,source,speech,0,false,null,35000);
+  expect(first.currentIdx).toBe(0);
+  expect(advanceOfflinePilotCursor(first,source,source,speech,0,false,null,35340).currentIdx).toBe(4);
+});

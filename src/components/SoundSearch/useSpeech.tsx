@@ -442,7 +442,7 @@ const useSpeech = ({apiClient}: {apiClient: ApiClient|null}) => {
   const baniPilot = useBaniPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript, silenceSeconds, stopSpeech);
   const offlinePanktiPilot = useOfflinePanktiPilot(finalText, nonFinalText, status.current, startTranscription, lastTokenTime);
   const searchPilot = useSearchPilot(finalText, nonFinalText, status.current, startTranscription, restartTranscript);
-  const offlineSearchPilot = useOfflineSearchPilot(finalText, nonFinalText, status.current, startTranscription, lastTokenTime);
+  const offlineSearchPilot = useOfflineSearchPilot(finalText, nonFinalText, status.current, startTranscription, lastTokenTime, offlinePanktiPilot.cursor);
 
   const resetText = () => {
     transcriptRef.current = "";

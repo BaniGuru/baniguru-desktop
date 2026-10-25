@@ -1,0 +1,1276 @@
+[
+  {
+    "at": 5.106,
+    "id": "MZLT",
+    "shabadId": "SY9",
+    "baniId": null,
+    "reason": "search"
+  },
+  {
+    "at": 5.446,
+    "id": "CES3",
+    "shabadId": "SY9",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 9.186,
+    "id": "NS2V",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 9.866,
+    "id": "PDRZ",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 14.626,
+    "id": "CYGM",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 15.646,
+    "id": "00E8",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 18.026,
+    "id": "0ZSS",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 20.406,
+    "id": "BAER",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 21.426,
+    "id": "3DHR",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 23.806,
+    "id": "ZD6B",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 34.006,
+    "id": "NZU5",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "recovery"
+  },
+  {
+    "at": 35.366,
+    "id": "HGJ2",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 38.426,
+    "id": "KUDY",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 40.126,
+    "id": "SRRM",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 42.166,
+    "id": "BV59",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 43.526,
+    "id": "SNT7",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 44.546,
+    "id": "5FAF",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 46.586,
+    "id": "845X",
+    "shabadId": "F2U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 50.326,
+    "id": "QWGU",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 50.666,
+    "id": "QFV2",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 57.806,
+    "id": "3MJL",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 58.486,
+    "id": "5B05",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 60.526,
+    "id": "H7UW",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 65.286,
+    "id": "GUPN",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 68.006,
+    "id": "HXEN",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 70.726,
+    "id": "J9RR",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 73.446,
+    "id": "9RB8",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 75.486,
+    "id": "QARE",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 78.886,
+    "id": "MJC5",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 81.266,
+    "id": "PLXC",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 82.626,
+    "id": "LDXS",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 84.666,
+    "id": "0Y3D",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 85.346,
+    "id": "WBQZ",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 88.406,
+    "id": "U8AM",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 89.426,
+    "id": "558S",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 91.806,
+    "id": "1N41",
+    "shabadId": "F80",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 97.926,
+    "id": "VAD8",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 98.606,
+    "id": "G7F8",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 102.346,
+    "id": "F79D",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 107.786,
+    "id": "CBAD",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 108.466,
+    "id": "G2BA",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 110.506,
+    "id": "XZML",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 113.226,
+    "id": "U7B9",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 114.926,
+    "id": "5PC7",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 116.966,
+    "id": "992C",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 119.686,
+    "id": "0ALQ",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 127.166,
+    "id": "GV4A",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 127.846,
+    "id": "KP14",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 129.886,
+    "id": "55JN",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 136.346,
+    "id": "FE6E",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 137.706,
+    "id": "BPE7",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 139.406,
+    "id": "N05M",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 141.786,
+    "id": "8X0G",
+    "shabadId": "P84",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 145.526,
+    "id": "G1ZD",
+    "shabadId": "DTP",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 145.866,
+    "id": "TG9B",
+    "shabadId": "DTP",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 149.606,
+    "id": "9WP9",
+    "shabadId": "DTP",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 152.666,
+    "id": "9L9T",
+    "shabadId": "DTP",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 153.346,
+    "id": "FFJT",
+    "shabadId": "DTP",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 155.726,
+    "id": "NL2S",
+    "shabadId": "DTP",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 159.466,
+    "id": "W3U4",
+    "shabadId": "DTP",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 160.826,
+    "id": "SRVN",
+    "shabadId": "DTP",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 162.866,
+    "id": "KRGN",
+    "shabadId": "DTP",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 166.606,
+    "id": "287D",
+    "shabadId": "DTP",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 170.006,
+    "id": "EG5U",
+    "shabadId": "DTP",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 171.366,
+    "id": "80LH",
+    "shabadId": "DTP",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 172.726,
+    "id": "JXWX",
+    "shabadId": "DTP",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 174.766,
+    "id": "LJ1Q",
+    "shabadId": "DTP",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 187.346,
+    "id": "VLSA",
+    "shabadId": "DTP",
+    "baniId": null,
+    "reason": "recovery"
+  },
+  {
+    "at": 189.386,
+    "id": "YS85",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 189.726,
+    "id": "HTVJ",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 192.106,
+    "id": "WQJ6",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 194.146,
+    "id": "SSUH",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 196.186,
+    "id": "LENR",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 198.226,
+    "id": "8RRX",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 201.966,
+    "id": "6CRP",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 202.986,
+    "id": "NWVJ",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 205.366,
+    "id": "4J3P",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 207.066,
+    "id": "WFU0",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 209.446,
+    "id": "Z9L1",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 211.146,
+    "id": "7YEC",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 215.226,
+    "id": "10UZ",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 216.926,
+    "id": "N7KA",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 219.306,
+    "id": "A7WA",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 221.686,
+    "id": "B2RL",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 225.086,
+    "id": "Z1KV",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 227.466,
+    "id": "XSYJ",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 228.146,
+    "id": "83AH",
+    "shabadId": "T50",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 231.546,
+    "id": "WJ6G",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 231.886,
+    "id": "QUAH",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 234.946,
+    "id": "BTSV",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 235.966,
+    "id": "H6HL",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 241.746,
+    "id": "KZ9W",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 242.086,
+    "id": "MPZR",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 246.166,
+    "id": "CRNB",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 246.506,
+    "id": "ANRB",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 248.206,
+    "id": "RWLK",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 250.926,
+    "id": "99EN",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 252.966,
+    "id": "JYGF",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 257.046,
+    "id": "KAU7",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 258.406,
+    "id": "8H04",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 260.446,
+    "id": "J831",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 262.826,
+    "id": "C1MF",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 263.166,
+    "id": "N7TS",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 265.546,
+    "id": "SSYW",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 267.586,
+    "id": "0GJZ",
+    "shabadId": "G6U",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 271.666,
+    "id": "TCHG",
+    "shabadId": "L2N",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 272.346,
+    "id": "PKHH",
+    "shabadId": "L2N",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 274.386,
+    "id": "U2CP",
+    "shabadId": "L2N",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 284.926,
+    "id": "MHD1",
+    "shabadId": "L2N",
+    "baniId": null,
+    "reason": "recovery"
+  },
+  {
+    "at": 292.066,
+    "id": "E4DG",
+    "shabadId": "L2N",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 293.426,
+    "id": "VGMA",
+    "shabadId": "L2N",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 296.826,
+    "id": "RZB1",
+    "shabadId": "L2N",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 322.666,
+    "id": "XR64",
+    "shabadId": "0GQ",
+    "baniId": null,
+    "reason": "recovery"
+  },
+  {
+    "at": 325.386,
+    "id": "88HQ",
+    "shabadId": "0GQ",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 335.246,
+    "id": "279R",
+    "shabadId": "0GQ",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 336.946,
+    "id": "DD33",
+    "shabadId": "0GQ",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 340.006,
+    "id": "Z2UT",
+    "shabadId": "0GQ",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 342.386,
+    "id": "XMXB",
+    "shabadId": "0GQ",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 346.806,
+    "id": "6WC6",
+    "shabadId": "0GQ",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 351.226,
+    "id": "A3BM",
+    "shabadId": "0GQ",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 352.586,
+    "id": "BDQW",
+    "shabadId": "0GQ",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 359.726,
+    "id": "X74J",
+    "shabadId": "0GQ",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 371.966,
+    "id": "CBHJ",
+    "shabadId": "0GQ",
+    "baniId": null,
+    "reason": "recovery"
+  },
+  {
+    "at": 372.646,
+    "id": "XBB6",
+    "shabadId": "0GQ",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 375.706,
+    "id": "NSCS",
+    "shabadId": "0GQ",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 379.786,
+    "id": "UMMN",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 380.806,
+    "id": "FDMV",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 382.506,
+    "id": "34JH",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 387.266,
+    "id": "ZCK0",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 388.626,
+    "id": "PVZG",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 391.346,
+    "id": "XQKC",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 395.086,
+    "id": "GYV1",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 396.106,
+    "id": "8JBQ",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 399.506,
+    "id": "MD3B",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 405.626,
+    "id": "W65F",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 408.686,
+    "id": "LR0U",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 410.726,
+    "id": "W99J",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 412.766,
+    "id": "ZBYC",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 414.466,
+    "id": "TGY2",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 417.526,
+    "id": "0WH7",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 421.266,
+    "id": "997U",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 425.686,
+    "id": "8P8A",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 428.746,
+    "id": "CHJX",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 432.826,
+    "id": "4L56",
+    "shabadId": "JGA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 435.886,
+    "id": "DJPJ",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 436.906,
+    "id": "KXP0",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 442.006,
+    "id": "VXYD",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 451.866,
+    "id": "1K48",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 453.226,
+    "id": "BAA4",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 456.286,
+    "id": "0QSS",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 460.366,
+    "id": "JGBY",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 462.406,
+    "id": "YD2C",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 463.086,
+    "id": "UZE3",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 468.186,
+    "id": "07VA",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 473.286,
+    "id": "S6TT",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 475.326,
+    "id": "PYYJ",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 476.686,
+    "id": "CDG3",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 480.086,
+    "id": "2QNL",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 483.146,
+    "id": "5XHC",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 485.526,
+    "id": "G07U",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 493.006,
+    "id": "AAXB",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 495.046,
+    "id": "W9A4",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 498.786,
+    "id": "4TBQ",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 503.546,
+    "id": "9JN9",
+    "shabadId": "PEA",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 504.906,
+    "id": "7PRR",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 507.626,
+    "id": "436J",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 512.386,
+    "id": "42TT",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 520.886,
+    "id": "NQ3M",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 524.966,
+    "id": "RTWC",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 526.666,
+    "id": "U6LK",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 540.606,
+    "id": "T0GB",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "recovery"
+  },
+  {
+    "at": 544.346,
+    "id": "WHN8",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 547.746,
+    "id": "932J",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 549.106,
+    "id": "YVHC",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 550.466,
+    "id": "5PK2",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 553.526,
+    "id": "P6U2",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 556.586,
+    "id": "CRRH",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 556.926,
+    "id": "GG35",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 560.326,
+    "id": "ECFH",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 564.746,
+    "id": "UUWL",
+    "shabadId": "9M3",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 568.826,
+    "id": "GHUE",
+    "shabadId": "ERW",
+    "baniId": null,
+    "reason": "pankti"
+  },
+  {
+    "at": 571.67,
+    "id": "6M78",
+    "shabadId": "ERW",
+    "baniId": null,
+    "reason": "pankti"
+  }
+]

@@ -38,7 +38,11 @@ export async function loadPaathAng(sourceId: number, ang: number): Promise<Pankt
             AND (heading.gurmukhi_unicode LIKE 'ਸਲੋਕ%' OR heading.gurmukhi LIKE 'slok%')
         )
     )
-    SELECT lines.*, sukhmani_pairs.pair_id AS paath_pair_id, panktis.source_id, panktis.gurmukhi_speech,
+    SELECT lines.*, sukhmani_pairs.pair_id AS paath_pair_id,
+      (sukhmani_pairs.id IS NULL AND EXISTS (
+        SELECT 1 FROM bani_lines membership WHERE membership.line_id = lines.id AND membership.bani_id = 12
+      )) AS paath_keep_single,
+      panktis.source_id, panktis.gurmukhi_speech,
       panktis.vishraam_idx, panktis.vishraam_ridx,
       panktis.gurmukhi_words, panktis.gurmukhi_rwords, -1 AS line_group,
       (SELECT translation FROM translations WHERE line_id = lines.id AND

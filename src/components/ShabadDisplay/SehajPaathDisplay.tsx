@@ -66,6 +66,17 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
   currentRef.current = current;
   const activeAng = Number(current.source_page);
   const appearance = palette.reader;
+  const fallbackIndex = fallbackPanktis.findIndex(row => row.id === current.id);
+  const loadedCurrent = pages.some(page => page.ang === activeAng);
+  const shown = pages.length && (!following || loadedCurrent) ? pages : [{ang:activeAng,
+    panktis:fallbackIndex < 0 ? [current] : fallbackPanktis.slice(Math.max(0,fallbackIndex - 3),fallbackIndex + 12)}];
+  const shownRef = useRef(shown);
+  shownRef.current = shown;
+  const [adaptivePairs,setAdaptivePairs] = useState<Set<string>>(new Set());
+  const adaptivePairsRef = useRef(adaptivePairs);
+  adaptivePairsRef.current = adaptivePairs;
+  const pairingPending = useRef(false);
+  const measuredAngs = useRef(new Map<number,{key:string;scale:string;pairs:Set<string>}>());
 
   const stopScroll = useCallback(() => {
     if (animation.current) cancelAnimationFrame(animation.current.frame);
@@ -129,16 +140,48 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
     if (!viewport) return;
     viewport.style.setProperty("--paath-viewport-height",`${viewport.clientHeight}px`);
     const key = `${viewport.clientWidth}:${viewport.clientHeight}:${fontSize}:${showPunjabi}:${showEnglish}:${fontRevision.current}:${JSON.stringify(appearance)}`;
+    const canonical = paathDisplayRows(shownRef.current);
+    const retainedAngs = new Set(canonical.map(page => page.ang));
+    for (const ang of measuredAngs.current.keys()) if (!retainedAngs.has(ang)) measuredAngs.current.delete(ang);
+    const plannedPairs = new Set<string>();
     // Fit a complete Ang once, before it is read. All its panktis inherit one
     // shared scale, including short lines, so advancing never changes the font.
     for (const page of viewport.querySelectorAll<HTMLElement>("section[data-ang]")) {
       const rows = Array.from(page.querySelectorAll<HTMLElement>(".paath-line"));
       if (!rows.length) continue;
+      const ang = Number(page.dataset.ang);
+      const raw = canonical.find(item => item.ang === ang)!;
+      const measurementKey = `${key}:${raw.rows.map(row => row.map(pankti =>
+        `${pankti.id}:${Number(Boolean(pankti.paath_keep_single))}`).join("+")).join(",")}`;
+      const cached = measuredAngs.current.get(ang);
+      if (cached?.key === measurementKey) {
+        page.style.setProperty("--paath-text-scale",cached.scale);
+        cached.pairs.forEach(id => plannedPairs.add(id));
+        continue;
+      }
       const pageKey = `${key}:${rows.map(row => row.dataset.lineIds).join(",")}`;
-      if (page.dataset.paathFit === pageKey) continue;
       const style = getComputedStyle(rows[0]);
       const available = rows[0].clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
-      const contents = rows.map(row => row.querySelector<HTMLElement>(".paath-line-content")!);
+      const template = rows[0].querySelector<HTMLElement>(".paath-line-content")!;
+      const measurement = document.createElement("div");
+      measurement.setAttribute("aria-hidden","true");
+      Object.assign(measurement.style,{position:"absolute",visibility:"hidden",pointerEvents:"none",width:`${template.clientWidth}px`});
+      page.appendChild(measurement);
+      // Refit the original singles (and canonical Sukhmani pairs), never the
+      // previously adaptive pairs. Otherwise resizing could shrink the font
+      // just to preserve a pair that no longer fits at the selected size.
+      const contents = raw.rows.map(row => {
+        const content = template.cloneNode(true) as HTMLElement;
+        const gurmukhi = content.querySelector<HTMLElement>('[lang="pa-Guru"]')!;
+        gurmukhi.textContent = Format.removeVishraams(row.map(pankti => pankti.gurmukhi).join(" "));
+        gurmukhi.style.whiteSpace = row.length === 2 ? "nowrap" : "normal";
+        for (const [lang,field] of [["pa","punjabi_translation"],["en","english_translation"]] as const) {
+          const translation = content.querySelector<HTMLElement>(`[lang="${lang}"]`);
+          if (translation) translation.textContent = joinedPaathTranslation(row,field);
+        }
+        measurement.appendChild(content);
+        return content;
+      });
       const fits = () => contents.every(content => content.scrollHeight <= available && content.scrollWidth <= content.clientWidth);
       page.style.setProperty("--paath-text-scale","1");
       if (!fits()) {
@@ -152,12 +195,51 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
         page.style.setProperty("--paath-text-scale",String(low));
       }
       page.dataset.paathFit = pageKey;
+      // Measure the actual font and joined translations at this ang's chosen
+      // size. Pairing never shrinks text simply to make another line fit.
+      const probe = template.cloneNode(true) as HTMLElement;
+      probe.setAttribute("aria-hidden","true");
+      Object.assign(probe.style,{position:"absolute",visibility:"hidden",pointerEvents:"none",width:`${template.clientWidth}px`});
+      measurement.appendChild(probe);
+      const gurmukhi = probe.querySelector<HTMLElement>('[lang="pa-Guru"]')!;
+      const font = getComputedStyle(gurmukhi);
+      const canvas = document.createElement("canvas").getContext("2d")!;
+      canvas.font = `${font.fontWeight} ${font.fontSize} ${font.fontFamily}`;
+      const pairs = new Set<string>();
+      paathDisplayRows([{ang,panktis:raw.rows.flat()}],(first,second) => {
+        const text = Format.removeVishraams(`${first.gurmukhi} ${second.gurmukhi}`);
+        if (canvas.measureText(text).width > template.clientWidth - 2) return false;
+        gurmukhi.textContent = text;
+        gurmukhi.style.whiteSpace = "nowrap";
+        for (const [lang,field] of [["pa","punjabi_translation"],["en","english_translation"]] as const) {
+          const translation = probe.querySelector<HTMLElement>(`[lang="${lang}"]`);
+          if (translation) translation.textContent = joinedPaathTranslation([first,second],field);
+        }
+        if (probe.scrollHeight > available || probe.scrollWidth > probe.clientWidth) return false;
+        pairs.add(first.id);
+        return true;
+      });
+      measurement.remove();
+      measuredAngs.current.set(ang,{key:measurementKey,scale:page.style.getPropertyValue("--paath-text-scale"),pairs});
+      pairs.forEach(id => plannedPairs.add(id));
     }
-  }, [fontSize,showPunjabi,showEnglish,appearance]);
+    const previous = adaptivePairsRef.current;
+    if (previous.size !== plannedPairs.size || [...previous].some(id => !plannedPairs.has(id))) {
+      const beforeCurrent = new Set(shownRef.current.flatMap(page => page.panktis)
+        .filter(pankti => pankti.source_page <= currentRef.current.source_page).map(pankti => pankti.id));
+      if ([...previous,...plannedPairs].some(id => beforeCurrent.has(id) && previous.has(id) !== plannedPairs.has(id))) {
+        stopScroll();
+        positioned.current = false;
+      }
+      adaptivePairsRef.current = plannedPairs;
+      pairingPending.current = true;
+      setAdaptivePairs(plannedPairs);
+    }
+  }, [fontSize,showPunjabi,showEnglish,appearance,stopScroll]);
 
   const alignActive = useCallback((instant = false): void => {
     const viewport = scrollRef.current;
-    if (!viewport || !following) return;
+    if (!viewport || !following || pairingPending.current) return;
     const row = viewport.querySelector<HTMLElement>("[aria-current=true]");
     if (!row) return;
     const offset = row.getBoundingClientRect().top - viewport.getBoundingClientRect().top;
@@ -204,10 +286,14 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
     const viewport = scrollRef.current;
     if (!viewport) return;
     fitAngs();
+    // Position once the measured row plan is actually in the DOM. Aligning
+    // the old singles first would animate again when their pairs appear.
+    if (adaptivePairsRef.current !== adaptivePairs) return;
+    pairingPending.current = false;
     if (manualAnchor.current) {
       const anchor = manualAnchor.current;
       const row = Array.from(viewport.querySelectorAll<HTMLElement>("[data-line-id]"))
-        .find(row => row.dataset.lineId === anchor.id);
+        .find(row => row.dataset.lineIds?.split(" ").includes(anchor.id));
       if (row) {
         const delta = row.getBoundingClientRect().top - anchor.top;
         viewport.scrollTop += delta;
@@ -220,7 +306,7 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
     }
     alignActive(!positioned.current);
     if (viewport.querySelector("[aria-current=true]")) positioned.current = true;
-  }, [pages,current.id,alignActive,fitAngs]);
+  }, [pages,current.id,alignActive,fitAngs,adaptivePairs]);
 
   useEffect(() => {
     const viewport = scrollRef.current;
@@ -255,11 +341,7 @@ export default function SehajPaathDisplay({current, fallbackPanktis, fontSize, p
     return () => observer.disconnect();
   }, [following,more,loading,browseNext]);
 
-  const fallbackIndex = fallbackPanktis.findIndex(row => row.id === current.id);
-  const loadedCurrent = pages.some(page => page.ang === activeAng);
-  const shown = pages.length && (!following || loadedCurrent) ? pages : [{ang:activeAng,
-    panktis:fallbackIndex < 0 ? [current] : fallbackPanktis.slice(Math.max(0,fallbackIndex - 3),fallbackIndex + 12)}];
-  const displayPages = paathDisplayRows(shown);
+  const displayPages = paathDisplayRows(shown,first => adaptivePairs.has(first.id));
   const dark = !appearance && palette.gurmukhi !== "#000000" && !["#1A191A","#000"].includes(palette.gurmukhi);
   const gurmukhiSize = Math.max(28,Math.min(appearance?.gurmukhiMaxSize ?? 60,fontSize * (appearance?.gurmukhiRatio ?? 1)));
   const translationSize = Math.max(18,Math.min(appearance?.translationMaxSize ?? 30,fontSize * (appearance?.translationRatio ?? .55)));

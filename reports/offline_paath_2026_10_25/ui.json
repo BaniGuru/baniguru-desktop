@@ -1,0 +1,104 @@
+{
+  "passed": true,
+  "cold": {
+    "starts": 1,
+    "line": "CES3",
+    "shabad": "SY9",
+    "queryCount": 3
+  },
+  "returnToSearch": true,
+  "localRecovery": {
+    "line": "SRRM",
+    "health": {
+      "lastEvidenceMs": 10440,
+      "lastEvidenceTokenEnd": 12,
+      "recovery": {
+        "panktiIdx": 14,
+        "confirmations": 2
+      },
+      "currentIdx": 14,
+      "pending": null,
+      "observationMs": 10440,
+      "lastTokenEnd": 12
+    }
+  },
+  "boundedGlobalRecovery": {
+    "line": "J9RR",
+    "shabad": "F80"
+  },
+  "ambiguousResultsHeld": true,
+  "layout": {
+    "visible": [
+      {
+        "ids": [
+          "BAER",
+          "3DHR"
+        ],
+        "pa": "ਹੇ ਮੇਰੇ ਮਨ! ਪਰਮਾਤਮਾ ਦੇ ਨਾਮ ਦਾ ਆਸਰਾ ਫੜ, ਤੈਨੂੰ (ਦੁਨੀਆ ਦੇ ਦੁਖ ਕਲੇਸ਼ਾਂ ਦੀ) ਤੱਤੀ ਹਵਾ ਦਾ ਬੁੱਲਾ ਪੋਹ ਨਹੀਂ ਸਕੇਗਾ ॥੧॥ ਰਹਾਉ ॥",
+        "en": "O my mind, hold tight to the Support of the Lord's Name. The hot winds shall never even touch you. ||1||Pause||",
+        "width": 1466,
+        "available": 1466
+      },
+      {
+        "ids": [
+          "ZD6B",
+          "3Q1G"
+        ],
+        "pa": "(ਹੇ ਭਾਈ!) ਜਿਵੇਂ ਡਰਾਵਣੇ ਸਮੁੰਦਰ ਵਿਚ ਜਹਾਜ਼ (ਮਨੁੱਖ ਨੂੰ ਡੁੱਬਣੋਂ ਬਚਾਂਦਾ ਹੈ, ਜਿਵੇਂ ਹਨੇਰੇ ਵਿਚ ਦੀਵੇ ਚਾਨਣ ਕਰਦੇ ਹਨ (ਤੇ ਠੇਡਾ ਖਾਣ ਤੋਂ ਬਚਾਂਦੇ ਹਨ)।",
+        "en": "Like a boat in the ocean of fear; like a lamp which illumines the darkness;",
+        "width": 1466,
+        "available": 1466
+      },
+      {
+        "ids": [
+          "NNBR",
+          "T2Z3"
+        ],
+        "pa": "ਜਿਵੇਂ, ਅੱਗ ਪਾਲੇ ਦਾ ਦੁੱਖ ਦੂਰ ਕਰ ਦੇਂਦੀ ਹੈ, ਤਿਵੇਂ ਪਰਮਾਤਮਾ ਦਾ ਨਾਮ ਸਿਮਰਿਆਂ ਮਨ ਵਿਚ ਆਨੰਦ ਪੈਦਾ ਹੁੰਦਾ ਹੈ ॥੨॥",
+        "en": "like fire which takes away the pain of cold - just so, chanting the Name, the mind becomes peaceful. ||2||",
+        "width": 1466,
+        "available": 1466
+      },
+      {
+        "ids": [
+          "NZU5"
+        ],
+        "pa": "(ਨਾਮ ਦੀ ਬਰਕਤਿ ਨਾਲ) ਤੇਰੇ ਮਨ ਦੀ (ਮਾਇਆ ਦੀ) ਤ੍ਰਿਸ਼ਨਾ ਲਹਿ ਜਾਏਗੀ।",
+        "en": "The thirst of your mind shall be quenched,",
+        "width": 1466,
+        "available": 1466
+      }
+    ],
+    "angs": [
+      {
+        "ang": "178",
+        "sizes": [
+          "54.405px"
+        ],
+        "fits": true
+      },
+      {
+        "ang": "179",
+        "sizes": [
+          "56.16px"
+        ],
+        "fits": true
+      },
+      {
+        "ang": "180",
+        "sizes": [
+          "52.1016px"
+        ],
+        "fits": true
+      },
+      {
+        "ang": "181",
+        "sizes": [
+          "55.1728px"
+        ],
+        "fits": true
+      }
+    ]
+  },
+  "browserExceptions": []
+}

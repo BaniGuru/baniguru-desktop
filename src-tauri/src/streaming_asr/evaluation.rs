@@ -14,6 +14,7 @@ use crate::streaming_asr::{
 struct Item {
     id: String,
     audio: String,
+    #[serde(default)]
     reference: String,
     kirtan: bool,
     #[serde(default)]
@@ -64,8 +65,9 @@ fn evaluate_manual_reference_manifest() {
     let mut word_totals = [0usize; 2];
     let mut char_totals = [0usize; 2];
     for item in items {
+        let has_reference = !item.reference.trim().is_empty();
         assert!(
-            !item.reference.trim().is_empty(),
+            has_reference || std::env::var_os("BANI_ASR_UNREFERENCED_REPLAY").is_some(),
             "missing manual reference: {}",
             item.id
         );
@@ -130,10 +132,13 @@ fn evaluate_manual_reference_manifest() {
             words.extend(update.finalized.clone());
             events.push(serde_json::json!({"end_ms": update.end_ms, "final_words": update.finalized, "partial_words": update.partial}));
             if update.end_ms >= progress_at {
-                println!("REFERENCE_PROGRESS {}", serde_json::json!({
-                    "id":item.id, "audio_seconds":update.end_ms as f64 / 1_000.0,
-                    "processing_seconds":started.elapsed().as_secs_f64(), "final_words":words.len(),
-                }));
+                println!(
+                    "REFERENCE_PROGRESS {}",
+                    serde_json::json!({
+                        "id":item.id, "audio_seconds":update.end_ms as f64 / 1_000.0,
+                        "processing_seconds":started.elapsed().as_secs_f64(), "final_words":words.len(),
+                    })
+                );
                 progress_at += 60_000;
             }
             if endpoint {
@@ -165,17 +170,22 @@ fn evaluate_manual_reference_manifest() {
             .collect();
         let we = distance(&rw, &hw);
         let ce = distance(&rc, &hc);
-        word_totals[0] += we;
-        word_totals[1] += rw.len();
-        char_totals[0] += ce;
-        char_totals[1] += rc.len();
+        if has_reference {
+            word_totals[0] += we;
+            word_totals[1] += rw.len();
+            char_totals[0] += ce;
+            char_totals[1] += rc.len();
+        }
         update_ms.sort_by(f64::total_cmp);
         let report = serde_json::json!({
             "id": item.id, "source": item.source, "audio": item.audio,
             "profile": if item.kirtan {"kirtan"} else {"sehaj_paath"},
             "reference": item.reference, "hypothesis": hypothesis, "words": words,
-            "word_errors": we, "reference_words": rw.len(), "wer": we as f64 / rw.len().max(1) as f64,
-            "character_errors": ce, "reference_characters": rc.len(), "cer": ce as f64 / rc.len().max(1) as f64,
+            "has_manual_reference": has_reference,
+            "word_errors": has_reference.then_some(we), "reference_words": rw.len(),
+            "wer": has_reference.then_some(we as f64 / rw.len().max(1) as f64),
+            "character_errors": has_reference.then_some(ce), "reference_characters": rc.len(),
+            "cer": has_reference.then_some(ce as f64 / rc.len().max(1) as f64),
             "audio_seconds": audio.len() as f64 / 16_000.0, "processing_seconds": seconds,
             "rtf": seconds / (audio.len() as f64 / 16_000.0),
             "p95_update_ms": update_ms.get(update_ms.len().saturating_sub(1).min(update_ms.len() * 95 / 100)),
@@ -195,8 +205,8 @@ fn evaluate_manual_reference_manifest() {
         "decoding": std::env::var("BANI_ASR_DECODING").unwrap_or_else(|_| "kenlm".into()),
         "normalization": "NFC, punctuation to spaces, whitespace folding; matras retained; CER excludes spaces",
         "manifest": manifest, "clips": reports,
-        "aggregate_wer": word_totals[0] as f64 / word_totals[1].max(1) as f64,
-        "aggregate_cer": char_totals[0] as f64 / char_totals[1].max(1) as f64,
+        "aggregate_wer": (word_totals[1] > 0).then_some(word_totals[0] as f64 / word_totals[1].max(1) as f64),
+        "aggregate_cer": (char_totals[1] > 0).then_some(char_totals[0] as f64 / char_totals[1].max(1) as f64),
         "memory_status": status.lines().filter(|line| line.starts_with("VmHWM:") || line.starts_with("VmRSS:") || line.starts_with("Cpus_allowed_list:")).collect::<Vec<_>>(),
         "cpu": cpu.lines().find(|line| line.starts_with("model name")),
         "address_space_limit": limits.lines().find(|line| line.starts_with("Max address space")),

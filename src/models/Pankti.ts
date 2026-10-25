@@ -8,6 +8,7 @@ export type Pankti = {
     shabad_id: string;
     source_line: number;
     source_page: number;
+    source_id?: number;
     type_id: number;
     vishraam_first_letters: string;
     visited?: boolean;
@@ -30,4 +31,5 @@ export type Pankti = {
     bani_ids?: number[];
     /** Canonical couplet within a Sukhmani Sahib ashtpadi; absent for saloks. */
     paath_pair_id?: string | null;
+    paath_keep_single?: boolean | number;
 };

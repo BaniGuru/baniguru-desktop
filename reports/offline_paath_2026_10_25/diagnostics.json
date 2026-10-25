@@ -1,0 +1,86 @@
+{
+  "recording": {
+    "name": "BaniGuru_AutoPilot_2026-10-25_19-51-53_914.mp3",
+    "sha256": "55dbdddfc4818a5f52ace2cd0e1119beca62fa684167ea2a6bb8b12c05c072df",
+    "duration_seconds": 571.67,
+    "human_transcript_supplied": false
+  },
+  "asr": {
+    "profile": "sehaj_paath",
+    "processing_seconds": 333.516154168,
+    "rtf": 0.5834067804292687,
+    "p95_update_ms": 338.542779,
+    "has_manual_reference": false,
+    "wer": null,
+    "cer": null,
+    "words": 1074,
+    "events": 1683,
+    "memory": [
+      "VmHWM:\t  941672 kB",
+      "VmRSS:\t  758256 kB",
+      "Cpus_allowed_list:\t0-3"
+    ],
+    "cpu": "model name\t: INTEL(R) XEON(R) PLATINUM 8573C"
+  },
+  "diagnostic_only": true,
+  "baseline-pilot": {
+    "first_selection_seconds": 4.766,
+    "broad_searches": 7,
+    "shabads": 2,
+    "display_transitions": 10,
+    "last_transition": {
+      "at": 23.806,
+      "id": "ZD6B",
+      "shabadId": "F2U",
+      "baniId": null,
+      "reason": "pankti",
+      "source_page": 179,
+      "order_id": 7489,
+      "gurmukhi_unicode": "ਜਿੳੁ ਬੋਹਿਥੁ, ਭੈ ਸਾਗਰ ਮਾਹਿ ॥"
+    },
+    "max_local_forward_lines": 1,
+    "max_local_backward_lines": 0
+  },
+  "pilot": {
+    "first_selection_seconds": 5.106,
+    "broad_searches": 11,
+    "shabads": 13,
+    "display_transitions": 182,
+    "last_transition": {
+      "at": 571.67,
+      "id": "6M78",
+      "shabadId": "ERW",
+      "baniId": null,
+      "reason": "pankti",
+      "source_page": 182,
+      "order_id": 7700,
+      "gurmukhi_unicode": "ਜਾ ਕੈ ਵਸਿ, ਖਾਨ ਸੁਲਤਾਨ ॥"
+    },
+    "max_local_forward_lines": 8,
+    "max_local_backward_lines": 0
+  },
+  "limits": [
+    "No human transcript or time-aligned expected pankti labels supplied; WER/CER and pankti accuracy are unscored.",
+    "Cursor transitions and reaching the end demonstrate recovery, not perfect text accuracy or timing.",
+    "Some noisy passages retain temporary holds; decoder hypotheses are unchanged.",
+    "ASR replay uses the production decoder; matching replay excludes microphone and WebView latency."
+  ],
+  "verification": {
+    "frontend_tests_passed": 74,
+    "full_recording_replay_passed": true,
+    "production_build_passed": true,
+    "prior_akj_part2_regression": {
+      "mapped_sections_reached": 250,
+      "mapped_sections": 251,
+      "searches": 2,
+      "max_forward_lines": 2,
+      "max_backward_lines": 2
+    }
+  },
+  "temporary_holds": {
+    "longest_transition_gap_seconds": 25.84,
+    "start_seconds": 296.826,
+    "end_seconds": 322.666,
+    "note": "No human reference is available to distinguish ASR noise, silence, long lines or tracking delay within each hold."
+  }
+}

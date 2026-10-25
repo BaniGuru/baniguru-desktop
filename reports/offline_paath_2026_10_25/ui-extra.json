@@ -1,0 +1,79 @@
+{
+  "passed": true,
+  "thirdPairedRowScroll": true,
+  "fontsStable": true,
+  "compact": {
+    "current": [
+      "NNBR",
+      "T2Z3"
+    ],
+    "offset": 0,
+    "scroll": 5790,
+    "rows": [
+      [
+        "NNBR",
+        "T2Z3"
+      ],
+      [
+        "NZU5"
+      ],
+      [
+        "HGJ2",
+        "KUDY"
+      ],
+      [
+        "SRRM"
+      ]
+    ],
+    "fits": true
+  },
+  "salok": {
+    "current": [
+      "UR26"
+    ],
+    "offset": -0.25,
+    "scroll": 8830,
+    "rows": [
+      [
+        "UR26"
+      ],
+      [
+        "6JS7"
+      ],
+      [
+        "6PW0"
+      ],
+      [
+        "KQSY"
+      ]
+    ],
+    "fits": true
+  },
+  "ashtpadi": {
+    "current": [
+      "13HW",
+      "ZTQM"
+    ],
+    "offset": 0,
+    "scroll": 9843,
+    "rows": [
+      [
+        "13HW",
+        "ZTQM"
+      ],
+      [
+        "02VL",
+        "ZUNK"
+      ],
+      [
+        "5N70",
+        "8XV6"
+      ],
+      [
+        "AFK8",
+        "5EZT"
+      ]
+    ],
+    "fits": true
+  }
+}
