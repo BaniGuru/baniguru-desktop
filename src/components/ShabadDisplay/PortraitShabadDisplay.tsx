@@ -14,8 +14,9 @@ const Presentation = styled.div`
   }
   .portrait-current-content { width: 100%; text-align: center; overflow-wrap: anywhere; }
   .portrait-gurmukhi {
+    width: calc(100% + 12vw); margin-left: -12vw; overflow-wrap: normal;
     font-family: "Open Gurbani Akhar"; font-weight: 700; line-height: 1.35;
-    font-size: calc(var(--portrait-font) * var(--portrait-scale, 1));
+    font-size: calc(var(--portrait-font) * var(--portrait-scale, 1) * var(--portrait-gurmukhi-scale, 1));
   }
   .portrait-punjabi, .portrait-english {
     margin-top: calc(var(--portrait-font) * .35 * var(--portrait-scale, 1));
@@ -62,21 +63,34 @@ export default function PortraitShabadDisplay({current, next, fontSize, palette,
     const element = root.current;
     if (!element) return;
     const fit = () => {
+      const shrink = (content: HTMLElement, property: string, fits: () => boolean) => {
+        content.style.setProperty(property, "1");
+        if (fits()) return;
+        let low = 0, high = 1;
+        for (let i = 0; i < 10; i++) {
+          const scale = (low + high) / 2;
+          content.style.setProperty(property, String(scale));
+          if (fits()) low = scale;
+          else high = scale;
+        }
+        content.style.setProperty(property, String(low));
+      };
       for (const name of ["current", "next"]) {
         const area = element.querySelector<HTMLElement>(`.portrait-${name}`);
         const content = area?.firstElementChild as HTMLElement | undefined;
         if (!area || !content) continue;
-        const fits = () => content.scrollWidth <= area.clientWidth && content.scrollHeight <= area.clientHeight;
         content.style.setProperty("--portrait-scale", "1");
-        if (fits()) continue;
-        let low = 0, high = 1;
-        for (let i = 0; i < 10; i++) {
-          const scale = (low + high) / 2;
-          content.style.setProperty("--portrait-scale", String(scale));
-          if (fits()) low = scale;
-          else high = scale;
+        if (name === "current") {
+          const gurmukhi = content.querySelector<HTMLElement>(".portrait-gurmukhi")!;
+          // The portrait is narrower beside the verse than beside its lower
+          // translations. Use that space, then fit the complete verse to two
+          // lines without truncating words or shrinking the translations.
+          shrink(gurmukhi, "--portrait-gurmukhi-scale", () =>
+            gurmukhi.scrollHeight <= parseFloat(getComputedStyle(gurmukhi).lineHeight) * 2 + 1 &&
+            gurmukhi.scrollWidth <= gurmukhi.clientWidth);
         }
-        content.style.setProperty("--portrait-scale", String(low));
+        shrink(content, "--portrait-scale", () =>
+          content.scrollWidth <= area.clientWidth && content.scrollHeight <= area.clientHeight);
       }
     };
     fit();
