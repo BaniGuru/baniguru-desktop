@@ -17,6 +17,7 @@ import { useContext as useCtxSelector } from "use-context-selector";
 import useFitTextToTwoLines from "../../utils/useFitTextToTwoLines";
 import { ApiClient } from "../../utils/apiClient";
 import SehajPaathDisplay from "./SehajPaathDisplay";
+import PortraitShabadDisplay from "./PortraitShabadDisplay";
 
 interface PanelProps {
     fontSize: number;
@@ -330,6 +331,14 @@ const ShabadDisplay: React.FC<ShabadDisplayProps> = ({ apiClient }) => {
 
     if (current < 0) {
         return null;
+    }
+
+    if (palette.presentation === "portrait" && state.panktis[current]) {
+        return <div className="w-screen h-screen" style={{visibility:appState.page === PAGE_ANNOUNCEMENT ? "hidden" : "visible"}}>
+            <PortraitShabadDisplay current={state.panktis[current]} next={state.panktis[current + 1]}
+                fontSize={fontSize} palette={palette} showPunjabi={visibility.ਪੰਜਾਬੀ}
+                showEnglish={visibility.English} showNext={visibility["Next Pankti"]}/>
+        </div>;
     }
 
     if (!kirtanMode && state.panktis[current]) {

@@ -11,6 +11,7 @@ import bg2 from './../assets/images/guru-granth-sahib-ji-theme2.png';
 import shabados1 from './../assets/images/logo-shabados-1.png';
 import shabados2 from './../assets/images/logo-shabados-2.png';
 import { HARMANDIR_THEME, HARMANDIR_THEME_NAME } from "../ui/harmandirTheme";
+import { GURU_RAMDAS_THEME, GURU_RAMDAS_THEME_NAME } from "../ui/guruRamdasTheme";
 
 /** Define the color palette shape your UI needs */
 export type ThemeColors = {
@@ -19,6 +20,7 @@ export type ThemeColors = {
   english: string;
   background: any;
   vishraam?: { heavy: string; medium: string; light: string };
+  presentation?: "portrait";
   reader?: {
     topInsetVh: number;
     bottomInsetVh: number;
@@ -55,6 +57,7 @@ const THEME_CATALOG: Record<string, ThemeColors> = {
     background: `url(${baniGuruBg}) center center / 100% 100% no-repeat`
   },
   [HARMANDIR_THEME_NAME]: HARMANDIR_THEME,
+  [GURU_RAMDAS_THEME_NAME]: GURU_RAMDAS_THEME,
   Light: {
     gurmukhi: "#000000",
     punjabi: "#111827",   // gray-900

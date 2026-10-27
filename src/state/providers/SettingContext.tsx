@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { setPassword, getPassword } from "tauri-plugin-keyring-api";
 import { HARMANDIR_THEME_NAME } from "../../ui/harmandirTheme";
+import { GURU_RAMDAS_THEME_NAME } from "../../ui/guruRamdasTheme";
 
 const KEYRING_SERVICE = "BaniGuru";
 
@@ -86,6 +87,7 @@ const defaultSpeechJpToken = "";
 const defaultThemes: Theme[] = [
   {name: "BaniGuru"},
   {name: HARMANDIR_THEME_NAME},
+  {name: GURU_RAMDAS_THEME_NAME},
   { name: "Light" },
   { name: "Blue" },
   { name: "Dark" },
