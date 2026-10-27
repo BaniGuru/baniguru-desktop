@@ -17,7 +17,6 @@ import SettingInput from "../../ui/SettingInput";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ShabadTheme } from "../../ui/ShabadTheme";
-import { HARMANDIR_THEME_NAME } from "../../ui/harmandirTheme";
 import { LangType, useSettings } from "../../state/providers/SettingContext";
 import { DB } from "../../utils/DB";
 
@@ -48,6 +47,7 @@ export const SettingPanel = () => {
   const [adminUnlocking, setAdminUnlocking] = useState(false);
 
   const {
+    themes,
     micName,
     setMicName,
     offlineMode,
@@ -200,17 +200,7 @@ export const SettingPanel = () => {
             <div className="mb-4 text-2xl font-semibold">Themes</div>
 
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-              <ShabadTheme name="BaniGuru" />
-              <ShabadTheme name={HARMANDIR_THEME_NAME} />
-              <ShabadTheme name="Light" />
-              <ShabadTheme name="Blue" />
-              <ShabadTheme name="Dark" />
-              <ShabadTheme name="Darker" />
-              <ShabadTheme name="Sepia" />
-              <ShabadTheme name="ShabadOs1" />
-              <ShabadTheme name="ShabadOs2" />
-              <ShabadTheme name="Bandi Chorh Diwas" />
-              <ShabadTheme name="Guru Nanak Dev Ji" />
+              {themes.map(theme => <ShabadTheme key={theme.name} name={theme.name} />)}
             </div>
           </section>
         )}
