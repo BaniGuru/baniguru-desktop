@@ -15,7 +15,7 @@ const Presentation = styled.div`
   .portrait-current-content { width: 100%; text-align: center; overflow-wrap: anywhere; }
   .portrait-gurmukhi {
     width: calc(100% + 12vw); margin-left: -12vw; overflow-wrap: normal;
-    font-family: "Open Gurbani Akhar"; font-weight: 700; line-height: 1.35;
+    font-family: "Open Gurbani Akhar"; font-weight: 900; line-height: 1.35;
     font-size: calc(var(--portrait-font) * var(--portrait-scale, 1) * var(--portrait-gurmukhi-scale, 1));
   }
   .portrait-punjabi, .portrait-english {
@@ -23,7 +23,10 @@ const Presentation = styled.div`
     font-size: calc(var(--portrait-font) * .46 * var(--portrait-scale, 1));
     line-height: 1.5; font-weight: 400;
   }
-  .portrait-punjabi { font-family: "Open Anmol Uni", sans-serif; }
+  .portrait-punjabi {
+    width: calc(100% + 7vw); margin-left: -7vw;
+    font-family: "Open Anmol Uni", sans-serif;
+  }
   .portrait-english { font-family: "Noto Sans", sans-serif; }
   .portrait-next {
     position: absolute; left: 4%; right: 4%; top: 88%; bottom: 2.5%;
@@ -31,7 +34,7 @@ const Presentation = styled.div`
   }
   .portrait-next-content {
     white-space: nowrap; text-align: center; font-family: "Open Gurbani Akhar";
-    font-weight: 700; line-height: 1.35;
+    font-weight: 900; line-height: 1.35;
     font-size: calc(var(--portrait-font) * .65 * var(--portrait-scale, 1));
   }
 `;
@@ -48,8 +51,11 @@ type Props = {
 
 const Gurmukhi = ({text, colors}: {text: string; colors?: ThemeColors["vishraam"]}) =>
   <>{text.split(/(\s+)/).map((word, index) => <Fragment key={index}>
-    {/\s+/.test(word) ? word : <span style={{color: /;|<>|ੴ/.test(word) ? colors?.heavy
-      : /[,.]/.test(word) ? colors?.medium : undefined}}>{Format.removeVishraams(word)}</span>}
+    {/\s+/.test(word) ? word : <>
+      <span style={{color: /;|<>|ੴ/.test(word) ? colors?.heavy
+        : /[,.]/.test(word) ? colors?.medium : undefined}}>{Format.removeVishraams(word)}</span>
+      {/[;,.]$/.test(word) && <br hidden data-vishraam={word.endsWith(";") ? "heavy" : "light"}/>}
+    </>}
   </Fragment>)}</>;
 
 /** Keep the entire current verse and translations clear of the portrait.
@@ -82,12 +88,42 @@ export default function PortraitShabadDisplay({current, next, fontSize, palette,
         content.style.setProperty("--portrait-scale", "1");
         if (name === "current") {
           const gurmukhi = content.querySelector<HTMLElement>(".portrait-gurmukhi")!;
+          const breaks = Array.from(gurmukhi.querySelectorAll<HTMLBRElement>("br[data-vishraam]"));
+          for (const br of breaks) br.hidden = true;
           // The portrait is narrower beside the verse than beside its lower
           // translations. Use that space, then fit the complete verse to two
           // lines without truncating words or shrinking the translations.
-          shrink(gurmukhi, "--portrait-gurmukhi-scale", () =>
+          const fitsVerse = () =>
             gurmukhi.scrollHeight <= parseFloat(getComputedStyle(gurmukhi).lineHeight) * 2 + 1 &&
-            gurmukhi.scrollWidth <= gurmukhi.clientWidth);
+            gurmukhi.scrollWidth <= gurmukhi.clientWidth;
+          shrink(gurmukhi, "--portrait-gurmukhi-scale", fitsVerse);
+          if (gurmukhi.scrollHeight > parseFloat(getComputedStyle(gurmukhi).lineHeight) + 1 && breaks.length) {
+            // Measure complete phrases without wrapping. Prefer a major pause
+            // only when the shorter line is at least 55% of the longer one,
+            // and it does not cost more than 15% of the naturally fitted font.
+            gurmukhi.style.whiteSpace = "nowrap";
+            const range = document.createRange();
+            const candidates = breaks.flatMap(br => {
+              range.setStart(gurmukhi, 0);
+              range.setEndBefore(br);
+              const leftText = range.toString();
+              const left = range.getBoundingClientRect().width;
+              range.setStartAfter(br);
+              range.setEnd(gurmukhi, gurmukhi.childNodes.length);
+              const rightText = range.toString();
+              const right = range.getBoundingClientRect().width;
+              const longest = Math.max(left, right);
+              if (!/[\p{L}ੴ]/u.test(leftText) || !/[\p{L}ੴ]/u.test(rightText) ||
+                Math.min(left, right) < longest * .55 || gurmukhi.clientWidth < longest * .85) return [];
+              return [{br, longest, major: br.dataset.vishraam === "heavy"}];
+            });
+            gurmukhi.style.whiteSpace = "";
+            candidates.sort((a, b) => Number(b.major) - Number(a.major) || a.longest - b.longest);
+            if (candidates[0]) {
+              candidates[0].br.hidden = false;
+              shrink(gurmukhi, "--portrait-gurmukhi-scale", fitsVerse);
+            }
+          }
         }
         shrink(content, "--portrait-scale", () =>
           content.scrollWidth <= area.clientWidth && content.scrollHeight <= area.clientHeight);
